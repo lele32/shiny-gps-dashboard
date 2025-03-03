@@ -16,7 +16,7 @@ ui <- fluidPage(
                 accept = c(".csv", ".xlsx", ".json")),
       tags$hr(),
       uiOutput("file_info"),
-      uiOutput("column_select"),    # Column selection
+      uiOutput("column_mapping"),   # Dynamic column mapping
       uiOutput("player_filter"),    # Player filter
       uiOutput("position_filter"),  # Position filter
       uiOutput("matchday_filter"),  # MatchDay filter
@@ -57,97 +57,80 @@ server <- function(input, output, session) {
                 "<b>File Size:</b> ", round(input$file$size / 1024, 2), " KB"))
   })
   
-  # Dynamic column selection (Fixed)
-  output$column_select <- renderUI({
+  # Dynamic column mapping UI
+  output$column_mapping <- renderUI({
     req(read_data())
-    selectInput("selected_columns", "Select Columns to Display:",
-                choices = colnames(read_data()), 
-                selected = colnames(read_data()), multiple = TRUE)
+    cols <- colnames(read_data())
+    tagList(
+      selectInput("player_col", "Select Player Column:", choices = cols),
+      selectInput("position_col", "Select Position Column:", choices = cols),
+      selectInput("matchday_col", "Select Match Day Column:", choices = cols),
+      selectInput("task_col", "Select Task Column:", choices = cols),
+      selectInput("date_col", "Select Date Column:", choices = cols)
+    )
   })
   
-  # Dynamic player filtering
+  # Dynamic filtering UI (only appears after column selection)
   output$player_filter <- renderUI({
-    req(read_data())
-    if ("Player" %in% colnames(read_data())) {
-      selectInput("selected_player", "Filter by Player:",
-                  choices = unique(read_data()$Player), 
-                  selected = unique(read_data()$Player)[1], multiple = TRUE)
-    }
+    req(read_data(), input$player_col)
+    selectInput("selected_player", "Filter by Player:",
+                choices = unique(read_data()[[input$player_col]]), 
+                selected = unique(read_data()[[input$player_col]])[1], multiple = TRUE)
   })
   
-  # Dynamic position filtering
   output$position_filter <- renderUI({
-    req(read_data())
-    if ("Position" %in% colnames(read_data())) {
-      selectInput("selected_position", "Filter by Position:",
-                  choices = unique(read_data()$Position), 
-                  selected = unique(read_data()$Position), multiple = TRUE)
-    }
+    req(read_data(), input$position_col)
+    selectInput("selected_position", "Filter by Position:",
+                choices = unique(read_data()[[input$position_col]]), 
+                selected = unique(read_data()[[input$position_col]]), multiple = TRUE)
   })
   
-  # Dynamic matchday filtering
   output$matchday_filter <- renderUI({
-    req(read_data())
-    if ("MatchDay" %in% colnames(read_data())) {
-      selectInput("selected_matchday", "Filter by Match Day:",
-                  choices = unique(read_data()$MatchDay), 
-                  selected = unique(read_data()$MatchDay), multiple = TRUE)
-    }
+    req(read_data(), input$matchday_col)
+    selectInput("selected_matchday", "Filter by Match Day:",
+                choices = unique(read_data()[[input$matchday_col]]), 
+                selected = unique(read_data()[[input$matchday_col]]), multiple = TRUE)
   })
   
-  # Dynamic task filtering
   output$task_filter <- renderUI({
-    req(read_data())
-    if ("Task" %in% colnames(read_data())) {
-      selectInput("selected_task", "Filter by Task:",
-                  choices = unique(read_data()$Task), 
-                  selected = unique(read_data()$Task), multiple = TRUE)
-    }
+    req(read_data(), input$task_col)
+    selectInput("selected_task", "Filter by Task:",
+                choices = unique(read_data()[[input$task_col]]), 
+                selected = unique(read_data()[[input$task_col]]), multiple = TRUE)
   })
   
-  # Dynamic date filtering
   output$date_filter <- renderUI({
-    req(read_data())
-    if ("Date" %in% colnames(read_data())) {
-      dateRangeInput("selected_date", "Select Date Range:",
-                     start = min(read_data()$Date, na.rm = TRUE),
-                     end = max(read_data()$Date, na.rm = TRUE))
-    }
+    req(read_data(), input$date_col)
+    dateRangeInput("selected_date", "Select Date Range:",
+                   start = min(as.Date(read_data()[[input$date_col]]), na.rm = TRUE),
+                   end = max(as.Date(read_data()[[input$date_col]]), na.rm = TRUE))
   })
   
   # Render table with selected filters
   output$table <- renderDT({
-    req(read_data())  
+    req(read_data(), input$player_col, input$position_col, input$matchday_col, input$task_col, input$date_col)
     data <- read_data()
     
-    # Apply column selection
-    if (!is.null(input$selected_columns)) {
-      data <- data[, input$selected_columns, drop = FALSE]
+    # Apply filters dynamically based on selected columns
+    if (!is.null(input$selected_player)) {
+      data <- data[data[[input$player_col]] %in% input$selected_player, ]
     }
     
-    # Apply player filter
-    if (!is.null(input$selected_player) && "Player" %in% colnames(data)) {
-      data <- data[data$Player %in% input$selected_player, ]
+    if (!is.null(input$selected_position)) {
+      data <- data[data[[input$position_col]] %in% input$selected_position, ]
     }
     
-    # Apply position filter
-    if (!is.null(input$selected_position) && "Position" %in% colnames(data)) {
-      data <- data[data$Position %in% input$selected_position, ]
+    if (!is.null(input$selected_matchday)) {
+      data <- data[data[[input$matchday_col]] %in% input$selected_matchday, ]
     }
     
-    # Apply match day filter
-    if (!is.null(input$selected_matchday) && "MatchDay" %in% colnames(data)) {
-      data <- data[data$MatchDay %in% input$selected_matchday, ]
+    if (!is.null(input$selected_task)) {
+      data <- data[data[[input$task_col]] %in% input$selected_task, ]
     }
     
-    # Apply task filter
-    if (!is.null(input$selected_task) && "Task" %in% colnames(data)) {
-      data <- data[data$Task %in% input$selected_task, ]
-    }
-    
-    # Apply date filter
-    if (!is.null(input$selected_date) && "Date" %in% colnames(data)) {
-      data <- data[data$Date >= input$selected_date[1] & data$Date <= input$selected_date[2], ]
+    if (!is.null(input$selected_date)) {
+      data <- data[as.Date(data[[input$date_col]]) >= input$selected_date[1] & 
+                     as.Date(data[[input$date_col]]) <= input$selected_date[2], ]
     }
     
     # Handle missing values (replace NA with "-")
