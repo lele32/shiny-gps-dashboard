@@ -5,6 +5,7 @@ library(jsonlite)
 library(DT)
 library(ggplot2)
 library(plotly)
+library(lubridate)
 library(dplyr)
 
 # Remove file upload limit (Set to 500MB)
@@ -170,19 +171,64 @@ server <- function(input, output, session) {
   # Metric Over Time Plot
   output$metric_time_plot <- renderPlotly({
     req(processed_data(), input$metric, input$date_col)
+    
     data <- processed_data()
-    data[[input$metric]] <- as.numeric(data[[input$metric]])
+    
+    # Ensure the metric column is numeric
+    data[[input$metric]] <- suppressWarnings(as.numeric(data[[input$metric]]))
+    
+    # Ensure the date column exists
+    if (!input$date_col %in% colnames(data)) {
+      return(NULL)  # Prevent error if column is missing
+    }
+    
+    # Print date column for debugging
+    print("Raw Date Column:")
+    print(head(data[[input$date_col]]))
+    
+    # Remove non-character entries (like factors)
+    data[[input$date_col]] <- as.character(data[[input$date_col]])
+    
+    # Handle date conversion with multiple formats
+    data[[input$date_col]] <- case_when(
+      grepl("^\\d{4}-\\d{2}-\\d{2}$", data[[input$date_col]]) ~ as.character(ymd(data[[input$date_col]])),
+      grepl("^\\d{2}-\\d{2}-\\d{4}$", data[[input$date_col]]) ~ as.character(dmy(data[[input$date_col]])),
+      grepl("^\\d{2}/\\d{2}/\\d{4}$", data[[input$date_col]]) ~ as.character(mdy(data[[input$date_col]])),
+      TRUE ~ NA_character_
+    )
+    
+    # Convert to Date format
     data[[input$date_col]] <- as.Date(data[[input$date_col]])
     
-    p <- ggplot(data, aes(x = !!sym(input$date_col), y = !!sym(input$metric), group = 1)) +
-      geom_line(size = 1.2) +
-      geom_point(size = 2) +
-      theme_minimal() +
-      labs(title = paste(input$metric, "Over Time"),
-           x = "Date",
-           y = paste("Mean", input$metric))
+    # Remove rows with invalid dates
+    data <- data[!is.na(data[[input$date_col]]), ]
     
-    ggplotly(p)
+    # Print cleaned dates for debugging
+    print("Cleaned Date Column:")
+    print(head(data[[input$date_col]]))
+    
+    # Define color palette
+    custom_colors <- c("#3498DB", "#E74C3C", "#2ECC71", "#F1C40F", "#9B59B6")
+    
+    # Create the column (bar) chart
+    p <- ggplot(data, aes(x = !!sym(input$date_col), y = !!sym(input$metric), fill = !!sym(input$metric))) +
+      geom_col(width = 0.7, show.legend = FALSE) +  # Column chart
+      scale_fill_gradient(low = "#85C1E9", high = "#1F618D") +  # Color gradient
+      theme_minimal(base_size = 14) +  # Apply modern theme
+      scale_x_date(date_breaks = "1 week", date_labels = "%d-%m-%Y") +  # Format X-axis to dd-mm-yyyy
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+        plot.title = element_text(size = 16, face = "bold"),
+        axis.title = element_text(size = 14),
+        panel.grid.major = element_line(color = "grey80", linetype = "dashed")
+      ) +
+      labs(
+        title = paste(input$metric, "Over Time"),
+        x = "Date",
+        y = paste("Mean", input$metric)
+      )
+    
+    ggplotly(p)  # Convert to interactive Plotly graph
   })
 }
 
