@@ -5,7 +5,6 @@ library(jsonlite)
 library(DT)
 library(ggplot2)
 library(plotly)
-library(lubridate)
 library(dplyr)
 
 # Remove file upload limit (Set to 500MB)
@@ -232,5 +231,5 @@ server <- function(input, output, session) {
   })
 }
 
-# Run the app
+# RUN THE APP
 shinyApp(ui, server)
