@@ -211,7 +211,7 @@ server <- function(input, output, session) {
     
     # Create the column (bar) chart
     p <- ggplot(data, aes(x = !!sym(input$date_col), y = !!sym(input$metric), fill = !!sym(input$metric))) +
-      geom_col(width = 1, show.legend = FALSE) +  # Column chart
+      geom_col(width = 0.7, show.legend = FALSE) +  # Column chart
       scale_fill_gradient(low = "#85C1E9", high = "#1F618D") +  # Color gradient
       theme_minimal(base_size = 14) +  # Apply modern theme
       scale_x_date(date_breaks = "1 week", date_labels = "%d-%m-%Y") +  # Format X-axis to dd-mm-yyyy
