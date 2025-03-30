@@ -264,13 +264,16 @@ server <- function(input, output, session) {
     data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
     data <- data[!is.na(data[[input$metric]]) & !is.na(data[[input$date_col]]), ]
     
+    # Agrupamos por fecha y jugador
     plot_data <- data %>%
-      group_by(Fecha = .data[[input$date_col]], Jugador = .data[[input$player_col]]) %>%
-      summarise(Promedio = mean(.data[[input$metric]], na.rm = TRUE), .groups = "drop")
+      group_by(Fecha = as.Date(.data[[input$date_col]]), Jugador = .data[[input$player_col]]) %>%
+      summarise(Promedio = mean(.data[[input$metric]], na.rm = TRUE), .groups = "drop") %>%
+      mutate(Fecha = factor(Fecha, levels = sort(unique(Fecha))))  # Eje discreto
     
+    # Gráfico
     p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador)) +
-      geom_col(position = "dodge") +
-      theme_minimal() +
+      geom_col(position = position_dodge2(preserve = "single")) +
+      theme_minimal(base_size = 14) +
       labs(title = paste("Promedio de", input$metric, "por Fecha y Jugador"),
            x = "Fecha", y = input$metric) +
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
