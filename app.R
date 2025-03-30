@@ -18,28 +18,37 @@ ui <- fluidPage(
       fileInput("file", "Upload GPS Data", accept = c(".csv", ".xlsx", ".json")),
       tags$hr(),
       uiOutput("file_info"),
-      uiOutput("column_mapping"),
-      uiOutput("player_filter"),
-      uiOutput("position_filter"),
-      uiOutput("matchday_filter"),
-      uiOutput("task_filter"),
-      uiOutput("date_filter"),
-      uiOutput("duration_filter"),
-      selectInput("metric", "Select Metric:", choices = NULL),
-      uiOutput("metric_value_filter")
+      uiOutput("column_mapping")
     ),
     mainPanel(
       tabsetPanel(
         tabPanel("Data Table", DTOutput("table")),
         tabPanel("Summary Stats", DTOutput("summary_table")),
-        tabPanel("Metric Over Time", plotlyOutput("metric_plot"))
+        tabPanel("Barras por Fecha",
+                 fluidRow(
+                   column(6, uiOutput("filter_players")),
+                   column(6, uiOutput("filter_positions"))
+                 ),
+                 fluidRow(
+                   column(6, uiOutput("filter_matchday")),
+                   column(6, uiOutput("filter_task"))
+                 ),
+                 fluidRow(
+                   column(6, uiOutput("filter_date_range")),
+                   column(6, uiOutput("filter_duration"))
+                 ),
+                 fluidRow(
+                   column(6, selectInput("metric", "Select Metric:", choices = NULL)),
+                   column(6, uiOutput("metric_range_filter"))
+                 ),
+                 plotlyOutput("barras_fecha_plot")
+        )
       )
     )
   )
 )
 
 server <- function(input, output, session) {
-  
   read_data <- reactive({
     req(input$file)
     ext <- tools::file_ext(input$file$name)
@@ -68,158 +77,166 @@ server <- function(input, output, session) {
       selectInput("matchday_col", "Select Match Day Column:", choices = cols),
       selectInput("task_col", "Select Task Column:", choices = cols),
       selectInput("date_col", "Select Date Column:", choices = cols),
-      selectInput("duration_col", "Select Duration Column (if available):", choices = c("None", cols), selected = "None"),
-      selectInput("start_col", "Select Start Time Column:", choices = c("None", cols), selected = "None"),
-      selectInput("end_col", "Select End Time Column:", choices = c("None", cols), selected = "None"),
+      selectInput("duration_col", "Select Duration Column (if available):", choices = c("None", cols)),
+      selectInput("start_col", "Select Start Time Column:", choices = c("None", cols)),
+      selectInput("end_col", "Select End Time Column:", choices = c("None", cols)),
       selectInput("metric_col", "Select Available Metrics:", choices = cols, multiple = TRUE)
     )
   })
   
   observe({
-    req(read_data())
+    req(read_data(), input$metric_col)
     data <- read_data()
-    numeric_cols <- colnames(data)[sapply(data, is.numeric)]
-    updateSelectInput(session, "metric", choices = numeric_cols)
-  })
-  
-  output$player_filter <- renderUI({
-    req(read_data(), input$player_col)
-    selectInput("selected_player", "Filter by Player:",
-                choices = unique(read_data()[[input$player_col]]), multiple = TRUE)
-  })
-  
-  output$position_filter <- renderUI({
-    req(read_data(), input$position_col)
-    selectInput("selected_position", "Filter by Position:",
-                choices = unique(read_data()[[input$position_col]]), multiple = TRUE)
-  })
-  
-  output$matchday_filter <- renderUI({
-    req(read_data(), input$matchday_col)
-    selectInput("selected_matchday", "Filter by Match Day:",
-                choices = unique(read_data()[[input$matchday_col]]), multiple = TRUE)
-  })
-  
-  output$task_filter <- renderUI({
-    req(read_data(), input$task_col)
-    selectInput("selected_task", "Filter by Task:",
-                choices = unique(read_data()[[input$task_col]]), multiple = TRUE)
-  })
-  
-  output$date_filter <- renderUI({
-    req(read_data(), input$date_col)
-    dates <- suppressWarnings(parse_date_time(read_data()[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
-    valid_dates <- dates[!is.na(dates)]
-    if (length(valid_dates) == 0) return(NULL)
-    dateRangeInput("selected_date", "Select Date Range:",
-                   start = min(valid_dates), end = max(valid_dates))
+    numeric_metrics <- input$metric_col[sapply(data[, input$metric_col, drop = FALSE], is.numeric)]
+    updateSelectInput(session, "metric", choices = numeric_metrics)
   })
   
   session_duration <- reactive({
     req(read_data())
     data <- read_data()
     duracion <- NULL
-    
     if (!is.null(input$duration_col) && input$duration_col != "None") {
       duracion <- suppressWarnings(as.numeric(data[[input$duration_col]]))
-    } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
-               input$start_col != "None" && input$end_col != "None") {
-      hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-      hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-      duracion <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+    } else if (input$start_col != "None" && input$end_col != "None") {
+      start <- suppressWarnings(parse_time(data[[input$start_col]]))
+      end <- suppressWarnings(parse_time(data[[input$end_col]]))
+      duracion <- as.numeric(difftime(end, start, units = "mins"))
     }
     return(duracion)
   })
   
-  output$duration_filter <- renderUI({
-    dur <- session_duration()
-    dur <- dur[!is.na(dur) & is.finite(dur)]
-    if (length(dur) == 0) return(NULL)
-    sliderInput("duration_range", "Filter by Duration (minutes):",
-                min = floor(min(dur)), max = ceiling(max(dur)),
-                value = c(floor(min(dur)), ceiling(max(dur))))
-  })
-  
-  output$metric_value_filter <- renderUI({
-    req(read_data(), input$metric)
+  filtered_data <- reactive({
+    req(read_data(), input$player_col, input$position_col, input$matchday_col,
+        input$task_col, input$date_col, input$metric)
     data <- read_data()
-    values <- suppressWarnings(as.numeric(data[[input$metric]]))
-    values <- values[!is.na(values) & is.finite(values)]
-    if (length(values) == 0) return(NULL)
-    sliderInput("selected_metric_range", paste("Filter", input$metric),
-                min = floor(min(values)), max = ceiling(max(values)),
-                value = c(floor(min(values)), ceiling(max(values))))
-  })
-  
-  processed_data <- reactive({
-    req(read_data(), input$player_col, input$position_col,
-        input$matchday_col, input$task_col, input$date_col)
-    
-    data <- read_data()
-    
-    if (!is.null(input$selected_position)) {
-      data <- data[data[[input$position_col]] %in% input$selected_position, ]
+    if (!is.null(input$filter_selected_players)) {
+      data <- data[data[[input$player_col]] %in% input$filter_selected_players, ]
     }
-    if (!is.null(input$selected_player)) {
-      data <- data[data[[input$player_col]] %in% input$selected_player, ]
+    if (!is.null(input$filter_selected_positions)) {
+      data <- data[data[[input$position_col]] %in% input$filter_selected_positions, ]
     }
-    if (!is.null(input$selected_matchday)) {
-      data <- data[data[[input$matchday_col]] %in% input$selected_matchday, ]
+    if (!is.null(input$filter_selected_matchday)) {
+      data <- data[data[[input$matchday_col]] %in% input$filter_selected_matchday, ]
     }
-    if (!is.null(input$selected_task)) {
-      data <- data[data[[input$task_col]] %in% input$selected_task, ]
+    if (!is.null(input$filter_selected_task)) {
+      data <- data[data[[input$task_col]] %in% input$filter_selected_task, ]
     }
-    if (!is.null(input$selected_date)) {
-      fechas <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-      data <- data[!is.na(fechas) & fechas >= input$selected_date[1] & fechas <= input$selected_date[2], ]
+    fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+    if (!is.null(input$filter_date_range)) {
+      data <- data[fechas >= input$filter_date_range[1] & fechas <= input$filter_date_range[2], ]
     }
     dur <- session_duration()
-    if (!is.null(input$duration_range) && length(dur) == nrow(data)) {
-      keep <- !is.na(dur) & dur >= input$duration_range[1] & dur <= input$duration_range[2]
+    if (!is.null(input$filter_duration_range)) {
+      keep <- !is.na(dur) & dur >= input$filter_duration_range[1] & dur <= input$filter_duration_range[2]
       data <- data[keep, ]
     }
-    if (!is.null(input$selected_metric_range) && input$metric %in% colnames(data)) {
+    if (!is.null(input$metric) && !is.null(input$filter_metric_range)) {
       metric_vals <- suppressWarnings(as.numeric(data[[input$metric]]))
-      keep <- !is.na(metric_vals) & metric_vals >= input$selected_metric_range[1] & metric_vals <= input$selected_metric_range[2]
+      keep <- !is.na(metric_vals) & metric_vals >= input$filter_metric_range[1] & metric_vals <= input$filter_metric_range[2]
       data <- data[keep, ]
     }
-    
     return(data)
   })
   
+  output$filter_players <- renderUI({
+    req(read_data(), input$player_col)
+    selectInput("filter_selected_players", "Filter by Players:",
+                choices = unique(read_data()[[input$player_col]]), multiple = TRUE)
+  })
+  
+  output$filter_positions <- renderUI({
+    req(read_data(), input$position_col)
+    selectInput("filter_selected_positions", "Filter by Positions:",
+                choices = unique(read_data()[[input$position_col]]), multiple = TRUE)
+  })
+  
+  output$filter_matchday <- renderUI({
+    req(read_data(), input$matchday_col)
+    selectInput("filter_selected_matchday", "Filter by Match Day:",
+                choices = unique(read_data()[[input$matchday_col]]), multiple = TRUE)
+  })
+  
+  output$filter_task <- renderUI({
+    req(read_data(), input$task_col)
+    selectInput("filter_selected_task", "Filter by Task:",
+                choices = unique(read_data()[[input$task_col]]), multiple = TRUE)
+  })
+  
+  output$filter_date_range <- renderUI({
+    req(read_data(), input$date_col)
+    dates <- suppressWarnings(parse_date_time(read_data()[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+    valid_dates <- dates[!is.na(dates)]
+    if (length(valid_dates) > 0) {
+      dateRangeInput("filter_date_range", "Date Range:",
+                     start = min(valid_dates), end = max(valid_dates))
+    } else {
+      NULL
+    }
+  })
+  
+  output$filter_duration <- renderUI({
+    req(session_duration())
+    dur <- session_duration()
+    dur <- dur[!is.na(dur) & is.finite(dur)]
+    if (length(dur) > 0) {
+      sliderInput("filter_duration_range", "Duration (minutes):",
+                  min = floor(min(dur)), max = ceiling(max(dur)),
+                  value = c(floor(min(dur)), ceiling(max(dur))))
+    } else {
+      NULL
+    }
+  })
+  
+  output$metric_range_filter <- renderUI({
+    req(read_data(), input$metric)
+    vals <- suppressWarnings(as.numeric(read_data()[[input$metric]]))
+    vals <- vals[!is.na(vals)]
+    if (length(vals) > 0) {
+      sliderInput("filter_metric_range", paste("Range of", input$metric),
+                  min = floor(min(vals)), max = ceiling(max(vals)),
+                  value = c(floor(min(vals)), ceiling(max(vals))))
+    } else {
+      NULL
+    }
+  })
+  
+  output$barras_fecha_plot <- renderPlotly({
+    req(filtered_data(), input$metric, input$date_col, input$player_col)
+    data <- filtered_data()
+    data[[input$metric]] <- suppressWarnings(as.numeric(data[[input$metric]]))
+    data[[input$date_col]] <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+    plot_data <- data %>%
+      group_by(Fecha = .data[[input$date_col]], Jugador = .data[[input$player_col]]) %>%
+      summarise(Promedio = mean(.data[[input$metric]], na.rm = TRUE), .groups = "drop")
+    
+    p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador)) +
+      geom_col(position = "dodge") +
+      theme_minimal() +
+      labs(title = paste("Promedio de", input$metric, "por Fecha y Jugador"),
+           x = "Fecha", y = input$metric) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    
+    ggplotly(p)
+  })
+  
   output$table <- renderDT({
-    req(processed_data())
-    datatable(processed_data(), options = list(pageLength = 10))
+    req(filtered_data())
+    datatable(filtered_data(), options = list(pageLength = 10))
   })
   
   output$summary_table <- renderDT({
-    req(processed_data(), input$metric)
-    data <- processed_data()
+    req(filtered_data(), input$metric)
+    data <- filtered_data()
     vals <- suppressWarnings(as.numeric(data[[input$metric]]))
-    summary <- data.frame(
+    stats <- data.frame(
       Mean = mean(vals, na.rm = TRUE),
       Min = min(vals, na.rm = TRUE),
       Max = max(vals, na.rm = TRUE),
       SD = sd(vals, na.rm = TRUE)
     )
-    datatable(summary)
-  })
-  
-  output$metric_plot <- renderPlotly({
-    req(processed_data(), input$metric, input$date_col)
-    data <- processed_data()
-    data[[input$metric]] <- suppressWarnings(as.numeric(data[[input$metric]]))
-    data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-    data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[input$metric]]), ]
-    p <- ggplot(data, aes(x = .data[[input$date_col]], y = .data[[input$metric]], fill = .data[[input$metric]])) +
-      geom_col(show.legend = FALSE) +
-      scale_fill_gradient(low = "#AED6F1", high = "#2E86C1") +
-      theme_minimal(base_size = 14) +
-      labs(title = paste(input$metric, "Over Time"), x = "Date", y = input$metric) +
-      scale_x_datetime(date_labels = "%d-%m-%Y", date_breaks = "1 week") +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
-    ggplotly(p)
+    datatable(stats)
   })
 }
 
 shinyApp(ui, server)
+
