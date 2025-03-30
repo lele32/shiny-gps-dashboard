@@ -11,6 +11,13 @@ library(hms)
 library(shiny)
 library(bslib)
 library(shinythemes)
+library(rsconnect)
+
+
+library(rsconnect)
+rsconnect::deployApp('/Users/leandrocarbone/Google Drive/GPS Dashboard/GPS_Shiny')
+
+
 
 options(shiny.maxRequestSize = 500 * 1024^2)
 
