@@ -51,7 +51,13 @@ ui <- fluidPage(
       }
     "))
   ),
-  titlePanel("📊 GPS Data Dashboard"),
+  
+  # Título con logo
+  tags$div(
+    style = "text-align: center; padding: 10px;",
+    tags$img(src = "logo.png", height = "80px", style = "margin-bottom: 20px;"),
+    tags$h2("📊 GPS Data Dashboard", style = "margin-top: 10px;")
+  ),
   sidebarLayout(
     sidebarPanel(
       fileInput("file", "Upload GPS Data", accept = c(".csv", ".xlsx", ".json")),
@@ -63,7 +69,7 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Data Table", DTOutput("table")),
         tabPanel("Summary Stats", DTOutput("summary_table")),
-        tabPanel("📅 Barras por Fecha",
+        tabPanel("📊 Métrica en el tiempo",
                  tags$div(class = "filter-row",
                           tags$div(class = "filter-column", uiOutput("filtro_jugador")),
                           tags$div(class = "filter-column", uiOutput("filtro_puesto")),
