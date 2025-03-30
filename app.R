@@ -205,19 +205,27 @@ server <- function(input, output, session) {
     req(read_data())
     data <- read_data()
     dur <- NULL
-    if (!is.null(input$duration_col) && input$duration_col != "None") {
+    
+    if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
       dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
     } else if (!is.null(input$start_col) && input$start_col != "None" &&
-               !is.null(input$end_col) && input$end_col != "None") {
+               !is.null(input$end_col) && input$end_col != "None" &&
+               input$start_col %in% colnames(data) && input$end_col %in% colnames(data)) {
       hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
       hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
       dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
     }
-    dur <- dur[!is.na(dur) & is.finite(dur)]
-    if (length(dur) == 0) return(NULL)
+    
+    dur <- dur[!is.na(dur) & is.finite(dur) & dur >= 0]  # Evita negativos
+    
+    if (length(dur) == 0 || all(is.na(dur))) {
+      return(NULL)
+    }
+    
     sliderInput("filtro_duracion_input", "Duration (min):",
-                min = floor(min(dur)), max = ceiling(max(dur)),
-                value = c(floor(min(dur)), ceiling(max(dur))))
+                min = floor(min(dur, na.rm = TRUE)),
+                max = ceiling(max(dur, na.rm = TRUE)),
+                value = c(floor(min(dur, na.rm = TRUE)), ceiling(max(dur, na.rm = TRUE))))
   })
   
   output$filtro_metrica_valor <- renderUI({
