@@ -12,7 +12,7 @@ library(shiny)
 library(bslib)
 library(shinythemes)
 library(rsconnect)
-
+library(slider)
 
 options(shiny.maxRequestSize = 500 * 1024^2)
 
@@ -108,6 +108,20 @@ ui <- fluidPage(
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_task"))
                  ),
                  plotlyOutput("boxplot_task")
+        ),
+        # Z-Score por Fecha
+        tabPanel("📈 Z-score por Fecha",
+                 tags$div(class = "filter-row",
+                          tags$div(class = "filter-column", uiOutput("filtro_jugador_z")),
+                          tags$div(class = "filter-column", uiOutput("filtro_puesto_z")),
+                          tags$div(class = "filter-column", uiOutput("filtro_matchday_z")),
+                          tags$div(class = "filter-column", uiOutput("filtro_tarea_z")),
+                          tags$div(class = "filter-column", uiOutput("filtro_fecha_z")),
+                          tags$div(class = "filter-column", uiOutput("filtro_duracion_z")),
+                          tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL)),
+                          tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_z"))
+                 ),
+                 plotlyOutput("zscore_plot")
         )
       )
     )
@@ -204,6 +218,7 @@ server <- function(input, output, session) {
     updateSelectInput(session, "metric", choices = numeric_metrics, selected = numeric_metrics[1])
     updateSelectInput(session, "metric_box", choices = numeric_metrics, selected = numeric_metrics[1])
     updateSelectInput(session, "metric_task", choices = numeric_metrics, selected = numeric_metrics[1])
+    updateSelectInput(session, "metric_z", choices = numeric_metrics, selected = numeric_metrics[1])
   })
   
   # Filtros por gráfico (ya definidos correctamente)
@@ -227,6 +242,13 @@ server <- function(input, output, session) {
   output$filtro_tarea_task <- create_filter_ui("filtro_tarea_task", "task_col", "Filter by Task:")
   output$filtro_fecha_task <- create_date_filter("filtro_fecha_task", "date_col")
   output$filtro_duracion_task <- create_duration_filter("filtro_duracion_input_task")
+  
+  output$filtro_jugador_z <- create_filter_ui("filtro_jugador_z", "player_col", "Filter by Player:")
+  output$filtro_puesto_z <- create_filter_ui("filtro_puesto_z", "position_col", "Filter by Position:")
+  output$filtro_matchday_z <- create_filter_ui("filtro_matchday_z", "matchday_col", "Filter by Match Day:")
+  output$filtro_tarea_z <- create_filter_ui("filtro_tarea_z", "task_col", "Filter by Task:")
+  output$filtro_fecha_z <- create_date_filter("filtro_fecha_z", "date_col")
+  output$filtro_duracion_z <- create_duration_filter("filtro_duracion_input_z")
   
   output$filtro_metrica_valor <- renderUI({
     req(read_data(), input$metric)
@@ -260,6 +282,19 @@ server <- function(input, output, session) {
                 min = floor(min(values)), max = ceiling(max(values)),
                 value = c(floor(min(values)), ceiling(max(values))))
   })
+  
+  output$filtro_metrica_valor_z <- renderUI({
+    req(read_data(), input$metric_z)
+    data <- read_data()
+    values <- suppressWarnings(as.numeric(data[[input$metric_z]]))
+    values <- values[!is.na(values) & is.finite(values)]
+    if (length(values) == 0) return(NULL)
+    sliderInput("filtro_metrica_valor_z", paste("Filter", input$metric_z),
+                min = floor(min(values)), max = ceiling(max(values)),
+                value = c(floor(min(values)), ceiling(max(values))))
+  })
+  
+  
   
   filtro_data <- reactive({
     req(read_data())
@@ -354,6 +389,42 @@ server <- function(input, output, session) {
     return(data)
   })
   
+  # Reactive filtrado para el gráfico de Z-score
+  filtro_data_z <- reactive({
+    req(read_data())
+    data <- read_data()
+    
+    # Filtros comunes (usamos mismos nombres que para el primer gráfico)
+    if (!is.null(input$filtro_jugador_z)) data <- data[data[[input$player_col]] %in% input$filtro_jugador_z, ]
+    if (!is.null(input$filtro_puesto_z)) data <- data[data[[input$position_col]] %in% input$filtro_puesto_z, ]
+    if (!is.null(input$filtro_matchday_z)) data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_z, ]
+    if (!is.null(input$filtro_tarea_z)) data <- data[data[[input$task_col]] %in% input$filtro_tarea_z, ]
+    if (!is.null(input$filtro_fecha_z)) {
+      fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+      data <- data[fechas >= input$filtro_fecha_z[1] & fechas <= input$filtro_fecha_z[2], ]
+    }
+    if (!is.null(input$filtro_duracion_input_z)) {
+      dur <- NULL
+      if (input$duration_col != "None") {
+        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+      } else if (input$start_col != "None" && input$end_col != "None") {
+        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z[1] & dur <= input$filtro_duracion_input_z[2]
+        data <- data[keep, ]
+      }
+    }
+    if (!is.null(input$filtro_metrica_valor_z)) {
+      metric_vals <- suppressWarnings(as.numeric(data[[input$metric_z]]))
+      data <- data[!is.na(metric_vals) & metric_vals >= input$filtro_metrica_valor_z[1] & metric_vals <= input$filtro_metrica_valor_z[2], ]
+    }
+    return(data)
+  })
+  
+  
   output$table <- renderDT({
     req(filtro_data())
     datatable(filtro_data(), options = list(pageLength = 10))
@@ -437,8 +508,56 @@ server <- function(input, output, session) {
     
     ggplotly(p)
   })
+  
+  # Render plot Z-score por jugador con media móvil
+  output$zscore_plot <- renderPlotly({
+    req(filtro_data_z(), input$metric_z, input$player_col, input$date_col)
+    
+    data <- filtro_data_z()
+    
+    # Parsear fechas y métrica
+    data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data[[input$metric_z]] <- suppressWarnings(as.numeric(data[[input$metric_z]]))
+    data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[input$metric_z]]), ]
+    
+    # Calcular Z-score excluyendo el registro actual
+    z_data <- data %>%
+      arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
+      group_by(Jugador = .data[[input$player_col]]) %>%
+      mutate(
+        Valor = .data[[input$metric_z]],
+        media_5 = slider::slide_dbl(Valor, ~mean(head(.x, -1), na.rm = TRUE), .before = 5, .complete = TRUE),
+        sd_5 = slider::slide_dbl(Valor, ~sd(head(.x, -1), na.rm = TRUE), .before = 5, .complete = TRUE),
+        z = (Valor - media_5) / sd_5,
+        Fecha = as.Date(.data[[input$date_col]])
+      ) %>%
+      ungroup() %>%
+      filter(!is.na(z), is.finite(z))
+    
+    # Mostrar por default 12 jugadores
+    jugadores_disponibles <- unique(z_data$Jugador)
+    jugadores_default <- jugadores_disponibles[1:min(12, length(jugadores_disponibles))]
+    
+    # Actualizar UI dinámicamente (oculta selector y usa sólo filtro actual)
+    jugadores_seleccionados <- if (!is.null(input$filtro_jugador_z)) input$filtro_jugador_z else jugadores_default
+    z_data <- z_data %>% filter(Jugador %in% jugadores_seleccionados)
+    
+    # Plot
+    p <- ggplot(z_data, aes(x = Fecha, y = z, group = Jugador)) +
+      geom_line(color = "#2c3e50", linewidth = 1) +
+      geom_point(color = "#18bc9c", size = 2) +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
+      facet_wrap(~Jugador, scales = "free_y", ncol = 3) +
+      theme_minimal(base_size = 14) +
+      labs(title = paste("Z-score de", input$metric_z, "por jugador"),
+           x = "Fecha", y = "Z-score") +
+      theme(strip.text = element_text(face = "bold"),
+            plot.title = element_text(hjust = 0.5, face = "bold"),
+            axis.title = element_text(face = "bold"))
+    
+    ggplotly(p)
+  })
 }
 
 shinyApp(ui, server)
-
 
