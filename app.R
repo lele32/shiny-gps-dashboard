@@ -520,42 +520,66 @@ server <- function(input, output, session) {
     data[[input$metric_z]] <- suppressWarnings(as.numeric(data[[input$metric_z]]))
     data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[input$metric_z]]), ]
     
-    # Calcular Z-score excluyendo el registro actual
+    # Calcular Z-score global por jugador (sin media móvil)
     z_data <- data %>%
       arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
       group_by(Jugador = .data[[input$player_col]]) %>%
       mutate(
         Valor = .data[[input$metric_z]],
-        media_5 = slider::slide_dbl(Valor, ~mean(head(.x, -1), na.rm = TRUE), .before = 5, .complete = TRUE),
-        sd_5 = slider::slide_dbl(Valor, ~sd(head(.x, -1), na.rm = TRUE), .before = 5, .complete = TRUE),
-        z = (Valor - media_5) / sd_5,
+        media_jugador = mean(Valor, na.rm = TRUE),
+        sd_jugador = sd(Valor, na.rm = TRUE),
+        z = (Valor - media_jugador) / sd_jugador,
         Fecha = as.Date(.data[[input$date_col]])
       ) %>%
       ungroup() %>%
-      filter(!is.na(z), is.finite(z))
+      filter(!is.na(z), is.finite(z)) %>%
+      mutate(
+        z_color = case_when(
+          z >= 1.5 ~ "Alto",
+          z <= -1.5 ~ "Bajo",
+          TRUE ~ "Neutral"
+        )
+      )
     
-    # Mostrar por default 12 jugadores
+    # Selección de jugadores
     jugadores_disponibles <- unique(z_data$Jugador)
     jugadores_default <- jugadores_disponibles[1:min(12, length(jugadores_disponibles))]
-    
-    # Actualizar UI dinámicamente (oculta selector y usa sólo filtro actual)
     jugadores_seleccionados <- if (!is.null(input$filtro_jugador_z)) input$filtro_jugador_z else jugadores_default
     z_data <- z_data %>% filter(Jugador %in% jugadores_seleccionados)
     
-    # Plot
-    p <- ggplot(z_data, aes(x = Fecha, y = z, group = Jugador)) +
-      geom_line(color = "#2c3e50", linewidth = 1) +
-      geom_point(color = "#18bc9c", size = 2) +
-      geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
-      facet_wrap(~Jugador, scales = "free_y", ncol = 3) +
-      theme_minimal(base_size = 14) +
-      labs(title = paste("Z-score de", input$metric_z, "por jugador"),
-           x = "Fecha", y = "Z-score") +
-      theme(strip.text = element_text(face = "bold"),
-            plot.title = element_text(hjust = 0.5, face = "bold"),
-            axis.title = element_text(face = "bold"))
+    # Colores por categoría de z
+    colores <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
     
-    ggplotly(p)
+    # Límites de fecha
+    fecha_min <- min(z_data$Fecha, na.rm = TRUE)
+    fecha_max <- max(z_data$Fecha, na.rm = TRUE)
+    
+    # Plot
+    p <- ggplot(z_data, aes(x = as.Date(Fecha), y = z)) +
+      # Fondo rojo para z > 1.5
+      annotate("rect", xmin = fecha_min, xmax = fecha_max,
+               ymin = 1.5, ymax = Inf, fill = "#fdecea", alpha = 0.4) +
+      # Fondo verde para z < -1.5
+      annotate("rect", xmin = fecha_min, xmax = fecha_max,
+               ymin = -Inf, ymax = -1.5, fill = "#eafaf1", alpha = 0.4) +
+      # Líneas y puntos
+      geom_line(color = "#34495e", linewidth = 0.7) +
+      geom_point(aes(color = z_color), size = 1) +
+      scale_color_manual(values = colores, name = "Z-score") +
+      geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
+      facet_wrap(~Jugador, scales = "free_y", ncol = 4) +
+      theme_minimal(base_size = 14) +
+      labs(
+        title = paste("Z-score de", input$metric_z, "por jugador"),
+        x = "Fecha", y = "Z-score"
+      ) +
+      theme(
+        strip.text = element_text(face = "bold"),
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        axis.title = element_text(face = "bold")
+      )
+    
+    ggplotly(p) %>% layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
   })
 }
 
