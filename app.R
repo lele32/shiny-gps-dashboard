@@ -94,6 +94,20 @@ ui <- fluidPage(
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_box"))
                  ),
                  plotlyOutput("boxplot_matchday")
+        ),
+        # Boxplot por Tarea
+        tabPanel("📦 Boxplot por Tarea",
+                 tags$div(class = "filter-row",
+                          tags$div(class = "filter-column", uiOutput("filtro_jugador_task")),
+                          tags$div(class = "filter-column", uiOutput("filtro_puesto_task")),
+                          tags$div(class = "filter-column", uiOutput("filtro_matchday_task")),
+                          tags$div(class = "filter-column", uiOutput("filtro_tarea_task")),
+                          tags$div(class = "filter-column", uiOutput("filtro_fecha_task")),
+                          tags$div(class = "filter-column", uiOutput("filtro_duracion_task")),
+                          tags$div(class = "filter-column", selectInput("metric_task", "Select Metric:", choices = NULL)),
+                          tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_task"))
+                 ),
+                 plotlyOutput("boxplot_task")
         )
       )
     )
@@ -101,6 +115,7 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
+  
   read_data <- reactive({
     req(input$file)
     ext <- tools::file_ext(input$file$name)
@@ -113,6 +128,51 @@ server <- function(input, output, session) {
     colnames(data) <- make.names(colnames(data))
     return(data)
   })
+  
+  # Helpers definidos al inicio
+  
+  create_filter_ui <- function(id, colname, label) {
+    renderUI({
+      req(read_data(), input[[colname]])
+      selectInput(id, label,
+                  choices = unique(read_data()[[input[[colname]]]]), multiple = TRUE)
+    })
+  }
+  
+  create_date_filter <- function(id, colname) {
+    renderUI({
+      req(read_data(), input[[colname]])
+      fechas <- suppressWarnings(parse_date_time(read_data()[[input[[colname]]]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+      fechas <- fechas[!is.na(fechas)]
+      if (length(fechas) > 0) {
+        dateRangeInput(id, "Date Range:", start = min(fechas), end = max(fechas))
+      } else {
+        return(NULL)
+      }
+    })
+  }
+  
+  create_duration_filter <- function(id) {
+    renderUI({
+      req(read_data())
+      data <- read_data()
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
+        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                 !is.null(input$end_col) && input$end_col != "None" &&
+                 input$start_col %in% colnames(data) && input$end_col %in% colnames(data)) {
+        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      dur <- dur[!is.na(dur) & is.finite(dur) & dur >= 0]
+      if (length(dur) == 0 || all(is.na(dur))) return(NULL)
+      sliderInput(id, "Duration (min):", min = floor(min(dur)), max = ceiling(max(dur)), value = c(floor(min(dur)), ceiling(max(dur))))
+    })
+  }
+  
+  # File info y column mapping
   
   output$file_info <- renderUI({
     req(input$file)
@@ -143,64 +203,30 @@ server <- function(input, output, session) {
     numeric_metrics <- selected_metrics[sapply(data[selected_metrics], is.numeric)]
     updateSelectInput(session, "metric", choices = numeric_metrics, selected = numeric_metrics[1])
     updateSelectInput(session, "metric_box", choices = numeric_metrics, selected = numeric_metrics[1])
+    updateSelectInput(session, "metric_task", choices = numeric_metrics, selected = numeric_metrics[1])
   })
   
-  create_filter_ui <- function(id, colname, label) {
-    renderUI({
-      req(read_data(), input[[colname]])
-      selectInput(id, label,
-                  choices = unique(read_data()[[input[[colname]]]]), multiple = TRUE)
-    })
-  }
-  
+  # Filtros por gráfico (ya definidos correctamente)
   output$filtro_jugador <- create_filter_ui("filtro_jugador", "player_col", "Filter by Player:")
   output$filtro_puesto <- create_filter_ui("filtro_puesto", "position_col", "Filter by Position:")
   output$filtro_matchday <- create_filter_ui("filtro_matchday", "matchday_col", "Filter by Match Day:")
   output$filtro_tarea <- create_filter_ui("filtro_tarea", "task_col", "Filter by Task:")
+  output$filtro_fecha <- create_date_filter("filtro_fecha", "date_col")
+  output$filtro_duracion <- create_duration_filter("filtro_duracion_input")
   
   output$filtro_jugador_box <- create_filter_ui("filtro_jugador_box", "player_col", "Filter by Player:")
   output$filtro_puesto_box <- create_filter_ui("filtro_puesto_box", "position_col", "Filter by Position:")
   output$filtro_matchday_box <- create_filter_ui("filtro_matchday_box", "matchday_col", "Filter by Match Day:")
   output$filtro_tarea_box <- create_filter_ui("filtro_tarea_box", "task_col", "Filter by Task:")
-  
-  create_date_filter <- function(id, colname) {
-    renderUI({
-      req(read_data(), input[[colname]])
-      fechas <- suppressWarnings(parse_date_time(read_data()[[input[[colname]]]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
-      fechas <- fechas[!is.na(fechas)]
-      if (length(fechas) > 0) {
-        dateRangeInput(id, "Date Range:", start = min(fechas), end = max(fechas))
-      } else {
-        return(NULL)
-      }
-    })
-  }
-  
-  output$filtro_fecha <- create_date_filter("filtro_fecha", "date_col")
   output$filtro_fecha_box <- create_date_filter("filtro_fecha_box", "date_col")
-  
-  create_duration_filter <- function(id) {
-    renderUI({
-      req(read_data())
-      data <- read_data()
-      dur <- NULL
-      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
-        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
-      } else if (!is.null(input$start_col) && input$start_col != "None" &&
-                 !is.null(input$end_col) && input$end_col != "None" &&
-                 input$start_col %in% colnames(data) && input$end_col %in% colnames(data)) {
-        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
-      }
-      dur <- dur[!is.na(dur) & is.finite(dur) & dur >= 0]
-      if (length(dur) == 0 || all(is.na(dur))) return(NULL)
-      sliderInput(id, "Duration (min):", min = floor(min(dur)), max = ceiling(max(dur)), value = c(floor(min(dur)), ceiling(max(dur))))
-    })
-  }
-  
-  output$filtro_duracion <- create_duration_filter("filtro_duracion_input")
   output$filtro_duracion_box <- create_duration_filter("filtro_duracion_input_box")
+  
+  output$filtro_jugador_task <- create_filter_ui("filtro_jugador_task", "player_col", "Filter by Player:")
+  output$filtro_puesto_task <- create_filter_ui("filtro_puesto_task", "position_col", "Filter by Position:")
+  output$filtro_matchday_task <- create_filter_ui("filtro_matchday_task", "matchday_col", "Filter by Match Day:")
+  output$filtro_tarea_task <- create_filter_ui("filtro_tarea_task", "task_col", "Filter by Task:")
+  output$filtro_fecha_task <- create_date_filter("filtro_fecha_task", "date_col")
+  output$filtro_duracion_task <- create_duration_filter("filtro_duracion_input_task")
   
   output$filtro_metrica_valor <- renderUI({
     req(read_data(), input$metric)
@@ -220,6 +246,17 @@ server <- function(input, output, session) {
     values <- values[!is.na(values) & is.finite(values)]
     if (length(values) == 0) return(NULL)
     sliderInput("filtro_metrica_valor_box", paste("Filter", input$metric_box),
+                min = floor(min(values)), max = ceiling(max(values)),
+                value = c(floor(min(values)), ceiling(max(values))))
+  })
+  
+  output$filtro_metrica_valor_task <- renderUI({
+    req(read_data(), input$metric_task)
+    data <- read_data()
+    values <- suppressWarnings(as.numeric(data[[input$metric_task]]))
+    values <- values[!is.na(values) & is.finite(values)]
+    if (length(values) == 0) return(NULL)
+    sliderInput("filtro_metrica_valor_task", paste("Filter", input$metric_task),
                 min = floor(min(values)), max = ceiling(max(values)),
                 value = c(floor(min(values)), ceiling(max(values))))
   })
@@ -286,6 +323,37 @@ server <- function(input, output, session) {
     return(data)
   })
   
+  filtro_data_task <- reactive({
+    req(read_data())
+    data <- read_data()
+    if (!is.null(input$filtro_jugador_task)) data <- data[data[[input$player_col]] %in% input$filtro_jugador_task, ]
+    if (!is.null(input$filtro_puesto_task)) data <- data[data[[input$position_col]] %in% input$filtro_puesto_task, ]
+    if (!is.null(input$filtro_matchday_task)) data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_task, ]
+    if (!is.null(input$filtro_tarea_task)) data <- data[data[[input$task_col]] %in% input$filtro_tarea_task, ]
+    if (!is.null(input$filtro_fecha_task)) {
+      fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+      data <- data[fechas >= input$filtro_fecha_task[1] & fechas <= input$filtro_fecha_task[2], ]
+    }
+    if (!is.null(input$filtro_duracion_input_task)) {
+      dur <- NULL
+      if (input$duration_col != "None") dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+      else if (input$start_col != "None" && input$end_col != "None") {
+        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_task[1] & dur <= input$filtro_duracion_input_task[2]
+        data <- data[keep, ]
+      }
+    }
+    if (!is.null(input$filtro_metrica_valor_task)) {
+      metric_vals <- suppressWarnings(as.numeric(data[[input$metric_task]]))
+      data <- data[!is.na(metric_vals) & metric_vals >= input$filtro_metrica_valor_task[1] & metric_vals <= input$filtro_metrica_valor_task[2], ]
+    }
+    return(data)
+  })
+  
   output$table <- renderDT({
     req(filtro_data())
     datatable(filtro_data(), options = list(pageLength = 10))
@@ -338,6 +406,33 @@ server <- function(input, output, session) {
       theme_minimal(base_size = 14) +
       labs(title = paste("Distribución de", input$metric_box, "por Match Day"),
            x = "Match Day", y = input$metric_box) +
+      theme(legend.position = "none")
+    
+    ggplotly(p)
+  })
+  
+  output$boxplot_task <- renderPlotly({
+    req(filtro_data_task(), input$metric_task, input$task_col)
+    data <- filtro_data_task()
+    data[[input$metric_task]] <- suppressWarnings(as.numeric(data[[input$metric_task]]))
+    data <- data[!is.na(data[[input$metric_task]]), ]
+    
+    if (!is.null(input$filtro_metrica_valor_task)) {
+      metric_vals <- data[[input$metric_task]]
+      keep <- !is.na(metric_vals) &
+        metric_vals >= input$filtro_metrica_valor_task[1] &
+        metric_vals <= input$filtro_metrica_valor_task[2]
+      data <- data[keep, ]
+    }
+    
+    plot_data <- data %>%
+      mutate(Tarea = as.factor(.data[[input$task_col]]))
+    
+    p <- ggplot(plot_data, aes(x = Tarea, y = .data[[input$metric_task]], fill = Tarea)) +
+      geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black") +
+      theme_minimal(base_size = 14) +
+      labs(title = paste("Distribución de", input$metric_task, "por Tarea"),
+           x = "Tarea", y = input$metric_task) +
       theme(legend.position = "none")
     
     ggplotly(p)
