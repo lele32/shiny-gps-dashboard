@@ -144,9 +144,7 @@ server <- function(input, output, session) {
                    },
                    "xlsx" = read_excel(file_path),
                    "json" = fromJSON(file_path, flatten = TRUE),
-                   stop("Unsupported file type.")
-    )
-    
+                   stop("Unsupported file type."))
     colnames(data) <- make.names(colnames(data))
     return(data)
   })
