@@ -692,7 +692,7 @@ server <- function(input, output, session) {
                ymin = 1.5, ymax = Inf, fill = fondo_rojo, alpha = 0.4) +
       annotate("rect", xmin = fecha_min, xmax = fecha_max,
                ymin = -Inf, ymax = -1.5, fill = fondo_verde, alpha = 0.4) +
-      geom_line(color = "#34495e", linewidth = 0.5) +
+      geom_smooth(aes(group = Jugador),method = "loess", span = 0.9, se = FALSE, color = "#34495e", linewidth = 0.6)+
       geom_point(size = 1) +
       scale_color_manual(values = colores_base, name = "Z-score") +
       geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
