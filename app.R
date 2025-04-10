@@ -17,7 +17,7 @@ library(slider)
 options(shiny.maxRequestSize = 500 * 1024^2)
 
 # Tema moderno
-my_theme <- bs_theme(
+tema_gps <- bs_theme(
   version = 5,
   bootswatch = "flatly",
   base_font = font_google("Open Sans"),
@@ -27,32 +27,14 @@ my_theme <- bs_theme(
 ui <- fluidPage(
   theme = shinytheme("flatly"),
   tags$head(
-    tags$style(HTML("
-      body {
-        font-family: 'Roboto', sans-serif;
-      }
-      h2 {
-        font-family: 'Montserrat', sans-serif;
-        font-weight: 600;
-      }
-      .filter-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        margin-bottom: 20px;
-      }
-      .filter-column {
-        flex: 1 1 45%;
-      }
-    "))
+    tags$style(HTML(".filter-row { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; }
+                    .filter-column { flex: 1 1 45%; }"))
   ),
-  
   tags$div(
     style = "text-align: center; padding: 10px;",
     tags$img(src = "logo.png", height = "80px", style = "margin-bottom: 20px;"),
     tags$h2("📊 GPS Data Dashboard", style = "margin-top: 10px;")
   ),
-  
   sidebarLayout(
     sidebarPanel(
       fileInput("file", "Upload GPS Data", accept = c(".csv", ".xlsx", ".json")),
@@ -60,64 +42,45 @@ ui <- fluidPage(
       uiOutput("file_info"),
       uiOutput("column_mapping")
     ),
-    
     mainPanel(
       tabsetPanel(
         tabPanel("Data Table", DTOutput("table")),
         tabPanel("Summary Stats", DTOutput("summary_table")),
-        
-        # Gráfico de barras por fecha
         tabPanel("📊 Métrica en el tiempo",
                  tags$div(class = "filter-row",
-                          tags$div(class = "filter-column", uiOutput("filtro_jugador")),
-                          tags$div(class = "filter-column", uiOutput("filtro_puesto")),
-                          tags$div(class = "filter-column", uiOutput("filtro_matchday")),
-                          tags$div(class = "filter-column", uiOutput("filtro_tarea")),
-                          tags$div(class = "filter-column", uiOutput("filtro_fecha")),
-                          tags$div(class = "filter-column", uiOutput("filtro_duracion")),
+                          lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
+                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                          }),
                           tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL)),
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor"))
                  ),
                  plotlyOutput("barras_fecha_plot")
         ),
-        
-        # Boxplot por Match Day
         tabPanel("📦 Boxplot por Match Day",
                  tags$div(class = "filter-row",
-                          tags$div(class = "filter-column", uiOutput("filtro_jugador_box")),
-                          tags$div(class = "filter-column", uiOutput("filtro_puesto_box")),
-                          tags$div(class = "filter-column", uiOutput("filtro_matchday_box")),
-                          tags$div(class = "filter-column", uiOutput("filtro_tarea_box")),
-                          tags$div(class = "filter-column", uiOutput("filtro_fecha_box")),
-                          tags$div(class = "filter-column", uiOutput("filtro_duracion_box")),
+                          lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
+                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                          }),
                           tags$div(class = "filter-column", selectInput("metric_box", "Select Metric:", choices = NULL)),
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_box"))
                  ),
                  plotlyOutput("boxplot_matchday")
         ),
-        # Boxplot por Tarea
         tabPanel("📦 Boxplot por Tarea",
                  tags$div(class = "filter-row",
-                          tags$div(class = "filter-column", uiOutput("filtro_jugador_task")),
-                          tags$div(class = "filter-column", uiOutput("filtro_puesto_task")),
-                          tags$div(class = "filter-column", uiOutput("filtro_matchday_task")),
-                          tags$div(class = "filter-column", uiOutput("filtro_tarea_task")),
-                          tags$div(class = "filter-column", uiOutput("filtro_fecha_task")),
-                          tags$div(class = "filter-column", uiOutput("filtro_duracion_task")),
+                          lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
+                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                          }),
                           tags$div(class = "filter-column", selectInput("metric_task", "Select Metric:", choices = NULL)),
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_task"))
                  ),
                  plotlyOutput("boxplot_task")
         ),
-        # Z-Score por Fecha
         tabPanel("📈 Z-score por Fecha",
                  tags$div(class = "filter-row",
-                          tags$div(class = "filter-column", uiOutput("filtro_jugador_z")),
-                          tags$div(class = "filter-column", uiOutput("filtro_puesto_z")),
-                          tags$div(class = "filter-column", uiOutput("filtro_matchday_z")),
-                          tags$div(class = "filter-column", uiOutput("filtro_tarea_z")),
-                          tags$div(class = "filter-column", uiOutput("filtro_fecha_z")),
-                          tags$div(class = "filter-column", uiOutput("filtro_duracion_z")),
+                          lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
+                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                          }),
                           tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL)),
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_z"))
                  ),
@@ -128,6 +91,7 @@ ui <- fluidPage(
   )
 )
 
+##SERVER
 server <- function(input, output, session) {
   
   read_data <- reactive({
@@ -137,7 +101,6 @@ server <- function(input, output, session) {
     
     data <- switch(ext,
                    "csv" = {
-                     # Detectamos si el separador es ; o ,
                      first_line <- readLines(file_path, n = 1)
                      delim <- if (grepl(";", first_line)) ";" else ","
                      read_delim(file_path, delim = delim, show_col_types = FALSE, locale = locale(encoding = "UTF-8"))
@@ -149,16 +112,66 @@ server <- function(input, output, session) {
     return(data)
   })
   
-  # Helpers definidos al inicio
   
-  # Helpers actualizados para columnas opcionales
+  # UI para información del archivo
+  output$file_info <- renderUI({
+    req(input$file)
+    tags$p(
+      tags$b("File:"), input$file$name, " - ", round(input$file$size / 1024, 2), "KB"
+    )
+  })
+  
+  # UI para asignación de columnas clave
+  output$column_mapping <- renderUI({
+    req(read_data())
+    cols <- colnames(read_data())
+    
+    mapping_inputs <- function(id, label, multiple = FALSE, include_none = FALSE) {
+      choices <- if (include_none) c("None", cols) else cols
+      selectInput(id, label, choices = choices, multiple = multiple, selected = NULL)
+    }
+    
+    tagList(
+      mapping_inputs("player_col", "Select Player Column:"),
+      mapping_inputs("position_col", "Select Position Column:"),
+      mapping_inputs("matchday_col", "Select Match Day Column:"),
+      mapping_inputs("task_col", "Select Task Column:"),
+      mapping_inputs("date_col", "Select Date Column:"),
+      mapping_inputs("duration_col", "Select Duration Column (if available):", include_none = TRUE),
+      mapping_inputs("start_col", "Select Start Time Column:", include_none = TRUE),
+      mapping_inputs("end_col", "Select End Time Column:", include_none = TRUE),
+      mapping_inputs("metric_col", "Select Available Metrics:", multiple = TRUE)
+    )
+  })
+  
+  # Actualización de inputs de métricas válidas
+  observe({
+    req(read_data(), input$metric_col)
+    data <- read_data()
+    selected_metrics <- input$metric_col
+    valid_metrics <- selected_metrics[selected_metrics %in% colnames(data)]
+    numeric_metrics <- valid_metrics[sapply(data[valid_metrics], is.numeric)]
+    
+    update_inputs <- function(id) {
+      updateSelectInput(session, id, choices = numeric_metrics, selected = numeric_metrics[1])
+    }
+    
+    if (length(numeric_metrics) > 0) {
+      lapply(c("metric", "metric_box", "metric_task", "metric_z"), update_inputs)
+    } else {
+      lapply(c("metric", "metric_box", "metric_task", "metric_z"), function(id) {
+        updateSelectInput(session, id, choices = character(0))
+      })
+    }
+  })
+  
+  # Helpers dinámicos para filtros
   create_filter_ui <- function(id, colname, label) {
     renderUI({
       req(read_data())
       data <- read_data()
       if (!is.null(input[[colname]]) && input[[colname]] %in% colnames(data)) {
-        selectInput(id, label,
-                    choices = unique(data[[input[[colname]]]]), multiple = TRUE)
+        selectInput(id, label, choices = unique(data[[input[[colname]]]]), multiple = TRUE)
       }
     })
   }
@@ -197,105 +210,37 @@ server <- function(input, output, session) {
       }
     })
   }
-  
-  # Column mapping dinámico, sin campos obligatorios
-  output$column_mapping <- renderUI({
-    req(read_data())
-    cols <- colnames(read_data())
+  # Filtros por gráfico asignados condicionalmente en observeEvent
+  observe({
+    output$filtro_jugador       <- create_filter_ui("filtro_jugador", "player_col", "Filter by Player:")
+    output$filtro_jugador_box   <- create_filter_ui("filtro_jugador_box", "player_col", "Filter by Player:")
+    output$filtro_jugador_task  <- create_filter_ui("filtro_jugador_task", "player_col", "Filter by Player:")
+    output$filtro_jugador_z     <- create_filter_ui("filtro_jugador_z", "player_col", "Filter by Player:")
     
-    tagList(
-      selectInput("player_col", "Select Player Column:", choices = cols, selected = NULL),
-      selectInput("position_col", "Select Position Column:", choices = cols, selected = NULL),
-      selectInput("matchday_col", "Select Match Day Column:", choices = cols, selected = NULL),
-      selectInput("task_col", "Select Task Column:", choices = cols, selected = NULL),
-      selectInput("date_col", "Select Date Column:", choices = cols, selected = NULL),
-      selectInput("duration_col", "Select Duration Column (if available):", choices = c("None", cols), selected = "None"),
-      selectInput("start_col", "Select Start Time Column:", choices = c("None", cols), selected = "None"),
-      selectInput("end_col", "Select End Time Column:", choices = c("None", cols), selected = "None"),
-      selectInput("metric_col", "Select Available Metrics:", choices = cols, multiple = TRUE, selected = NULL)
-    )
-  })
-  
-  observe({
-    req(read_data(), input$metric_col)
-    data <- read_data()
-    selected_metrics <- input$metric_col
+    output$filtro_puesto       <- create_filter_ui("filtro_puesto", "position_col", "Filter by Position:")
+    output$filtro_puesto_box   <- create_filter_ui("filtro_puesto_box", "position_col", "Filter by Position:")
+    output$filtro_puesto_task  <- create_filter_ui("filtro_puesto_task", "position_col", "Filter by Position:")
+    output$filtro_puesto_z     <- create_filter_ui("filtro_puesto_z", "position_col", "Filter by Position:")
     
-    # Filtrar solo las métricas que están en las columnas y son numéricas
-    valid_metrics <- selected_metrics[selected_metrics %in% colnames(data)]
-    numeric_metrics <- valid_metrics[sapply(data[valid_metrics], is.numeric)]
+    output$filtro_matchday       <- create_filter_ui("filtro_matchday", "matchday_col", "Filter by Match Day:")
+    output$filtro_matchday_box   <- create_filter_ui("filtro_matchday_box", "matchday_col", "Filter by Match Day:")
+    output$filtro_matchday_task  <- create_filter_ui("filtro_matchday_task", "matchday_col", "Filter by Match Day:")
+    output$filtro_matchday_z     <- create_filter_ui("filtro_matchday_z", "matchday_col", "Filter by Match Day:")
     
-    if (length(numeric_metrics) > 0) {
-      updateSelectInput(session, "metric", choices = numeric_metrics, selected = numeric_metrics[1])
-      updateSelectInput(session, "metric_box", choices = numeric_metrics, selected = numeric_metrics[1])
-      updateSelectInput(session, "metric_task", choices = numeric_metrics, selected = numeric_metrics[1])
-      updateSelectInput(session, "metric_z", choices = numeric_metrics, selected = numeric_metrics[1])
-    } else {
-      updateSelectInput(session, "metric", choices = character(0))
-      updateSelectInput(session, "metric_box", choices = character(0))
-      updateSelectInput(session, "metric_task", choices = character(0))
-      updateSelectInput(session, "metric_z", choices = character(0))
-    }
-  })
-  
-  # Filtros por gráfico: Filtro por Jugador (siempre presente)
-  output$filtro_jugador       <- create_filter_ui("filtro_jugador", "player_col", "Filter by Player:")
-  output$filtro_jugador_box   <- create_filter_ui("filtro_jugador_box", "player_col", "Filter by Player:")
-  output$filtro_jugador_task  <- create_filter_ui("filtro_jugador_task", "player_col", "Filter by Player:")
-  output$filtro_jugador_z     <- create_filter_ui("filtro_jugador_z", "player_col", "Filter by Player:")
-  
-  # Filtros condicionales (Position)
-  observe({
-    req(input$position_col)
-    if (input$position_col != "None") {
-      output$filtro_puesto       <- create_filter_ui("filtro_puesto", "position_col", "Filter by Position:")
-      output$filtro_puesto_box   <- create_filter_ui("filtro_puesto_box", "position_col", "Filter by Position:")
-      output$filtro_puesto_task  <- create_filter_ui("filtro_puesto_task", "position_col", "Filter by Position:")
-      output$filtro_puesto_z     <- create_filter_ui("filtro_puesto_z", "position_col", "Filter by Position:")
-    }
-  })
-  
-  # Filtros condicionales (Match Day)
-  observe({
-    req(input$matchday_col)
-    if (input$matchday_col != "None") {
-      output$filtro_matchday       <- create_filter_ui("filtro_matchday", "matchday_col", "Filter by Match Day:")
-      output$filtro_matchday_box   <- create_filter_ui("filtro_matchday_box", "matchday_col", "Filter by Match Day:")
-      output$filtro_matchday_task  <- create_filter_ui("filtro_matchday_task", "matchday_col", "Filter by Match Day:")
-      output$filtro_matchday_z     <- create_filter_ui("filtro_matchday_z", "matchday_col", "Filter by Match Day:")
-    }
-  })
-  
-  # Filtros condicionales (Task)
-  observe({
-    req(input$task_col)
-    if (input$task_col != "None") {
-      output$filtro_tarea       <- create_filter_ui("filtro_tarea", "task_col", "Filter by Task:")
-      output$filtro_tarea_box   <- create_filter_ui("filtro_tarea_box", "task_col", "Filter by Task:")
-      output$filtro_tarea_task  <- create_filter_ui("filtro_tarea_task", "task_col", "Filter by Task:")
-      output$filtro_tarea_z     <- create_filter_ui("filtro_tarea_z", "task_col", "Filter by Task:")
-    }
-  })
-  
-  # Filtros condicionales (Date)
-  observe({
-    req(input$date_col)
-    if (input$date_col != "None") {
-      output$filtro_fecha       <- create_date_filter("filtro_fecha", "date_col")
-      output$filtro_fecha_box   <- create_date_filter("filtro_fecha_box", "date_col")
-      output$filtro_fecha_task  <- create_date_filter("filtro_fecha_task", "date_col")
-      output$filtro_fecha_z     <- create_date_filter("filtro_fecha_z", "date_col")
-    }
-  })
-  
-  # Filtros condicionales (Duración)
-  observe({
-    if (!is.null(input$duration_col) && input$duration_col != "None") {
-      output$filtro_duracion       <- create_duration_filter("filtro_duracion_input")
-      output$filtro_duracion_box   <- create_duration_filter("filtro_duracion_input_box")
-      output$filtro_duracion_task  <- create_duration_filter("filtro_duracion_input_task")
-      output$filtro_duracion_z     <- create_duration_filter("filtro_duracion_input_z")
-    }
+    output$filtro_tarea       <- create_filter_ui("filtro_tarea", "task_col", "Filter by Task:")
+    output$filtro_tarea_box   <- create_filter_ui("filtro_tarea_box", "task_col", "Filter by Task:")
+    output$filtro_tarea_task  <- create_filter_ui("filtro_tarea_task", "task_col", "Filter by Task:")
+    output$filtro_tarea_z     <- create_filter_ui("filtro_tarea_z", "task_col", "Filter by Task:")
+    
+    output$filtro_fecha       <- create_date_filter("filtro_fecha", "date_col")
+    output$filtro_fecha_box   <- create_date_filter("filtro_fecha_box", "date_col")
+    output$filtro_fecha_task  <- create_date_filter("filtro_fecha_task", "date_col")
+    output$filtro_fecha_z     <- create_date_filter("filtro_fecha_z", "date_col")
+    
+    output$filtro_duracion       <- create_duration_filter("filtro_duracion_input")
+    output$filtro_duracion_box   <- create_duration_filter("filtro_duracion_input_box")
+    output$filtro_duracion_task  <- create_duration_filter("filtro_duracion_input_task")
+    output$filtro_duracion_z     <- create_duration_filter("filtro_duracion_input_z")
   })
   
   output$filtro_metrica_valor <- renderUI({
