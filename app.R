@@ -134,11 +134,19 @@ server <- function(input, output, session) {
     req(input$file)
     ext <- tools::file_ext(input$file$name)
     file_path <- input$file$datapath
+    
     data <- switch(ext,
-                   "csv" = read_csv(file_path, show_col_types = FALSE),
+                   "csv" = {
+                     # Detectamos si el separador es ; o ,
+                     first_line <- readLines(file_path, n = 1)
+                     delim <- if (grepl(";", first_line)) ";" else ","
+                     read_delim(file_path, delim = delim, show_col_types = FALSE, locale = locale(encoding = "UTF-8"))
+                   },
                    "xlsx" = read_excel(file_path),
                    "json" = fromJSON(file_path, flatten = TRUE),
-                   stop("Unsupported file type."))
+                   stop("Unsupported file type.")
+    )
+    
     colnames(data) <- make.names(colnames(data))
     return(data)
   })
