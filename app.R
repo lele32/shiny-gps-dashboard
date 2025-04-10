@@ -536,10 +536,11 @@ server <- function(input, output, session) {
     )
     datatable(summary_stats)
   })
-  
+  # grafico barras por fecha
   output$barras_fecha_plot <- renderPlotly({
     req(filtro_data(), input$metric)
     data <- filtro_data()
+    
     data[[input$metric]] <- suppressWarnings(as.numeric(data[[input$metric]]))
     data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
     data <- data[!is.na(data[[input$metric]]) & !is.na(data[[input$date_col]]), ]
@@ -547,60 +548,97 @@ server <- function(input, output, session) {
     plot_data <- data %>%
       group_by(Fecha = as.Date(.data[[input$date_col]]), Jugador = .data[[input$player_col]]) %>%
       summarise(Promedio = mean(.data[[input$metric]], na.rm = TRUE), .groups = "drop") %>%
-      mutate(Fecha = factor(Fecha, levels = sort(unique(Fecha))))
+      mutate(
+        Fecha = factor(Fecha, levels = sort(unique(Fecha))),
+        tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Promedio: ", round(Promedio, 2))
+      )
     
-    p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador)) +
-      geom_col(position = position_dodge2(preserve = "single")) +
+    p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador, text = tooltip)) +
+      geom_col(position = position_dodge2(preserve = "single"), width = 0.7) +
+      scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 5)]) +
       theme_minimal(base_size = 14) +
-      labs(title = paste("Promedio de", input$metric, "por Fecha y Jugador"), x = "Fecha", y = input$metric) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      labs(
+        title = paste("Promedio de", input$metric, "por Fecha y Jugador"),
+        x = "Fecha", y = input$metric
+      ) +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 9),
+        axis.text.y = element_text(size = 12),
+        axis.title = element_text(face = "bold", size = 14),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        legend.position = "right"
+      )
     
-    ggplotly(p)
+    ggplotly(p, tooltip = "text")
   })
   
+  # grafico boxplot por MD
   output$boxplot_matchday <- renderPlotly({
     req(filtro_data_box(), input$metric_box)
     data <- filtro_data_box()
+    
     data[[input$metric_box]] <- suppressWarnings(as.numeric(data[[input$metric_box]]))
     data <- data[!is.na(data[[input$metric_box]]), ]
     
-    plot_data <- data %>% mutate(MatchDay = as.factor(.data[[input$matchday_col]]))
+    plot_data <- data %>%
+      mutate(
+        MatchDay = as.factor(.data[[input$matchday_col]]),
+        Jugador = .data[[input$player_col]],
+        Valor = .data[[input$metric_box]],
+        tooltip = paste0("Jugador: ", Jugador, "<br>Match Day: ", MatchDay, "<br>", input$metric_box, ": ", round(Valor, 2))
+      )
     
-    p <- ggplot(plot_data, aes(x = MatchDay, y = .data[[input$metric_box]], fill = MatchDay)) +
-      geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black") +
+    p <- ggplot(plot_data, aes(x = MatchDay, y = Valor, fill = MatchDay, text = tooltip)) +
+      geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black", alpha = 0.6) +
       theme_minimal(base_size = 14) +
-      labs(title = paste("Distribución de", input$metric_box, "por Match Day"),
-           x = "Match Day", y = input$metric_box) +
-      theme(legend.position = "none")
+      labs(
+        title = paste("Distribución de", input$metric_box, "por Match Day"),
+        x = "Match Day",
+        y = input$metric_box
+      ) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        axis.title = element_text(face = "bold", size = 14),
+        axis.text = element_text(size = 12),
+        legend.position = "none"
+      )
     
-    ggplotly(p)
+    ggplotly(p, tooltip = "text")
   })
   
+  # grafico boxplot por Tarea
   output$boxplot_task <- renderPlotly({
     req(filtro_data_task(), input$metric_task, input$task_col)
     data <- filtro_data_task()
+    
     data[[input$metric_task]] <- suppressWarnings(as.numeric(data[[input$metric_task]]))
     data <- data[!is.na(data[[input$metric_task]]), ]
     
-    if (!is.null(input$filtro_metrica_valor_task)) {
-      metric_vals <- data[[input$metric_task]]
-      keep <- !is.na(metric_vals) &
-        metric_vals >= input$filtro_metrica_valor_task[1] &
-        metric_vals <= input$filtro_metrica_valor_task[2]
-      data <- data[keep, ]
-    }
-    
     plot_data <- data %>%
-      mutate(Tarea = as.factor(.data[[input$task_col]]))
+      mutate(
+        Tarea = as.factor(.data[[input$task_col]]),
+        Jugador = .data[[input$player_col]],
+        Valor = .data[[input$metric_task]],
+        tooltip = paste0("Jugador: ", Jugador, "<br>Tarea: ", Tarea, "<br>", input$metric_task, ": ", round(Valor, 2))
+      )
     
-    p <- ggplot(plot_data, aes(x = Tarea, y = .data[[input$metric_task]], fill = Tarea)) +
-      geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black") +
+    p <- ggplot(plot_data, aes(x = Tarea, y = Valor, fill = Tarea, text = tooltip)) +
+      geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black", alpha = 0.6) +
       theme_minimal(base_size = 14) +
-      labs(title = paste("Distribución de", input$metric_task, "por Tarea"),
-           x = "Tarea", y = input$metric_task) +
-      theme(legend.position = "none")
+      labs(
+        title = paste("Distribución de", input$metric_task, "por Tarea"),
+        x = "Tarea",
+        y = input$metric_task
+      ) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        axis.title = element_text(face = "bold", size = 14),
+        axis.text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45),
+        legend.position = "none"
+      )
     
-    ggplotly(p)
+    ggplotly(p, tooltip = "text")
   })
   
   # Render plot Z-score por jugador con media móvil
@@ -614,7 +652,7 @@ server <- function(input, output, session) {
     data[[input$metric_z]] <- suppressWarnings(as.numeric(data[[input$metric_z]]))
     data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[input$metric_z]]), ]
     
-    # Calcular Z-score global por jugador (sin media móvil)
+    # Calcular Z-score global por jugador
     z_data <- data %>%
       arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
       group_by(Jugador = .data[[input$player_col]]) %>%
@@ -623,43 +661,40 @@ server <- function(input, output, session) {
         media_jugador = mean(Valor, na.rm = TRUE),
         sd_jugador = sd(Valor, na.rm = TRUE),
         z = (Valor - media_jugador) / sd_jugador,
-        Fecha = as.Date(.data[[input$date_col]])
-      ) %>%
-      ungroup() %>%
-      filter(!is.na(z), is.finite(z)) %>%
-      mutate(
+        Fecha = as.Date(.data[[input$date_col]]),
         z_color = case_when(
           z >= 1.5 ~ "Alto",
           z <= -1.5 ~ "Bajo",
           TRUE ~ "Neutral"
-        )
-      )
+        ),
+        tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Z-score: ", round(z, 2))
+      ) %>%
+      ungroup() %>%
+      filter(!is.na(z), is.finite(z))
     
-    # Selección de jugadores
+    # Jugadores a mostrar
     jugadores_disponibles <- unique(z_data$Jugador)
     jugadores_default <- jugadores_disponibles[1:min(12, length(jugadores_disponibles))]
     jugadores_seleccionados <- if (!is.null(input$filtro_jugador_z)) input$filtro_jugador_z else jugadores_default
     z_data <- z_data %>% filter(Jugador %in% jugadores_seleccionados)
     
-    # Colores por categoría de z
-    colores <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
+    # Paleta de colores
+    colores_base <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
+    fondo_rojo  <- "#fdecea"
+    fondo_verde <- "#eafaf1"
     
-    # Límites de fecha
     fecha_min <- min(z_data$Fecha, na.rm = TRUE)
     fecha_max <- max(z_data$Fecha, na.rm = TRUE)
     
-    # Plot
-    p <- ggplot(z_data, aes(x = as.Date(Fecha), y = z)) +
-      # Fondo rojo para z > 1.5
+    # Gráfico
+    p <- ggplot(z_data, aes(x = Fecha, y = z, text = tooltip, color = z_color)) +
       annotate("rect", xmin = fecha_min, xmax = fecha_max,
-               ymin = 1.5, ymax = Inf, fill = "#fdecea", alpha = 0.4) +
-      # Fondo verde para z < -1.5
+               ymin = 1.5, ymax = Inf, fill = fondo_rojo, alpha = 0.4) +
       annotate("rect", xmin = fecha_min, xmax = fecha_max,
-               ymin = -Inf, ymax = -1.5, fill = "#eafaf1", alpha = 0.4) +
-      # Líneas y puntos
-      geom_line(color = "#34495e", linewidth = 0.7) +
-      geom_point(aes(color = z_color), size = 1) +
-      scale_color_manual(values = colores, name = "Z-score") +
+               ymin = -Inf, ymax = -1.5, fill = fondo_verde, alpha = 0.4) +
+      geom_line(color = "#34495e", linewidth = 0.5) +
+      geom_point(size = 1) +
+      scale_color_manual(values = colores_base, name = "Z-score") +
       geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
       facet_wrap(~Jugador, scales = "free_y", ncol = 4) +
       theme_minimal(base_size = 14) +
@@ -668,14 +703,16 @@ server <- function(input, output, session) {
         x = "Fecha", y = "Z-score"
       ) +
       theme(
-        strip.text = element_text(face = "bold"),
-        plot.title = element_text(hjust = 0.5, face = "bold"),
-        axis.title = element_text(face = "bold")
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        axis.title = element_text(face = "bold", size = 14),
+        axis.text = element_text(size = 12),
+        axis.text.x = element_text(angle = 45),
+        strip.text = element_text(face = "bold", size = 13)
       )
     
-    ggplotly(p) %>% layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
+    ggplotly(p, tooltip = "text") %>%
+      layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
   })
 }
 
 shinyApp(ui, server)
-
