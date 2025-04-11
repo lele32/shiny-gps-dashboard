@@ -129,7 +129,7 @@ ui <- fluidPage(
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_sesion")),
                           tags$div(class = "filter-column", uiOutput("filtro_fecha_sesion"))
                  ),
-                 plotlyOutput("barras_ordenadas_sesion")
+                 uiOutput("graficos_metricas_sesion")
         )
       )
     )
@@ -146,15 +146,37 @@ server <- function(input, output, session) {
     ext <- tools::file_ext(input$file$name)
     file_path <- input$file$datapath
     
-    data <- switch(ext,
-                   "csv" = {
-                     first_line <- readLines(file_path, n = 1)
-                     delim <- if (grepl(";", first_line)) ";" else ","
-                     read_delim(file_path, delim = delim, show_col_types = FALSE, locale = locale(encoding = "UTF-8"))
-                   },
-                   "xlsx" = read_excel(file_path),
-                   "json" = fromJSON(file_path, flatten = TRUE),
-                   stop("Unsupported file type."))
+    if (ext == "csv") {
+      # Detectar delimitador automáticamente (coma o punto y coma)
+      first_line <- readLines(file_path, n = 1)
+      delim <- if (grepl(";", first_line)) ";" else ","
+      
+      # Leer todas las líneas del archivo como texto
+      raw_lines <- readLines(file_path, warn = FALSE)
+      
+      # Detectar la primera línea con encabezado válido: "Player Name" o "Username"
+      header_line <- which(grepl('^(\"?Player Name\"?|\"?Username\"?)\\s*[,;]', raw_lines))[1]
+      
+      if (is.na(header_line)) {
+        stop("No se pudo detectar una línea de encabezado válida (Player Name o Username).")
+      }
+      
+      # Leer los datos a partir de la línea detectada
+      data <- read_delim(
+        file = file_path,
+        delim = delim,
+        skip = header_line - 1,
+        locale = locale(encoding = "UTF-8"),
+        show_col_types = FALSE
+      )
+    } else if (ext == "xlsx") {
+      data <- read_excel(file_path)
+    } else if (ext == "json") {
+      data <- fromJSON(file_path, flatten = TRUE)
+    } else {
+      stop("Unsupported file type.")
+    }
+    
     colnames(data) <- make.names(colnames(data))
     return(data)
   })
@@ -1001,51 +1023,70 @@ server <- function(input, output, session) {
   #' Permite identificar visualmente qué jugadores están por encima o por debajo del promedio o ±1 SD.
   #' Las barras se ordenan de menor a mayor valor de la métrica. Se incluyen líneas de referencia para la media
   #' y la desviación estándar, junto con una franja sombreada que representa el rango ±1 SD.
-  output$barras_ordenadas_sesion <- renderPlotly({
-    req(filtro_data_sesion(), input$metricas_sesion_plot, input$player_col)
+  # Renderiza un contenedor UI que aloja múltiples gráficos de sesión
+  output$graficos_metricas_sesion <- renderUI({
+    req(input$metricas_sesion_plot)
     
-    data <- filtro_data_sesion()
-    metrics <- input$metricas_sesion_plot
-    jugador_col <- input$player_col
+    # Un gráfico individual por métrica seleccionada
+    plots <- lapply(input$metricas_sesion_plot, function(metrica) {
+      plotname <- paste0("plot_sesion_", make.names(metrica))
+      plotlyOutput(plotname, height = "400px")
+    })
     
-    # Validación
-    if (length(metrics) == 0 || !(metrics[1] %in% names(data))) return(NULL)
+    tagList(plots)
+  })
+  
+  # Renderiza cada gráfico individualmente
+  observe({
+    req(input$metricas_sesion_plot)
     
-    metrica <- metrics[1]
-    data[[metrica]] <- suppressWarnings(as.numeric(data[[metrica]]))
-    data <- data[!is.na(data[[metrica]]), ]
-    
-    # Resumen por jugador
-    resumen <- data %>%
-      group_by(Jugador = .data[[jugador_col]]) %>%
-      summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop") %>%
-      arrange(Valor) %>%
-      mutate(Jugador = factor(Jugador, levels = Jugador))
-    
-    media <- mean(resumen$Valor, na.rm = TRUE)
-    sd_val <- sd(resumen$Valor, na.rm = TRUE)
-    
-    # Gráfico
-    p <- ggplot(resumen, aes(x = Jugador, y = Valor, fill = Jugador)) +
-      geom_col(show.legend = FALSE) +
-      geom_hline(yintercept = media, linetype = "dashed", color = "#2c3e50", linewidth = 1) +
-      geom_hline(yintercept = media + sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
-      geom_hline(yintercept = media - sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
-      annotate("rect", xmin = -Inf, xmax = Inf,
-               ymin = media - sd_val, ymax = media + sd_val,
-               alpha = 0.1, fill = "#dfe6e9") +
-      theme_minimal(base_size = 14) +
-      labs(
-        title = paste("Valores de", metrica, "por jugador – Sesión"),
-        y = metrica, x = "Jugador"
-      ) +
-      theme(
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-        axis.title = element_text(face = "bold", size = 14),
-        axis.text.x = element_text(angle = 45, hjust = 1, size = 12)
-      )
-    
-    ggplotly(p)
+    for (metrica in input$metricas_sesion_plot) {
+      local({
+        metrica_local <- metrica
+        plotname <- paste0("plot_sesion_", make.names(metrica_local))
+        
+        output[[plotname]] <- renderPlotly({
+          req(filtro_data_sesion(), input$player_col)
+          data <- filtro_data_sesion()
+          
+          # Validación
+          if (!(metrica_local %in% names(data))) return(NULL)
+          
+          data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
+          data <- data[!is.na(data[[metrica_local]]), ]
+          
+          resumen <- data %>%
+            group_by(Jugador = .data[[input$player_col]]) %>%
+            summarise(Valor = mean(.data[[metrica_local]], na.rm = TRUE), .groups = "drop") %>%
+            arrange(Valor) %>%
+            mutate(Jugador = factor(Jugador, levels = Jugador))
+          
+          media <- mean(resumen$Valor, na.rm = TRUE)
+          sd_val <- sd(resumen$Valor, na.rm = TRUE)
+          
+          p <- ggplot(resumen, aes(x = Jugador, y = Valor, fill = Jugador)) +
+            geom_col(show.legend = FALSE) +
+            geom_hline(yintercept = media, linetype = "dashed", color = "#2c3e50", linewidth = 1) +
+            geom_hline(yintercept = media + sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
+            geom_hline(yintercept = media - sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
+            annotate("rect", xmin = -Inf, xmax = Inf,
+                     ymin = media - sd_val, ymax = media + sd_val,
+                     alpha = 0.1, fill = "#dfe6e9") +
+            theme_minimal(base_size = 14) +
+            labs(
+              title = paste("Valores de", metrica_local, "por jugador – Sesión"),
+              y = metrica_local, x = "Jugador"
+            ) +
+            theme(
+              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+              axis.title = element_text(face = "bold", size = 14),
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 12)
+            )
+          
+          ggplotly(p)
+        })
+      })
+    }
   })
   
 }
