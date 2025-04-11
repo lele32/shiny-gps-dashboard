@@ -1064,14 +1064,28 @@ server <- function(input, output, session) {
           media <- mean(resumen$Valor, na.rm = TRUE)
           sd_val <- sd(resumen$Valor, na.rm = TRUE)
           
-          p <- ggplot(resumen, aes(x = Jugador, y = Valor, fill = Jugador)) +
-            geom_col(show.legend = FALSE) +
-            geom_hline(yintercept = media, linetype = "dashed", color = "#2c3e50", linewidth = 1) +
-            geom_hline(yintercept = media + sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
-            geom_hline(yintercept = media - sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
+          # Paleta continua + líneas de referencia con tooltips
+          p <- ggplot(resumen, aes(x = Jugador, y = Valor, fill = Valor, text = paste0("Jugador: ", Jugador, "<br>Valor: ", round(Valor, 2)))) +
+            
+            # Sombreado para ±1SD
             annotate("rect", xmin = -Inf, xmax = Inf,
                      ymin = media - sd_val, ymax = media + sd_val,
                      alpha = 0.1, fill = "#dfe6e9") +
+            
+            # Barras ordenadas por valor
+            geom_col(show.legend = FALSE) +
+            
+            # Líneas de referencia con etiquetas via tooltip
+            geom_hline(aes(yintercept = media, text = "Promedio"), linetype = "dashed", color = "#2c3e50", linewidth = 1) +
+            geom_hline(aes(yintercept = media + sd_val, text = "+1SD"), linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
+            geom_hline(aes(yintercept = media - sd_val, text = "-1SD"), linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
+            geom_hline(aes(yintercept = media + 2 * sd_val, text = "+2SD"), linetype = "dotted", color = "#7f8c8d", linewidth = 0.8) +
+            geom_hline(aes(yintercept = media - 2 * sd_val, text = "-2SD"), linetype = "dotted", color = "#7f8c8d", linewidth = 0.8) +
+            
+            # Colores de las barras de menor a mayor
+            scale_fill_gradient(low = "#3498db", high = "#e74c3c") +
+            
+            # Estética general
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Valores de", metrica_local, "por jugador – Sesión"),
@@ -1083,12 +1097,11 @@ server <- function(input, output, session) {
               axis.text.x = element_text(angle = 45, hjust = 1, size = 12)
             )
           
-          ggplotly(p)
+          ggplotly(p, tooltip = "text")
         })
       })
     }
   })
-  
 }
 
 shinyApp(ui, server)
