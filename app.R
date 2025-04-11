@@ -1,22 +1,31 @@
-library(shiny)
-library(readr)
-library(readxl)
-library(jsonlite)
-library(DT)
-library(ggplot2)
-library(plotly)
-library(dplyr)
-library(lubridate)
-library(hms)
-library(shiny)
-library(bslib)
-library(shinythemes)
-library(rsconnect)
-library(slider)
+# =======================================================
+# 📦 LIBRARIES
+# =======================================================
+library(shiny)           # Web application framework
+library(readr)           # CSV reading
+library(readxl)          # XLSX reading
+library(jsonlite)        # JSON reading
+library(DT)              # DataTables output
+library(ggplot2)         # Plotting engine
+library(plotly)          # Interactive plots
+library(dplyr)           # Data wrangling
+library(lubridate)       # Date handling
+library(hms)             # Time handling
+library(bslib)           # Bootstrap theming
+library(shinythemes)     # Built-in themes
+library(rsconnect)       # Deployment
+library(slider)          # Rolling window stats
+library(shinyWidgets)    # Custom inputs
+library(tidyr)           # Data reshaping
 
-options(shiny.maxRequestSize = 500 * 1024^2)
+# =======================================================
+# ⚙️ OPTIONS
+# =======================================================
+options(shiny.maxRequestSize = 500 * 1024^2)  # Allow large file uploads
 
-# Tema moderno
+# =======================================================
+# 🎨 THEME
+# =======================================================
 tema_gps <- bs_theme(
   version = 5,
   bootswatch = "flatly",
@@ -24,17 +33,26 @@ tema_gps <- bs_theme(
   heading_font = font_google("Roboto Slab")
 )
 
+# ─────────────────────────────────────────────────────────────
+# 🧩 Interfaz de usuario (UI)
+# ─────────────────────────────────────────────────────────────
 ui <- fluidPage(
   theme = shinytheme("flatly"),
+  
+  # Estilo para los filtros organizados en filas y columnas
   tags$head(
     tags$style(HTML(".filter-row { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; }
                     .filter-column { flex: 1 1 45%; }"))
   ),
+  
+  # Logo y título principal
   tags$div(
     style = "text-align: center; padding: 10px;",
     tags$img(src = "logo.png", height = "80px", style = "margin-bottom: 20px;"),
     tags$h2("📊 GPS Data Dashboard", style = "margin-top: 10px;")
   ),
+  
+  # Estructura de layout: Sidebar para inputs, Main panel para los tabs
   sidebarLayout(
     sidebarPanel(
       fileInput("file", "Upload GPS Data", accept = c(".csv", ".xlsx", ".json")),
@@ -42,10 +60,17 @@ ui <- fluidPage(
       uiOutput("file_info"),
       uiOutput("column_mapping")
     ),
+    
     mainPanel(
       tabsetPanel(
+        
+        # 🗃 Tabla principal de datos
         tabPanel("Data Table", DTOutput("table")),
+        
+        # 📈 Estadísticas resumen
         tabPanel("Summary Stats", DTOutput("summary_table")),
+        
+        # 📊 Métrica promedio por fecha y jugador
         tabPanel("📊 Métrica en el tiempo",
                  tags$div(class = "filter-row",
                           lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
@@ -56,6 +81,8 @@ ui <- fluidPage(
                  ),
                  plotlyOutput("barras_fecha_plot")
         ),
+        
+        # 📦 Boxplot por Match Day
         tabPanel("📦 Boxplot por Match Day",
                  tags$div(class = "filter-row",
                           lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
@@ -66,6 +93,8 @@ ui <- fluidPage(
                  ),
                  plotlyOutput("boxplot_matchday")
         ),
+        
+        # 📦 Boxplot por Tarea
         tabPanel("📦 Boxplot por Tarea",
                  tags$div(class = "filter-row",
                           lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
@@ -76,6 +105,8 @@ ui <- fluidPage(
                  ),
                  plotlyOutput("boxplot_task")
         ),
+        
+        # 📈 Z-score por Fecha
         tabPanel("📈 Z-score por Fecha",
                  tags$div(class = "filter-row",
                           lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
@@ -85,15 +116,31 @@ ui <- fluidPage(
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_z"))
                  ),
                  plotlyOutput("zscore_plot")
+        ),
+        
+        # 🧪 Análisis de sesión puntual
+        tabPanel("🧪 Análisis de sesión",
+                 tags$div(class = "filter-row",
+                          lapply(c("jugador_sesion", "puesto_sesion", "matchday_sesion", "tarea_sesion", "duracion_sesion"), function(id) {
+                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                          }),
+                          tags$div(class = "filter-column", uiOutput("filtro_sesion_selector")),
+                          tags$div(class = "filter-column", selectInput("metricas_sesion_plot", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                          tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_sesion")),
+                          tags$div(class = "filter-column", uiOutput("filtro_fecha_sesion"))
+                 ),
+                 plotlyOutput("barras_ordenadas_sesion")
         )
       )
     )
   )
 )
-
-##SERVER
+# =======================================================
+# ⚙️ SERVER
+# =======================================================
 server <- function(input, output, session) {
   
+  # REACTIVO PRINCIPAL: CARGA Y FORMATEO DEL ARCHIVO --------------------------
   read_data <- reactive({
     req(input$file)
     ext <- tools::file_ext(input$file$name)
@@ -112,16 +159,13 @@ server <- function(input, output, session) {
     return(data)
   })
   
-  
-  # UI para información del archivo
+  # INFORMACIÓN DEL ARCHIVO ----------------------------------------------------
   output$file_info <- renderUI({
     req(input$file)
-    tags$p(
-      tags$b("File:"), input$file$name, " - ", round(input$file$size / 1024, 2), "KB"
-    )
+    tags$p(tags$b("File:"), input$file$name, " - ", round(input$file$size / 1024, 2), "KB")
   })
   
-  # UI para asignación de columnas clave
+  # MAPEOS DE COLUMNAS CLAVE ---------------------------------------------------
   output$column_mapping <- renderUI({
     req(read_data())
     cols <- colnames(read_data())
@@ -144,7 +188,8 @@ server <- function(input, output, session) {
     )
   })
   
-  # Actualización de inputs de métricas válidas
+  
+  # Observa cambios en los datos cargados y en la selección de métricas disponibles
   observe({
     req(read_data(), input$metric_col)
     data <- read_data()
@@ -165,7 +210,15 @@ server <- function(input, output, session) {
     }
   })
   
-  # Helpers dinámicos para filtros
+  observe({
+    req(input$metric_col)
+    updateSelectInput(session, "metricas_sesion_plot",
+                      choices = input$metric_col,
+                      selected = input$metric_col[1])
+  })
+  
+  # Crea un filtro UI selectInput dinámico basado en la columna indicada
+  # === UI dinámico para filtros de selectInput categóricos (jugador, puesto, etc.) ===
   create_filter_ui <- function(id, colname, label) {
     renderUI({
       req(read_data())
@@ -175,7 +228,8 @@ server <- function(input, output, session) {
       }
     })
   }
-  
+  # Crea un filtro UI dateRangeInput dinámico basado en la columna de fecha mapeada
+  # === UI dinámico para filtros por rango de fechas ===
   create_date_filter <- function(id, colname) {
     renderUI({
       req(read_data())
@@ -189,7 +243,8 @@ server <- function(input, output, session) {
       }
     })
   }
-  
+  # Crea un filtro UI sliderInput para duración, usando columna directa o calculada (hora inicio - hora fin)
+  # === UI dinámico para filtro de duración (directa o derivada) ===
   create_duration_filter <- function(id) {
     renderUI({
       req(read_data())
@@ -210,39 +265,51 @@ server <- function(input, output, session) {
       }
     })
   }
-  # Filtros por gráfico asignados condicionalmente en observeEvent
+  # Este bloque crea dinámicamente todos los filtros individuales de cada gráfico/tab.
+  # Usa los helpers `create_filter_ui()`, `create_date_filter()` y `create_duration_filter()` definidos previamente.
+  # Cada output está vinculado a un filtro de UI único para mantener independencia entre los gráficos.
   observe({
     output$filtro_jugador       <- create_filter_ui("filtro_jugador", "player_col", "Filter by Player:")
     output$filtro_jugador_box   <- create_filter_ui("filtro_jugador_box", "player_col", "Filter by Player:")
     output$filtro_jugador_task  <- create_filter_ui("filtro_jugador_task", "player_col", "Filter by Player:")
     output$filtro_jugador_z     <- create_filter_ui("filtro_jugador_z", "player_col", "Filter by Player:")
+    output$filtro_jugador_sesion <- create_filter_ui("filtro_jugador_sesion", "player_col", "Filtrar por Jugador")
+    
     
     output$filtro_puesto       <- create_filter_ui("filtro_puesto", "position_col", "Filter by Position:")
     output$filtro_puesto_box   <- create_filter_ui("filtro_puesto_box", "position_col", "Filter by Position:")
     output$filtro_puesto_task  <- create_filter_ui("filtro_puesto_task", "position_col", "Filter by Position:")
     output$filtro_puesto_z     <- create_filter_ui("filtro_puesto_z", "position_col", "Filter by Position:")
+    output$filtro_puesto_sesion  <- create_filter_ui("filtro_puesto_sesion", "position_col", "Filtrar por Puesto")
+    
     
     output$filtro_matchday       <- create_filter_ui("filtro_matchday", "matchday_col", "Filter by Match Day:")
     output$filtro_matchday_box   <- create_filter_ui("filtro_matchday_box", "matchday_col", "Filter by Match Day:")
     output$filtro_matchday_task  <- create_filter_ui("filtro_matchday_task", "matchday_col", "Filter by Match Day:")
     output$filtro_matchday_z     <- create_filter_ui("filtro_matchday_z", "matchday_col", "Filter by Match Day:")
+    output$filtro_matchday_sesion <- create_filter_ui("filtro_matchday_sesion", "matchday_col", "Filtrar por Match Day")
+    
     
     output$filtro_tarea       <- create_filter_ui("filtro_tarea", "task_col", "Filter by Task:")
     output$filtro_tarea_box   <- create_filter_ui("filtro_tarea_box", "task_col", "Filter by Task:")
     output$filtro_tarea_task  <- create_filter_ui("filtro_tarea_task", "task_col", "Filter by Task:")
     output$filtro_tarea_z     <- create_filter_ui("filtro_tarea_z", "task_col", "Filter by Task:")
+    output$filtro_tarea_sesion <- create_filter_ui("filtro_tarea_sesion", "task_col", "Filtrar por Tarea")
     
     output$filtro_fecha       <- create_date_filter("filtro_fecha", "date_col")
     output$filtro_fecha_box   <- create_date_filter("filtro_fecha_box", "date_col")
     output$filtro_fecha_task  <- create_date_filter("filtro_fecha_task", "date_col")
     output$filtro_fecha_z     <- create_date_filter("filtro_fecha_z", "date_col")
+    output$filtro_fecha_sesion <- create_date_filter("filtro_fecha_sesion", "date_col")
     
     output$filtro_duracion       <- create_duration_filter("filtro_duracion_input")
     output$filtro_duracion_box   <- create_duration_filter("filtro_duracion_input_box")
     output$filtro_duracion_task  <- create_duration_filter("filtro_duracion_input_task")
     output$filtro_duracion_z     <- create_duration_filter("filtro_duracion_input_z")
+    output$filtro_duracion_sesion <- create_duration_filter("filtro_duracion_input_sesion")
   })
   
+  #Filtros aplicados a grafico de metrica en el tiempo
   output$filtro_metrica_valor <- renderUI({
     req(read_data())
     if (is.null(input$metric) || !(input$metric %in% colnames(read_data()))) return(NULL)
@@ -254,6 +321,8 @@ server <- function(input, output, session) {
                 value = c(floor(min(values)), ceiling(max(values))))
   })
   
+  
+  #Filtros aplicados a grafico de Boxplot de Métrica en MD
   output$filtro_metrica_valor_box <- renderUI({
     req(read_data())
     if (is.null(input$metric_box) || !(input$metric_box %in% colnames(read_data()))) return(NULL)
@@ -265,7 +334,8 @@ server <- function(input, output, session) {
                 value = c(floor(min(values)), ceiling(max(values))))
   })
   
-  output$filtro_metrica_valor_task <- renderUI({
+  #Filtros aplicados a grafico de Boxplot de Métrica en Tarea
+    output$filtro_metrica_valor_task <- renderUI({
     req(read_data())
     if (is.null(input$metric_task) || !(input$metric_task %in% colnames(read_data()))) return(NULL)
     values <- suppressWarnings(as.numeric(read_data()[[input$metric_task]]))
@@ -275,7 +345,8 @@ server <- function(input, output, session) {
                 min = floor(min(values)), max = ceiling(max(values)),
                 value = c(floor(min(values)), ceiling(max(values))))
   })
-  
+   
+#Filtros aplicados a grafico de Score Z
   output$filtro_metrica_valor_z <- renderUI({
     req(read_data())
     if (is.null(input$metric_z) || !(input$metric_z %in% colnames(read_data()))) return(NULL)
@@ -287,9 +358,74 @@ server <- function(input, output, session) {
                 value = c(floor(min(values)), ceiling(max(values))))
   })
   
+  #Filtros aplicados a grafico Sesión
+  output$filtro_metrica_valor_sesion <- renderUI({
+    req(read_data(), input$metricas_sesion_plot)
+    data <- read_data()
+    
+    metrica <- input$metricas_sesion_plot[1]
+    if (is.null(metrica) || !(metrica %in% names(data))) return(NULL)
+    
+    values <- suppressWarnings(as.numeric(data[[metrica]]))
+    values <- values[!is.na(values) & is.finite(values)]
+    if (length(values) == 0) return(NULL)
+    
+    sliderInput("filtro_metrica_valor_sesion", paste("Filtrar", metrica),
+                min = floor(min(values)), max = ceiling(max(values)),
+                value = c(floor(min(values)), ceiling(max(values))))
+  })
+  
+  output$filtro_sesion_selector <- renderUI({
+    req(read_data())
+    data <- read_data()
+    
+    if (is.null(input$date_col) || !(input$date_col %in% names(data))) return(NULL)
+    
+    # Aplicar filtros condicionales por match day y tarea
+    if (!is.null(input$matchday_col) && input$matchday_col %in% names(data) &&
+        !is.null(input$filtro_matchday_sesion)) {
+      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_sesion, ]
+    }
+    if (!is.null(input$task_col) && input$task_col %in% names(data) &&
+        !is.null(input$filtro_tarea_sesion)) {
+      data <- data[data[[input$task_col]] %in% input$filtro_tarea_sesion, ]
+    }
+    
+    fechas <- data[[input$date_col]]
+    fechas <- parse_date_time(fechas, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    fechas <- fechas[!is.na(fechas)]
+    
+    if (length(fechas) == 0) return(NULL)
+    
+    pickerInput(
+      inputId = "filtro_sesion_selector",
+      label = "Seleccionar sesiones específicas",
+      choices = sort(unique(as.character(fechas))),
+      multiple = TRUE,
+      options = list(`actions-box` = TRUE, `live-search` = TRUE)
+    )
+  })
+  
+  #' Reactive: Filtrado principal de datos
+  #'
+  #' Esta función reactiva toma el dataset cargado por el usuario (`read_data()`)
+  #' y aplica una serie de filtros dinámicos basados en la interfaz de usuario:
+  #' - Jugador
+  #' - Puesto
+  #' - Match Day
+  #' - Tarea
+  #' - Rango de fechas
+  #' - Duración (columna directa o calculada)
+  #' - Rango de valores de una métrica seleccionada
+  #'
+  #' Retorna un dataframe filtrado que se utiliza en el gráfico de barras por fecha.
   filtro_data <- reactive({
     req(read_data())
     data <- read_data()
+    
+    # ────────────────────────────────────────────────────────────────
+    # Filtros categóricos: Jugador, Puesto, Match Day, Tarea
+    # ────────────────────────────────────────────────────────────────
     
     # Filtro por jugador
     if (!is.null(input$player_col) && input$player_col %in% colnames(data) &&
@@ -304,15 +440,13 @@ server <- function(input, output, session) {
     }
     
     # Filtro por match day
-    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) &&
-        !is.null(input$filtro_matchday)) {
-      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday, ]
+    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) && !is.null(input$filtro_matchday_sesion)) {
+      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_sesion, ]
     }
     
     # Filtro por tarea
-    if (!is.null(input$task_col) && input$task_col %in% colnames(data) &&
-        !is.null(input$filtro_tarea)) {
-      data <- data[data[[input$task_col]] %in% input$filtro_tarea, ]
+    if (!is.null(input$task_col) && input$task_col %in% colnames(data) && !is.null(input$filtro_tarea_sesion)) {
+      data <- data[data[[input$task_col]] %in% input$filtro_tarea_sesion, ]
     }
     
     # Filtro por fecha
@@ -321,6 +455,10 @@ server <- function(input, output, session) {
       fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
       data <- data[!is.na(fechas) & fechas >= input$filtro_fecha[1] & fechas <= input$filtro_fecha[2], ]
     }
+    
+    fechas <- if (!is.null(input$date_col) && input$date_col %in% names(data)) unique(data[[input$date_col]]) else NULL
+    fechas <- sort(fechas)
+    
     
     # Filtro por duración
     if (!is.null(input$filtro_duracion_input)) {
@@ -350,9 +488,26 @@ server <- function(input, output, session) {
     return(data)
   })
   
+  #' Reactive: Filtro para gráfico boxplot por Match Day
+  #'
+  #' Esta función reactiva aplica filtros específicos para el gráfico de boxplot
+  #' por Match Day. Utiliza inputs dedicados con sufijo `_box`:
+  #' - Jugador (`filtro_jugador_box`)
+  #' - Puesto (`filtro_puesto_box`)
+  #' - Match Day (`filtro_matchday_box`)
+  #' - Tarea (`filtro_tarea_box`)
+  #' - Fecha (`filtro_fecha_box`)
+  #' - Duración (`filtro_duracion_input_box`)
+  #' - Métrica (`metric_box` y `filtro_metrica_valor_box`)
+  #'
+  #' Retorna un subconjunto de datos filtrado.
   filtro_data_box <- reactive({
     req(read_data())
     data <- read_data()
+    
+    # ────────────────────────────────────────────────────────────────
+    # Filtros categóricos
+    # ────────────────────────────────────────────────────────────────
     
     if (!is.null(input$player_col) && input$player_col %in% colnames(data) &&
         !is.null(input$filtro_jugador_box)) {
@@ -406,9 +561,27 @@ server <- function(input, output, session) {
     return(data)
   })
   
+  #' Reactive: Filtro para gráfico boxplot por Tarea
+  #'
+  #' Esta función reactiva filtra los datos exclusivamente para el gráfico por
+  #' tipo de tarea, aplicando los siguientes filtros con sufijo `_task`:
+  #' - Jugador (`filtro_jugador_task`)
+  #' - Puesto (`filtro_puesto_task`)
+  #' - Match Day (`filtro_matchday_task`)
+  #' - Tarea (`filtro_tarea_task`)
+  #' - Fecha (`filtro_fecha_task`)
+  #' - Duración (`filtro_duracion_input_task`)
+  #' - Métrica (`metric_task` y `filtro_metrica_valor_task`)
+  #'
+  #' Retorna los datos filtrados.
   filtro_data_task <- reactive({
     req(read_data())
     data <- read_data()
+    
+    # ────────────────────────────────────────────────────────────────
+    # Filtros categóricos
+    # ────────────────────────────────────────────────────────────────
+    
     
     if (!is.null(input$player_col) && input$player_col %in% colnames(data) &&
         !is.null(input$filtro_jugador_task)) {
@@ -462,10 +635,26 @@ server <- function(input, output, session) {
     return(data)
   })
   
-  # Reactive filtrado para el gráfico de Z-score
+  #' Reactive: Filtro de datos para el gráfico de Z-score
+  #'
+  #' Esta función reactiva aplica los filtros específicos para el gráfico de líneas
+  #' de Z-score, utilizando los sufijos `_z` en los inputs. Los filtros incluyen:
+  #' - Jugador (`filtro_jugador_z`)
+  #' - Puesto (`filtro_puesto_z`)
+  #' - Match Day (`filtro_matchday_z`)
+  #' - Tarea (`filtro_tarea_z`)
+  #' - Fecha (`filtro_fecha_z`)
+  #' - Duración (`filtro_duracion_input_z`)
+  #' - Métrica (`metric_z` y `filtro_metrica_valor_z`)
+  #'
+  #' Devuelve un `data.frame` con los datos filtrados listos para calcular z-scores.
   filtro_data_z <- reactive({
     req(read_data())
     data <- read_data()
+    
+    # ────────────────────────────────────────────────
+    # Filtros categóricos
+    # ────────────────────────────────────────────────
     
     if (!is.null(input$player_col) && input$player_col %in% colnames(data) &&
         !is.null(input$filtro_jugador_z)) {
@@ -519,11 +708,86 @@ server <- function(input, output, session) {
     return(data)
   })
   
+  #' Reactive: Filtro de datos para análisis de sesión específica
+  #'
+  #' Esta función reactiva aplica todos los filtros relevantes para visualizar
+  #' los datos de una o más sesiones específicas seleccionadas manualmente por el usuario.
+  #' Los filtros aplicados incluyen jugador, puesto, matchday, tarea, fecha, duración y valores de métrica.
+  #'
+  #' Devuelve un `data.frame` listo para la visualización del panel de análisis de sesión.
+  
+  filtro_data_sesion <- reactive({
+    req(read_data(), input$filtro_sesion_selector)
+    data <- read_data()
+    # ────────────────────────────────────────────────
+    # Filtros categóricos generales
+    # ────────────────────────────────────────────────
+    
+    # Filtros generales
+    if (!is.null(input$player_col) && input$player_col %in% names(data) && !is.null(input$filtro_jugador_sesion)) {
+      data <- data[data[[input$player_col]] %in% input$filtro_jugador_sesion, ]
+    }
+    if (!is.null(input$position_col) && input$position_col %in% names(data) && !is.null(input$filtro_puesto_sesion)) {
+      data <- data[data[[input$position_col]] %in% input$filtro_puesto_sesion, ]
+    }
+    if (!is.null(input$matchday_col) && input$matchday_col %in% names(data) && !is.null(input$filtro_matchday_sesion)) {
+      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_sesion, ]
+    }
+    if (!is.null(input$task_col) && input$task_col %in% names(data) && !is.null(input$filtro_tarea_sesion)) {
+      data <- data[data[[input$task_col]] %in% input$filtro_tarea_sesion, ]
+    }
+    
+    # Filtro por sesión específica
+    if (!is.null(input$date_col) && input$date_col %in% names(data)) {
+      data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+      if (!is.null(input$filtro_sesion_selector)) {
+        data <- data[as.character(data[[input$date_col]]) %in% input$filtro_sesion_selector, ]
+      }
+    }
+    
+    # Filtro por duración
+    if (!is.null(input$filtro_duracion_input_sesion)) {
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
+        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                 !is.null(input$end_col) && input$end_col != "None" &&
+                 input$start_col %in% names(data) && input$end_col %in% names(data)) {
+        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_sesion[1] & dur <= input$filtro_duracion_input_sesion[2]
+        data <- data[keep, ]
+      }
+    }
+    
+    # Filtro por valor de métrica
+    if (!is.null(input$metricas_sesion_plot) && length(input$metricas_sesion_plot) > 0 &&
+        input$metricas_sesion_plot[1] %in% names(data) &&
+        !is.null(input$filtro_metrica_valor_sesion)) {
+      metrica <- input$metricas_sesion_plot[1]
+      values <- suppressWarnings(as.numeric(data[[metrica]]))
+      data <- data[!is.na(values) & values >= input$filtro_metrica_valor_sesion[1] &
+                     values <= input$filtro_metrica_valor_sesion[2], ]
+    }
+    
+    return(data)
+  })
+  #' Output: Tabla de datos filtrados (tabla principal)
+  #'
+  #' Renderiza una tabla interactiva (`DT::datatable`) con los datos resultantes
+  #' de `filtro_data()`, utilizando paginación con 10 resultados por página.
   output$table <- renderDT({
     req(filtro_data())
     datatable(filtro_data(), options = list(pageLength = 10))
   })
   
+  #' Output: Tabla resumen de estadísticos descriptivos
+  #'
+  #' Calcula media, mínimo, máximo y desvío estándar para la métrica seleccionada,
+  #' sobre los datos ya filtrados. Se presenta en un `datatable`.
   output$summary_table <- renderDT({
     req(filtro_data(), input$metric)
     data <- filtro_data()
@@ -536,7 +800,11 @@ server <- function(input, output, session) {
     )
     datatable(summary_stats)
   })
-  # grafico barras por fecha
+  #' Output: Gráfico de barras por fecha (Promedios por jugador)
+  #'
+  #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
+  #' para cada jugador. Se agrupa por `date_col` y `player_col`, y se genera un gráfico
+  #' con `ggplot2` + `plotly`, con barras apiladas por jugador.
   output$barras_fecha_plot <- renderPlotly({
     req(filtro_data(), input$metric)
     data <- filtro_data()
@@ -572,7 +840,11 @@ server <- function(input, output, session) {
     ggplotly(p, tooltip = "text")
   })
   
-  # grafico boxplot por MD
+  #' Output: Gráfico Boxplot por Match Day
+  #'
+  #' Este gráfico muestra la distribución de una métrica seleccionada (`input$metric_box`)
+  #' para cada `Match Day`, agrupando por jugador. Utiliza `ggplot2` y `plotly` para visualización
+  #' interactiva. Los datos se filtran con `filtro_data_box()`, respetando filtros locales del tabPanel.
   output$boxplot_matchday <- renderPlotly({
     req(filtro_data_box(), input$metric_box)
     data <- filtro_data_box()
@@ -606,7 +878,11 @@ server <- function(input, output, session) {
     ggplotly(p, tooltip = "text")
   })
   
-  # grafico boxplot por Tarea
+  #' Output: Gráfico Boxplot por Tarea
+  #'
+  #' Este gráfico muestra la distribución de una métrica seleccionada (`input$metric_task`)
+  #' para cada tarea definida en `input$task_col`, agrupando por jugador. Usa `filtro_data_task()`
+  #' para aplicar los filtros correspondientes y `ggplotly()` para generar una visualización interactiva.
   output$boxplot_task <- renderPlotly({
     req(filtro_data_task(), input$metric_task, input$task_col)
     data <- filtro_data_task()
@@ -641,7 +917,12 @@ server <- function(input, output, session) {
     ggplotly(p, tooltip = "text")
   })
   
-  # Render plot Z-score por jugador con media móvil
+  #' Output: Gráfico de Z-score por jugador
+  #'
+  #' Este gráfico muestra la evolución del Z-score por jugador para una métrica seleccionada,
+  #' calculado a partir de la media y desvío estándar global por jugador (no media móvil).
+  #' Las facetas muestran un gráfico individual por jugador, y se colorea según valores altos,
+  #' bajos o neutros. Incluye loess smoothing por jugador y áreas coloreadas para zonas críticas.
   output$zscore_plot <- renderPlotly({
     req(filtro_data_z(), input$metric_z, input$player_col, input$date_col)
     
@@ -713,6 +994,61 @@ server <- function(input, output, session) {
     ggplotly(p, tooltip = "text") %>%
       layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
   })
+  
+  #' Output: Gráfico de barras ordenadas por jugador en sesión
+  #'
+  #' Este gráfico muestra el valor promedio de una métrica seleccionada por jugador para una sesión específica.
+  #' Permite identificar visualmente qué jugadores están por encima o por debajo del promedio o ±1 SD.
+  #' Las barras se ordenan de menor a mayor valor de la métrica. Se incluyen líneas de referencia para la media
+  #' y la desviación estándar, junto con una franja sombreada que representa el rango ±1 SD.
+  output$barras_ordenadas_sesion <- renderPlotly({
+    req(filtro_data_sesion(), input$metricas_sesion_plot, input$player_col)
+    
+    data <- filtro_data_sesion()
+    metrics <- input$metricas_sesion_plot
+    jugador_col <- input$player_col
+    
+    # Validación
+    if (length(metrics) == 0 || !(metrics[1] %in% names(data))) return(NULL)
+    
+    metrica <- metrics[1]
+    data[[metrica]] <- suppressWarnings(as.numeric(data[[metrica]]))
+    data <- data[!is.na(data[[metrica]]), ]
+    
+    # Resumen por jugador
+    resumen <- data %>%
+      group_by(Jugador = .data[[jugador_col]]) %>%
+      summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop") %>%
+      arrange(Valor) %>%
+      mutate(Jugador = factor(Jugador, levels = Jugador))
+    
+    media <- mean(resumen$Valor, na.rm = TRUE)
+    sd_val <- sd(resumen$Valor, na.rm = TRUE)
+    
+    # Gráfico
+    p <- ggplot(resumen, aes(x = Jugador, y = Valor, fill = Jugador)) +
+      geom_col(show.legend = FALSE) +
+      geom_hline(yintercept = media, linetype = "dashed", color = "#2c3e50", linewidth = 1) +
+      geom_hline(yintercept = media + sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
+      geom_hline(yintercept = media - sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
+      annotate("rect", xmin = -Inf, xmax = Inf,
+               ymin = media - sd_val, ymax = media + sd_val,
+               alpha = 0.1, fill = "#dfe6e9") +
+      theme_minimal(base_size = 14) +
+      labs(
+        title = paste("Valores de", metrica, "por jugador – Sesión"),
+        y = metrica, x = "Jugador"
+      ) +
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+        axis.title = element_text(face = "bold", size = 14),
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 12)
+      )
+    
+    ggplotly(p)
+  })
+  
 }
 
 shinyApp(ui, server)
+
