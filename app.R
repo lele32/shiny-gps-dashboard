@@ -76,10 +76,10 @@ ui <- fluidPage(
                           lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
                             tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
                           }),
-                          tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL)),
+                          tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL, multiple = TRUE)),
                           tags$div(class = "filter-column", uiOutput("filtro_metrica_valor"))
                  ),
-                 plotlyOutput("barras_fecha_plot")
+                 uiOutput("barras_fecha_ui")
         ),
         
         # 📦 Boxplot por Match Day
@@ -427,17 +427,7 @@ server <- function(input, output, session) {
     output$filtro_duracion_z_comp <- create_duration_filter("filtro_duracion_input_z_comp")
   })
   
-  #Filtros aplicados a grafico de metrica en el tiempo
-  output$filtro_metrica_valor <- renderUI({
-    req(read_data())
-    if (is.null(input$metric) || !(input$metric %in% colnames(read_data()))) return(NULL)
-    values <- suppressWarnings(as.numeric(read_data()[[input$metric]]))
-    values <- values[!is.na(values) & is.finite(values)]
-    if (length(values) == 0) return(NULL)
-    sliderInput("filtro_metrica_valor", paste("Filter", input$metric),
-                min = floor(min(values)), max = ceiling(max(values)),
-                value = c(floor(min(values)), ceiling(max(values))))
-  })
+  
   
   
   #Filtros aplicados a grafico de Boxplot de Métrica en MD
@@ -568,6 +558,15 @@ server <- function(input, output, session) {
                 value = c(floor(min(values)), ceiling(max(values))))
   })
   
+  # =======================================================
+  # 🧠 FUNCIONES AUXILIARES SEGURAS
+  # =======================================================
+  
+  # Esta función encapsula una condición segura para filtros
+  safe_filter_condition <- function(condition) {
+    is.logical(condition) && length(condition) == nrow(read_data())
+  }
+  
   #' Reactive: Filtrado principal de datos
   #'
   #' Esta función reactiva toma el dataset cargado por el usuario (`read_data()`)
@@ -591,39 +590,37 @@ server <- function(input, output, session) {
     
     # Filtro por jugador
     if (!is.null(input$player_col) && input$player_col %in% colnames(data) &&
-        !is.null(input$filtro_jugador)) {
+        !is.null(input$filtro_jugador) && length(input$filtro_jugador) > 0) {
       data <- data[data[[input$player_col]] %in% input$filtro_jugador, ]
     }
     
     # Filtro por puesto
     if (!is.null(input$position_col) && input$position_col %in% colnames(data) &&
-        !is.null(input$filtro_puesto)) {
+        !is.null(input$filtro_puesto) && length(input$filtro_puesto) > 0) {
       data <- data[data[[input$position_col]] %in% input$filtro_puesto, ]
     }
     
     # Filtro por match day
-    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) && !is.null(input$filtro_matchday_sesion)) {
-      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_sesion, ]
+    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) &&
+        !is.null(input$filtro_matchday) && length(input$filtro_matchday) > 0) {
+      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday, ]
     }
     
     # Filtro por tarea
-    if (!is.null(input$task_col) && input$task_col %in% colnames(data) && !is.null(input$filtro_tarea_sesion)) {
-      data <- data[data[[input$task_col]] %in% input$filtro_tarea_sesion, ]
+    if (!is.null(input$task_col) && input$task_col %in% colnames(data) &&
+        !is.null(input$filtro_tarea) && length(input$filtro_tarea) > 0) {
+      data <- data[data[[input$task_col]] %in% input$filtro_tarea, ]
     }
     
     # Filtro por fecha
     if (!is.null(input$date_col) && input$date_col %in% colnames(data) &&
-        !is.null(input$filtro_fecha)) {
+        !is.null(input$filtro_fecha) && length(input$filtro_fecha) == 2) {
       fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
       data <- data[!is.na(fechas) & fechas >= input$filtro_fecha[1] & fechas <= input$filtro_fecha[2], ]
     }
     
-    fechas <- if (!is.null(input$date_col) && input$date_col %in% names(data)) unique(data[[input$date_col]]) else NULL
-    fechas <- sort(fechas)
-    
-    
     # Filtro por duración
-    if (!is.null(input$filtro_duracion_input)) {
+    if (!is.null(input$filtro_duracion_input) && length(input$filtro_duracion_input) == 2) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
         dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
@@ -636,19 +633,22 @@ server <- function(input, output, session) {
       }
       if (!is.null(dur)) {
         keep <- !is.na(dur) & dur >= input$filtro_duracion_input[1] & dur <= input$filtro_duracion_input[2]
-        data <- data[keep, ]
+        if (safe_filter_condition(keep)) data <- data[keep, ]
       }
     }
     
     # Filtro por valor de la métrica
-    if (!is.null(input$metric) && input$metric %in% colnames(data) &&
-        !is.null(input$filtro_metrica_valor)) {
+    if (!is.null(input$metric) && length(input$metric) == 1 &&
+        input$metric %in% colnames(data) &&
+        !is.null(input$filtro_metrica_valor) && length(input$filtro_metrica_valor) == 2) {
       metric_vals <- suppressWarnings(as.numeric(data[[input$metric]]))
-      data <- data[!is.na(metric_vals) & metric_vals >= input$filtro_metrica_valor[1] & metric_vals <= input$filtro_metrica_valor[2], ]
+      keep <- !is.na(metric_vals) & metric_vals >= input$filtro_metrica_valor[1] & metric_vals <= input$filtro_metrica_valor[2]
+      if (safe_filter_condition(keep)) data <- data[keep, ]
     }
     
     return(data)
   })
+  
   
   #' Reactive: Filtro para gráfico boxplot por Match Day
   #'
@@ -1021,6 +1021,32 @@ server <- function(input, output, session) {
     datatable(filtro_data(), options = list(pageLength = 10))
   })
   
+  # 🧠 UI dinámico: Gráfico + Filtro por cada métrica seleccionada
+  output$barras_fecha_ui <- renderUI({
+    req(input$metric, read_data())
+    
+    ui_blocks <- lapply(input$metric, function(metrica) {
+      metrica_clean <- make.names(metrica)
+      values <- suppressWarnings(as.numeric(read_data()[[metrica]]))
+      values <- values[!is.na(values) & is.finite(values)]
+      
+      tagList(
+        tags$hr(),
+        tags$h4(paste("Gráfico y Filtro:", metrica)),
+        sliderInput(
+          inputId = paste0("filtro_metrica_valor_", metrica_clean),
+          label = paste("Filtro de valores para", metrica),
+          min = floor(min(values)),
+          max = ceiling(max(values)),
+          value = c(floor(min(values)), ceiling(max(values)))
+        ),
+        plotlyOutput(outputId = paste0("barras_fecha_plot_", metrica_clean), height = "400px")
+      )
+    })
+    
+    do.call(tagList, ui_blocks)
+  })
+  
   #' Output: Tabla resumen de estadísticos descriptivos
   #'
   #' Calcula media, mínimo, máximo y desvío estándar para la métrica seleccionada,
@@ -1042,39 +1068,57 @@ server <- function(input, output, session) {
   #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
   #' para cada jugador. Se agrupa por `date_col` y `player_col`, y se genera un gráfico
   #' con `ggplot2` + `plotly`, con barras apiladas por jugador.
-  output$barras_fecha_plot <- renderPlotly({
-    req(filtro_data(), input$metric)
-    data <- filtro_data()
+  # 🧠 OBSERVE: renderiza un gráfico por cada métrica seleccionada en "Métrica en el tiempo"
+  observe({
+    req(input$metric)
     
-    data[[input$metric]] <- suppressWarnings(as.numeric(data[[input$metric]]))
-    data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-    data <- data[!is.na(data[[input$metric]]) & !is.na(data[[input$date_col]]), ]
-    
-    plot_data <- data %>%
-      group_by(Fecha = as.Date(.data[[input$date_col]]), Jugador = .data[[input$player_col]]) %>%
-      summarise(Promedio = mean(.data[[input$metric]], na.rm = TRUE), .groups = "drop") %>%
-      mutate(
-        Fecha = factor(Fecha, levels = sort(unique(Fecha))),
-        tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Promedio: ", round(Promedio, 2))
-      )
-    
-    p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador, text = tooltip)) +
-      geom_col(position = position_dodge2(preserve = "single"), width = 0.7) +
-      scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 5)]) +
-      theme_minimal(base_size = 14) +
-      labs(
-        title = paste("Promedio de", input$metric, "por Fecha y Jugador"),
-        x = "Fecha", y = input$metric
-      ) +
-      theme(
-        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 9),
-        axis.text.y = element_text(size = 12),
-        axis.title = element_text(face = "bold", size = 14),
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-        legend.position = "right"
-      )
-    
-    ggplotly(p, tooltip = "text")
+    for (metrica in input$metric) {
+      local({
+        metrica_local <- metrica
+        metrica_clean <- make.names(metrica_local)
+        plot_id <- paste0("barras_fecha_plot_", metrica_clean)
+        filtro_id <- paste0("filtro_metrica_valor_", metrica_clean)
+        
+        output[[plot_id]] <- renderPlotly({
+          req(filtro_data(), input[[filtro_id]])
+          data <- filtro_data()
+          
+          data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
+          data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+          data <- data[!is.na(data[[metrica_local]]) & !is.na(data[[input$date_col]]), ]
+          
+          # Aplicar filtro de valores de esta métrica específica
+          val_range <- input[[filtro_id]]
+          data <- data[data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
+          
+          plot_data <- data %>%
+            group_by(Fecha = as.Date(.data[[input$date_col]]), Jugador = .data[[input$player_col]]) %>%
+            summarise(Promedio = mean(.data[[metrica_local]], na.rm = TRUE), .groups = "drop") %>%
+            mutate(
+              Fecha = factor(Fecha, levels = sort(unique(Fecha))),
+              tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Promedio: ", round(Promedio, 2))
+            )
+          
+          p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador, text = tooltip)) +
+            geom_col(position = position_dodge2(preserve = "single"), width = 0.7) +
+            scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 5)]) +
+            theme_minimal(base_size = 14) +
+            labs(
+              title = paste("Promedio de", metrica_local, "por Fecha y Jugador"),
+              x = "Fecha", y = metrica_local
+            ) +
+            theme(
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 9),
+              axis.text.y = element_text(size = 12),
+              axis.title = element_text(face = "bold", size = 14),
+              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+              legend.position = "right"
+            )
+          
+          ggplotly(p, tooltip = "text")
+        })
+      })
+    }
   })
   
   #' Output: Gráfico Boxplot por Match Day
