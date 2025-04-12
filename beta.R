@@ -178,6 +178,28 @@ server <- function(input, output, session) {
     }
     
     colnames(data) <- make.names(colnames(data))
+    # Mapeo automático de columnas basado en nombres
+    update_mapped_columns <- function(cols) {
+      guess_column <- function(possible_names) {
+        match <- tolower(cols) %in% tolower(possible_names)
+        if (any(match)) return(cols[which(match)[1]]) else return(NULL)
+      }
+      
+      updateSelectInput(session, "player_col", selected = guess_column(c("player", "player name", "username", "jugador")))
+      updateSelectInput(session, "position_col", selected = guess_column(c("position", "pos", "rol", "puesto")))
+      updateSelectInput(session, "matchday_col", selected = guess_column(c("match day", "matchday","match.day", "md", "dia", "día")))
+      updateSelectInput(session, "task_col", selected = guess_column(c("task", "activity", "drill", "selection", "tarea")))
+      updateSelectInput(session, "date_col", selected = guess_column(c("date", "fecha", "session date", "day")))
+      updateSelectInput(session, "duration_col", selected = guess_column(c("duration", "duración", "duration_min")))
+      updateSelectInput(session, "start_col", selected = guess_column(c("start", "inicio", "hora inicio", "start.hour")))
+      updateSelectInput(session, "end_col", selected = guess_column(c("end", "fin", "hora fin", "end_time","final.hour")))
+      
+      # Detectar métricas numéricas candidatas
+      numeric_metrics <- cols[sapply(data[cols], is.numeric)]
+      updateSelectInput(session, "metric_col", choices = numeric_metrics, selected = character(0))
+    }
+    
+    update_mapped_columns(colnames(data))
     return(data)
   })
   
