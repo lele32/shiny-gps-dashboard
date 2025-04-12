@@ -88,10 +88,9 @@ ui <- fluidPage(
                           lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
                             tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
                           }),
-                          tags$div(class = "filter-column", selectInput("metric_box", "Select Metric:", choices = NULL)),
-                          tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_box"))
+                          tags$div(class = "filter-column", selectInput("metric_box", "Select Metrics:", choices = NULL, multiple = TRUE)),
                  ),
-                 plotlyOutput("boxplot_matchday")
+                 uiOutput("boxplot_matchday_ui")
         ),
         
         # 📦 Boxplot por Tarea
@@ -432,14 +431,24 @@ server <- function(input, output, session) {
   
   #Filtros aplicados a grafico de Boxplot de Métrica en MD
   output$filtro_metrica_valor_box <- renderUI({
-    req(read_data())
-    if (is.null(input$metric_box) || !(input$metric_box %in% colnames(read_data()))) return(NULL)
-    values <- suppressWarnings(as.numeric(read_data()[[input$metric_box]]))
-    values <- values[!is.na(values) & is.finite(values)]
-    if (length(values) == 0) return(NULL)
-    sliderInput("filtro_metrica_valor_box", paste("Filter", input$metric_box),
-                min = floor(min(values)), max = ceiling(max(values)),
-                value = c(floor(min(values)), ceiling(max(values))))
+    req(read_data(), input$metric_box)
+    sliders <- lapply(input$metric_box, function(metrica) {
+      if (!metrica %in% colnames(read_data())) return(NULL)
+      
+      values <- suppressWarnings(as.numeric(read_data()[[metrica]]))
+      values <- values[!is.na(values) & is.finite(values)]
+      if (length(values) == 0) return(NULL)
+      
+      sliderInput(
+        inputId = paste0("filtro_metrica_valor_box_", make.names(metrica)),
+        label = paste("Filtrar", metrica),
+        min = floor(min(values)),
+        max = ceiling(max(values)),
+        value = c(floor(min(values)), ceiling(max(values)))
+      )
+    })
+    
+    do.call(tagList, sliders)
   })
   
   # Filtro para valores de métrica en gráfico por Tarea
@@ -663,7 +672,7 @@ server <- function(input, output, session) {
   #' - Métrica (`metric_box` y `filtro_metrica_valor_box`)
   #'
   #' Retorna un subconjunto de datos filtrado.
-  filtro_data_box <- reactive({
+  filtro_data_box <- function(metrica, rango) {
     req(read_data())
     data <- read_data()
     
@@ -671,38 +680,29 @@ server <- function(input, output, session) {
     # Filtros categóricos
     # ────────────────────────────────────────────────────────────────
     
-    if (!is.null(input$player_col) && input$player_col %in% colnames(data) &&
-        !is.null(input$filtro_jugador_box)) {
+    if (!is.null(input$player_col) && input$player_col %in% colnames(data) && !is.null(input$filtro_jugador_box)) {
       data <- data[data[[input$player_col]] %in% input$filtro_jugador_box, ]
     }
-    
-    if (!is.null(input$position_col) && input$position_col %in% colnames(data) &&
-        !is.null(input$filtro_puesto_box)) {
+    if (!is.null(input$position_col) && input$position_col %in% colnames(data) && !is.null(input$filtro_puesto_box)) {
       data <- data[data[[input$position_col]] %in% input$filtro_puesto_box, ]
     }
-    
-    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) &&
-        !is.null(input$filtro_matchday_box)) {
+    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) && !is.null(input$filtro_matchday_box)) {
       data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_box, ]
     }
-    
-    if (!is.null(input$task_col) && input$task_col %in% colnames(data) &&
-        !is.null(input$filtro_tarea_box)) {
+    if (!is.null(input$task_col) && input$task_col %in% colnames(data) && !is.null(input$filtro_tarea_box)) {
       data <- data[data[[input$task_col]] %in% input$filtro_tarea_box, ]
     }
-    
-    if (!is.null(input$date_col) && input$date_col %in% colnames(data) &&
-        !is.null(input$filtro_fecha_box)) {
+    if (!is.null(input$date_col) && input$date_col %in% colnames(data) && !is.null(input$filtro_fecha_box)) {
       fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
       data <- data[!is.na(fechas) & fechas >= input$filtro_fecha_box[1] & fechas <= input$filtro_fecha_box[2], ]
     }
     
+    # Filtro por duración
     if (!is.null(input$filtro_duracion_input_box)) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
         dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
-      } else if (!is.null(input$start_col) && input$start_col != "None" &&
-                 !is.null(input$end_col) && input$end_col != "None" &&
+      } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
                  input$start_col %in% colnames(data) && input$end_col %in% colnames(data)) {
         hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
         hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
@@ -714,14 +714,15 @@ server <- function(input, output, session) {
       }
     }
     
-    if (!is.null(input$metric_box) && input$metric_box %in% colnames(data) &&
-        !is.null(input$filtro_metrica_valor_box)) {
-      metric_vals <- suppressWarnings(as.numeric(data[[input$metric_box]]))
-      data <- data[!is.na(metric_vals) & metric_vals >= input$filtro_metrica_valor_box[1] & metric_vals <= input$filtro_metrica_valor_box[2], ]
+    # Filtro por valor de la métrica actual
+    if (!is.null(metrica) && metrica %in% colnames(data) && !is.null(rango)) {
+      valores <- suppressWarnings(as.numeric(data[[metrica]]))
+      keep <- !is.na(valores) & valores >= rango[1] & valores <= rango[2]
+      data <- data[keep, ]
     }
     
     return(data)
-  })
+  }
   
   #' Reactive: Filtro para gráfico boxplot por Tarea
   #'
@@ -1021,7 +1022,7 @@ server <- function(input, output, session) {
     datatable(filtro_data(), options = list(pageLength = 10))
   })
   
-  # 🧠 UI dinámico: Gráfico + Filtro por cada métrica seleccionada
+  # 🧠 UI dinámico: Gráfico + Filtro por cada métrica seleccionada metrica en el tiempo
   output$barras_fecha_ui <- renderUI({
     req(input$metric, read_data())
     
@@ -1045,6 +1046,30 @@ server <- function(input, output, session) {
     })
     
     do.call(tagList, ui_blocks)
+  })
+  
+  # 🧠 UI dinámico: Gráfico + Filtro por cada métrica seleccionada boxplot por MD
+  output$boxplot_matchday_ui <- renderUI({
+    req(input$metric_box, read_data())
+    
+    lapply(input$metric_box, function(metrica) {
+      metrica_clean <- make.names(metrica)
+      values <- suppressWarnings(as.numeric(read_data()[[metrica]]))
+      values <- values[!is.na(values) & is.finite(values)]
+      
+      tagList(
+        tags$hr(),
+        tags$h4(paste("Boxplot:", metrica)),
+        sliderInput(
+          inputId = paste0("filtro_metrica_valor_box_", metrica_clean),
+          label = paste("Filtro de valores para", metrica),
+          min = floor(min(values)),
+          max = ceiling(max(values)),
+          value = c(floor(min(values)), ceiling(max(values)))
+        ),
+        plotlyOutput(outputId = paste0("boxplot_matchday_plot_", metrica_clean), height = "400px")
+      )
+    }) |> tagList()
   })
   
   #' Output: Tabla resumen de estadísticos descriptivos
@@ -1126,37 +1151,50 @@ server <- function(input, output, session) {
   #' Este gráfico muestra la distribución de una métrica seleccionada (`input$metric_box`)
   #' para cada `Match Day`, agrupando por jugador. Utiliza `ggplot2` y `plotly` para visualización
   #' interactiva. Los datos se filtran con `filtro_data_box()`, respetando filtros locales del tabPanel.
-  output$boxplot_matchday <- renderPlotly({
-    req(filtro_data_box(), input$metric_box)
-    data <- filtro_data_box()
+  observe({
+    req(input$metric_box, read_data())
     
-    data[[input$metric_box]] <- suppressWarnings(as.numeric(data[[input$metric_box]]))
-    data <- data[!is.na(data[[input$metric_box]]), ]
-    
-    plot_data <- data %>%
-      mutate(
-        MatchDay = as.factor(.data[[input$matchday_col]]),
-        Jugador = .data[[input$player_col]],
-        Valor = .data[[input$metric_box]],
-        tooltip = paste0("Jugador: ", Jugador, "<br>Match Day: ", MatchDay, "<br>", input$metric_box, ": ", round(Valor, 2))
-      )
-    
-    p <- ggplot(plot_data, aes(x = MatchDay, y = Valor, fill = MatchDay, text = tooltip)) +
-      geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black", alpha = 0.6) +
-      theme_minimal(base_size = 14) +
-      labs(
-        title = paste("Distribución de", input$metric_box, "por Match Day"),
-        x = "Match Day",
-        y = input$metric_box
-      ) +
-      theme(
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-        axis.title = element_text(face = "bold", size = 14),
-        axis.text = element_text(size = 12),
-        legend.position = "none"
-      )
-    
-    ggplotly(p, tooltip = "text")
+    for (metrica in input$metric_box) {
+      local({
+        metrica_local <- metrica
+        metrica_clean <- make.names(metrica_local)
+        plot_id <- paste0("boxplot_matchday_plot_", metrica_clean)
+        filtro_id <- paste0("filtro_metrica_valor_box_", metrica_clean)
+        
+        output[[plot_id]] <- renderPlotly({
+          data <- filtro_data_box(metrica_local, input[[filtro_id]])
+          req(data, input$matchday_col, input$player_col, metrica_local, input[[filtro_id]])
+          
+          data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
+          val_range <- input[[filtro_id]]
+          data <- data[!is.na(data[[metrica_local]]) & data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
+          
+          plot_data <- data %>%
+            mutate(
+              MatchDay = as.factor(.data[[input$matchday_col]]),
+              Jugador = .data[[input$player_col]],
+              Valor = .data[[metrica_local]],
+              tooltip = paste0("Jugador: ", Jugador, "<br>Match Day: ", MatchDay, "<br>", metrica_local, ": ", round(Valor, 2))
+            )
+          
+          p <- ggplot(plot_data, aes(x = MatchDay, y = Valor, fill = MatchDay, text = tooltip)) +
+            geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black", alpha = 0.6) +
+            theme_minimal(base_size = 14) +
+            labs(
+              title = paste("Distribución de", metrica_local, "por Match Day"),
+              x = "Match Day", y = metrica_local
+            ) +
+            theme(
+              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+              axis.title = element_text(face = "bold", size = 14),
+              axis.text = element_text(size = 12),
+              legend.position = "none"
+            )
+          
+          ggplotly(p, tooltip = "text")
+        })
+      })
+    }
   })
   
   #' Output: Gráfico Boxplot por Tarea
