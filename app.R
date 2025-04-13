@@ -17,42 +17,95 @@ library(rsconnect)       # Deployment
 library(slider)          # Rolling window stats
 library(shinyWidgets)    # Custom inputs
 library(tidyr)           # Data reshaping
+library(fontawesome)     # íconos modernos
 
 # =======================================================
 # ⚙️ OPTIONS
 # =======================================================
 options(shiny.maxRequestSize = 500 * 1024^2)  # Allow large file uploads
 
-# =======================================================
-# 🎨 THEME
-# =======================================================
-tema_gps <- bs_theme(
+# ──────────────────────────────────────────────
+# 🎨 Tema visual personalizado LIFT
+# ──────────────────────────────────────────────
+tema_gps <- bslib::bs_theme(
   version = 5,
   bootswatch = "flatly",
-  base_font = font_google("Open Sans"),
-  heading_font = font_google("Roboto Slab")
+  base_font = bslib::font_google("Open Sans"),
+  heading_font = bslib::font_google("Righteous"),
+  bg = "#1E1E1E",        # Negro LIFT
+  fg = "#ffffff",        # Blanco LIFT
+  primary = "#fd002b",   # Rojo LIFT
+  secondary = "#c8c8c8"  # Gris LIFT
 )
 
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────
 # 🧩 Interfaz de usuario (UI)
-# ─────────────────────────────────────────────────────────────
+# ──────────────────────────────────────────────
 ui <- fluidPage(
-  theme = shinytheme("flatly"),
+  theme = tema_gps,
   
-  # Estilo para los filtros organizados en filas y columnas
+  # Estilos personalizados y fuentes
   tags$head(
-    tags$style(HTML(".filter-row { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; }
-                    .filter-column { flex: 1 1 45%; }"))
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Righteous&family=Open+Sans&display=swap"),
+    tags$style(HTML("
+    h2 {
+      font-family: 'Righteous', cursive;
+      color: #fd002b;
+      text-transform: uppercase;
+      font-size: 36px;
+    }
+    .filter-row { 
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 20px; 
+      margin-bottom: 20px; 
+    }
+    .filter-column { 
+      flex: 1 1 45%; 
+    }
+    .shiny-input-container {
+      font-family: 'Neo Sans Std', sans-serif;
+      color: #ffffff;
+    }
+    .tabbable > .nav-tabs > li > a {
+      color: #ffffff;
+      background-color: #1E1E1E;
+      border-color: #fd002b;
+    }
+    .tabbable > .nav-tabs > li.active > a {
+      background-color: #fd002b;
+      color: #ffffff;
+    }
+    /* Header DataTables */
+    table.dataTable thead th {
+      background-color: #fd002b !important;
+      color: #ffffff !important;
+      font-family: 'Righteous', cursive !important;
+      font-size: 15px !important;
+      font-weight: bold !important;
+    }
+    /* Cuerpo de la tabla */
+    table.dataTable tbody td {
+      background-color: #1e1e1e !important;
+      color: #ffffff !important;
+      font-family: 'Open Sans', sans-serif !important;
+      font-size: 14px !important;
+    }
+    /* Hover en filas */
+    table.dataTable tbody tr:hover {
+      background-color: #2a2a2a !important;
+    }
+  "))
   ),
   
-  # Logo y título principal
+  # Encabezado principal
   tags$div(
-    style = "text-align: center; padding: 10px;",
-    tags$img(src = "logo.png", height = "80px", style = "margin-bottom: 20px;"),
-    tags$h2("📊 GPS Data Dashboard", style = "margin-top: 10px;")
+    style = "text-align: center; padding: 20px;",
+    tags$img(src = "logo.png", height = "80px", style = "margin-bottom: 10px;"),
+    tags$h2("📊 GPS Data Dashboard")
   ),
   
-  # Estructura de layout: Sidebar para inputs, Main panel para los tabs
+  # Layout principal con sidebar
   sidebarLayout(
     sidebarPanel(
       fileInput("file", "Upload GPS Data", accept = c(".csv", ".xlsx", ".json")),
@@ -64,13 +117,8 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(
         
-        # 🗃 Tabla principal de datos
         tabPanel("Data Table", DTOutput("table")),
         
-        # 📈 Estadísticas resumen
-        tabPanel("Summary Stats", DTOutput("summary_table")),
-        
-        # 📊 Métrica promedio por fecha y jugador
         tabPanel("📊 Métrica en el tiempo",
                  tags$div(class = "filter-row",
                           lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
@@ -81,7 +129,6 @@ ui <- fluidPage(
                  uiOutput("barras_fecha_ui")
         ),
         
-        # 📦 Boxplot por Match Day
         tabPanel("📦 Boxplot por Match Day",
                  tags$div(class = "filter-row",
                           lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
@@ -92,7 +139,6 @@ ui <- fluidPage(
                  uiOutput("boxplot_matchday_ui")
         ),
         
-        # 📦 Boxplot por Tarea
         tabPanel("📦 Boxplot por Tarea",
                  tags$div(class = "filter-row",
                           lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
@@ -103,7 +149,6 @@ ui <- fluidPage(
                  uiOutput("boxplot_task_ui")
         ),
         
-        # 📈 Z-score por Fecha
         tabPanel("📈 Z-score por Fecha",
                  tags$div(class = "filter-row",
                           lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
@@ -114,7 +159,6 @@ ui <- fluidPage(
                  uiOutput("zscore_plot_ui")
         ),
         
-        # 🧪 Análisis de sesión puntual
         tabPanel("🧪 Análisis de sesión",
                  tags$div(class = "filter-row",
                           lapply(c("jugador_sesion", "puesto_sesion", "matchday_sesion", "tarea_sesion", "duracion_sesion"), function(id) {
@@ -126,35 +170,19 @@ ui <- fluidPage(
                  ),
                  uiOutput("graficos_metricas_sesion")
         ),
-        # 📊 Análisis competitivo (último partido vs media móvil previa)
+        
         tabPanel("📊 Competitive Analysis",
                  tags$div(class = "filter-row",
-                          
-                          # Filtros categóricos
                           tags$div(class = "filter-column", uiOutput("filtro_jugador_z_comp")),
                           tags$div(class = "filter-column", uiOutput("filtro_puesto_z_comp")),
                           tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
-                          
-                          # Filtro de fecha
                           tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
-                          # Filtro de duración
                           tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
-                          
-                          # Selección de métrica y su rango
                           tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                          
-                          # Selección de tamaño de ventana móvil
-                          tags$div(class = "filter-column",
-                                   sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):",
-                                               min = 3, max = 5, value = 3, step = 1))
+                          tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
                  ),
-                 
-                 # Gráfico facetado de Z-score competitivo
                  uiOutput("zscore_comp_plot_ui"),
-                 
                  tags$hr(),
-                 
-                 # Tabla resumen con valores brutos y z-score
                  DTOutput("tabla_resumen_comp")
         )
       )
@@ -571,6 +599,33 @@ server <- function(input, output, session) {
                 min = floor(min(values)),
                 max = ceiling(max(values)),
                 value = c(floor(min(values)), ceiling(max(values))))
+  })
+  
+  # =======================================================
+  # 📂 TABLA PRINCIPAL DE DATOS
+  # =======================================================
+  output$table <- renderDT({
+    req(read_data())
+    
+    datatable(
+      read_data(),
+      options = list(
+        pageLength = 15,
+        scrollX = TRUE,
+        dom = 'tip',
+        class = 'cell-border stripe hover compact',
+        autoWidth = TRUE
+      ),
+      rownames = FALSE,
+      class = 'display nowrap cell-border compact stripe'
+    ) %>%
+      formatStyle(
+        columns = names(read_data()),
+        backgroundColor = '#1e1e1e',
+        color = '#ffffff',
+        fontFamily = 'Open Sans',
+        fontSize = '14px'
+      )
   })
   
   # =======================================================
@@ -1118,22 +1173,6 @@ server <- function(input, output, session) {
     }) |> tagList()
   })
   
-  #' Output: Tabla resumen de estadísticos descriptivos
-  #'
-  #' Calcula media, mínimo, máximo y desvío estándar para la métrica seleccionada,
-  #' sobre los datos ya filtrados. Se presenta en un `datatable`.
-  output$summary_table <- renderDT({
-    req(filtro_data(), input$metric)
-    data <- filtro_data()
-    metric_vals <- suppressWarnings(as.numeric(data[[input$metric]]))
-    summary_stats <- data.frame(
-      Mean = mean(metric_vals, na.rm = TRUE),
-      Min = min(metric_vals, na.rm = TRUE),
-      Max = max(metric_vals, na.rm = TRUE),
-      SD = sd(metric_vals, na.rm = TRUE)
-    )
-    datatable(summary_stats)
-  })
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
   #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
@@ -1169,24 +1208,38 @@ server <- function(input, output, session) {
               Fecha = factor(Fecha, levels = sort(unique(Fecha))),
               tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Promedio: ", round(Promedio, 2))
             )
-          
           p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador, text = tooltip)) +
             geom_col(position = position_dodge2(preserve = "single"), width = 0.7) +
             scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 5)]) +
-            theme_minimal(base_size = 14) +
+            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$Jugador)))) +
             labs(
               title = paste("Promedio de", metrica_local, "por Fecha y Jugador"),
               x = "Fecha", y = metrica_local
             ) +
+            theme_minimal(base_size = 14) +
             theme(
-              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 9),
-              axis.text.y = element_text(size = 12),
-              axis.title = element_text(face = "bold", size = 14),
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-              legend.position = "right"
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.grid.major = element_line(color = "#2c2c2c"),
+              panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              plot.title = element_text(
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Righteous"
+              ),
+              legend.position = "none",
+              legend.text = element_text(color = "#ffffff"),
+              legend.title = element_text(color = "#ffffff", face = "bold")
             )
           
-          ggplotly(p, tooltip = "text")
+          ggplotly(p, tooltip = "text") %>%
+            layout(
+              plot_bgcolor = "#1e1e1e",
+              paper_bgcolor = "#1e1e1e",
+              font = list(color = "#ffffff")
+            )
         })
       })
     }
@@ -1223,17 +1276,33 @@ server <- function(input, output, session) {
               tooltip = paste0("Jugador: ", Jugador, "<br>Match Day: ", MatchDay, "<br>", metrica_local, ": ", round(Valor, 2))
             )
           
-          p <- ggplot(plot_data, aes(x = MatchDay, y = Valor, fill = MatchDay, text = tooltip)) +
-            geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black", alpha = 0.6) +
+          p <- ggplot(plot_data, aes(x = MatchDay, y = Valor, text = tooltip)) +
+            geom_boxplot(
+              aes(fill = MatchDay),
+              outlier.shape = 21,             # Forma con borde + relleno
+              outlier.size = 2,
+              outlier.fill = "#ffffff",       # Color interior blanco
+              outlier.color = "#ffffff",      # Borde también blanco (o "#fd002b" si querés contraste)
+              alpha = 0.7
+            ) +
+            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$MatchDay)))) +
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Distribución de", metrica_local, "por Match Day"),
               x = "Match Day", y = metrica_local
             ) +
             theme(
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-              axis.title = element_text(face = "bold", size = 14),
-              axis.text = element_text(size = 12),
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.grid.major = element_line(color = "#2c2c2c"),
+              panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              plot.title = element_text(
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Righteous"
+              ),
               legend.position = "none"
             )
           
@@ -1274,18 +1343,33 @@ server <- function(input, output, session) {
               tooltip = paste0("Jugador: ", Jugador, "<br>Tarea: ", Tarea, "<br>", metrica_local, ": ", round(Valor, 2))
             )
           
-          p <- ggplot(plot_data, aes(x = Tarea, y = Valor, fill = Tarea, text = tooltip)) +
-            geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black", alpha = 0.6) +
+          p <- ggplot(plot_data, aes(x = Tarea, y = Valor, text = tooltip)) +
+            geom_boxplot(
+              aes(fill = Tarea),
+              outlier.shape = 21,
+              outlier.size = 2,
+              outlier.fill = "#ffffff",
+              outlier.color = "#ffffff",
+              alpha = 0.7
+            ) +
+            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$Tarea)))) +
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Distribución de", metrica_local, "por Tarea"),
               x = "Tarea", y = metrica_local
             ) +
             theme(
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-              axis.title = element_text(face = "bold", size = 14),
-              axis.text = element_text(size = 12),
-              axis.text.x = element_text(angle = 45),
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.grid.major = element_line(color = "#2c2c2c"),
+              panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              plot.title = element_text(
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Righteous"
+              ),
               legend.position = "none"
             )
           
@@ -1376,7 +1460,7 @@ server <- function(input, output, session) {
                      ymin = 1.5, ymax = Inf, fill = fondo_rojo, alpha = 0.4) +
             annotate("rect", xmin = fecha_min, xmax = fecha_max,
                      ymin = -Inf, ymax = -1.5, fill = fondo_verde, alpha = 0.4) +
-            geom_smooth(aes(group = Jugador),method = "loess", span = 0.9, se = FALSE, color = "#34495e", linewidth = 0.6)+
+            geom_smooth(aes(group = Jugador), method = "loess", span = 0.9, se = FALSE, color = "#34495e", linewidth = 0.6) +
             geom_point(size = 1.2) +
             scale_color_manual(values = colores_base, name = "Z-score") +
             geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
@@ -1387,11 +1471,21 @@ server <- function(input, output, session) {
               x = "Fecha", y = "Z-score"
             ) +
             theme(
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-              axis.title = element_text(face = "bold", size = 14),
-              axis.text = element_text(size = 12),
-              axis.text.x = element_text(angle = 45),
-              strip.text = element_text(face = "bold", size = 13)
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.grid.major = element_line(color = "#2c2c2c"),
+              panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              plot.title = element_text(
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Righteous"
+              ),
+              strip.text = element_text(face = "bold", size = 13, color = "#ffffff"),
+              legend.position = "bottom",
+              legend.text = element_text(color = "#ffffff"),
+              legend.title = element_text(color = "#ffffff", face = "bold")
             )
           
           ggplotly(p, tooltip = "text") %>%
@@ -1471,13 +1565,13 @@ server <- function(input, output, session) {
           p <- ggplot(resumen, aes(x = Jugador, y = Valor, fill = Valor, text = paste0("Jugador: ", Jugador, "<br>Valor: ", round(Valor, 2)))) +
             annotate("rect", xmin = -Inf, xmax = Inf,
                      ymin = media - sd_val, ymax = media + sd_val,
-                     alpha = 0.1, fill = "#dfe6e9") +
+                     alpha = 0.2, fill = "#2c2c2c") +
             geom_col(show.legend = FALSE) +
-            geom_hline(yintercept = media, linetype = "dashed", color = "#2c3e50", linewidth = 1) +
-            geom_hline(yintercept = media + sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
-            geom_hline(yintercept = media - sd_val, linetype = "dotted", color = "#95a5a6", linewidth = 0.8) +
-            geom_hline(yintercept = media + 2 * sd_val, linetype = "dotted", color = "#7f8c8d", linewidth = 0.8) +
-            geom_hline(yintercept = media - 2 * sd_val, linetype = "dotted", color = "#7f8c8d", linewidth = 0.8) +
+            geom_hline(yintercept = media, linetype = "dashed", color = "#ffffff", linewidth = 1) +
+            geom_hline(yintercept = media + sd_val, linetype = "dotted", color = "#ffffff", linewidth = 0.8) +
+            geom_hline(yintercept = media - sd_val, linetype = "dotted", color = "#ffffff", linewidth = 0.8) +
+            geom_hline(yintercept = media + 2 * sd_val, linetype = "dotted", color = "#888888", linewidth = 0.8) +
+            geom_hline(yintercept = media - 2 * sd_val, linetype = "dotted", color = "#888888", linewidth = 0.8) +
             scale_fill_gradient(low = "#3498db", high = "#e74c3c") +
             theme_minimal(base_size = 14) +
             labs(
@@ -1485,9 +1579,17 @@ server <- function(input, output, session) {
               y = metrica_local, x = "Jugador"
             ) +
             theme(
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-              axis.title = element_text(face = "bold", size = 14),
-              axis.text.x = element_text(angle = 45, hjust = 1, size = 12)
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.grid.major = element_line(color = "#2c2c2c"),
+              panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              plot.title = element_text(
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Righteous"
+              )
             )
           
           ggplotly(p, tooltip = "text")
@@ -1622,9 +1724,9 @@ server <- function(input, output, session) {
           
           p <- ggplot(data_final, aes(x = Jugador, y = z, fill = z_color, text = tooltip)) +
             geom_col(width = 0.6) +
-            geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
-            geom_hline(yintercept = 1.5, linetype = "dotted", color = "gray50", linewidth = 0.8) +
-            geom_hline(yintercept = -1.5, linetype = "dotted", color = "gray50", linewidth = 0.8) +
+            geom_hline(yintercept = 0, linetype = "dashed", color = "#ffffff") +
+            geom_hline(yintercept = 1.5, linetype = "dotted", color = "#ffffff", linewidth = 0.8) +
+            geom_hline(yintercept = -1.5, linetype = "dotted", color = "#ffffff", linewidth = 0.8) +
             scale_fill_manual(values = colores, name = "Z-score") +
             theme_minimal(base_size = 14) +
             labs(
@@ -1632,10 +1734,20 @@ server <- function(input, output, session) {
               x = "Jugador", y = "Z-score"
             ) +
             theme(
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-              axis.title = element_text(face = "bold", size = 14),
-              axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
-              legend.position = "right"
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.grid.major = element_line(color = "#2c2c2c"),
+              panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              plot.title = element_text(
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Righteous"
+              ),
+              legend.position = "right",
+              legend.text = element_text(color = "#ffffff"),
+              legend.title = element_text(color = "#ffffff", face = "bold")
             )
           
           ggplotly(p, tooltip = "text")
@@ -1758,9 +1870,25 @@ server <- function(input, output, session) {
     # Tabla final
     datatable(
       resumen_final,
-      options = list(pageLength = 10, scrollX = TRUE),
-      rownames = FALSE
+      options = list(
+        pageLength = 10,
+        scrollX = TRUE,
+        dom = 'tip',
+        class = 'cell-border stripe hover compact',
+        autoWidth = TRUE
+      ),
+      rownames = FALSE,
+      class = 'display nowrap cell-border compact stripe'
     ) %>%
+      # 🎨 Estilo general de celdas
+      formatStyle(
+        columns = names(resumen_final),
+        backgroundColor = '#1e1e1e',
+        color = '#ffffff',
+        fontFamily = 'Open Sans',
+        fontSize = '14px'
+      ) %>%
+      # 🎯 Z-score coloreado
       formatStyle(
         'Z_score',
         backgroundColor = styleInterval(
@@ -1775,4 +1903,5 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
+
 
