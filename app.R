@@ -99,10 +99,9 @@ ui <- fluidPage(
                           lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
                             tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
                           }),
-                          tags$div(class = "filter-column", selectInput("metric_task", "Select Metric:", choices = NULL)),
-                          tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_task"))
+                          tags$div(class = "filter-column", selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE)),
                  ),
-                 plotlyOutput("boxplot_task")
+                 uiOutput("boxplot_task_ui")
         ),
         
         # 📈 Z-score por Fecha
@@ -737,14 +736,13 @@ server <- function(input, output, session) {
   #' - Métrica (`metric_task` y `filtro_metrica_valor_task`)
   #'
   #' Retorna los datos filtrados.
-  filtro_data_task <- reactive({
+  filtro_data_task <- function(metrica, rango) {
     req(read_data())
     data <- read_data()
     
     # ────────────────────────────────────────────────────────────────
     # Filtros categóricos
     # ────────────────────────────────────────────────────────────────
-    
     
     if (!is.null(input$player_col) && input$player_col %in% colnames(data) &&
         !is.null(input$filtro_jugador_task)) {
@@ -789,14 +787,15 @@ server <- function(input, output, session) {
       }
     }
     
-    if (!is.null(input$metric_task) && input$metric_task %in% colnames(data) &&
-        !is.null(input$filtro_metrica_valor_task)) {
-      metric_vals <- suppressWarnings(as.numeric(data[[input$metric_task]]))
-      data <- data[!is.na(metric_vals) & metric_vals >= input$filtro_metrica_valor_task[1] & metric_vals <= input$filtro_metrica_valor_task[2], ]
+    # Filtrado por valores de la métrica seleccionada
+    if (!is.null(metrica) && metrica %in% colnames(data) && !is.null(rango)) {
+      valores <- suppressWarnings(as.numeric(data[[metrica]]))
+      keep <- !is.na(valores) & valores >= rango[1] & valores <= rango[2]
+      data <- data[keep, ]
     }
     
     return(data)
-  })
+  }
   
   #' Reactive: Filtro de datos para el gráfico de Z-score
   #'
@@ -1071,6 +1070,29 @@ server <- function(input, output, session) {
       )
     }) |> tagList()
   })
+  # 🧠 UI dinámico: Gráfico + Filtro por cada métrica seleccionada boxplot por Tarea
+  output$boxplot_task_ui <- renderUI({
+    req(input$metric_task, read_data())
+    
+    lapply(input$metric_task, function(metrica) {
+      metrica_clean <- make.names(metrica)
+      values <- suppressWarnings(as.numeric(read_data()[[metrica]]))
+      values <- values[!is.na(values) & is.finite(values)]
+      
+      tagList(
+        tags$hr(),
+        tags$h4(paste("Boxplot:", metrica)),
+        sliderInput(
+          inputId = paste0("filtro_metrica_valor_task_", metrica_clean),
+          label = paste("Filtro de valores para", metrica),
+          min = floor(min(values)),
+          max = ceiling(max(values)),
+          value = c(floor(min(values)), ceiling(max(values)))
+        ),
+        plotlyOutput(outputId = paste0("boxplot_task_plot_", metrica_clean), height = "400px")
+      )
+    }) |> tagList()
+  })
   
   #' Output: Tabla resumen de estadísticos descriptivos
   #'
@@ -1202,38 +1224,51 @@ server <- function(input, output, session) {
   #' Este gráfico muestra la distribución de una métrica seleccionada (`input$metric_task`)
   #' para cada tarea definida en `input$task_col`, agrupando por jugador. Usa `filtro_data_task()`
   #' para aplicar los filtros correspondientes y `ggplotly()` para generar una visualización interactiva.
-  output$boxplot_task <- renderPlotly({
-    req(filtro_data_task(), input$metric_task, input$task_col)
-    data <- filtro_data_task()
+  observe({
+    req(input$metric_task)
     
-    data[[input$metric_task]] <- suppressWarnings(as.numeric(data[[input$metric_task]]))
-    data <- data[!is.na(data[[input$metric_task]]), ]
-    
-    plot_data <- data %>%
-      mutate(
-        Tarea = as.factor(.data[[input$task_col]]),
-        Jugador = .data[[input$player_col]],
-        Valor = .data[[input$metric_task]],
-        tooltip = paste0("Jugador: ", Jugador, "<br>Tarea: ", Tarea, "<br>", input$metric_task, ": ", round(Valor, 2))
-      )
-    
-    p <- ggplot(plot_data, aes(x = Tarea, y = Valor, fill = Tarea, text = tooltip)) +
-      geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black", alpha = 0.6) +
-      theme_minimal(base_size = 14) +
-      labs(
-        title = paste("Distribución de", input$metric_task, "por Tarea"),
-        x = "Tarea",
-        y = input$metric_task
-      ) +
-      theme(
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-        axis.title = element_text(face = "bold", size = 14),
-        axis.text = element_text(size = 12),
-        axis.text.x = element_text(angle = 45),
-        legend.position = "none"
-      )
-    
-    ggplotly(p, tooltip = "text")
+    for (metrica in input$metric_task) {
+      local({
+        metrica_local <- metrica
+        metrica_clean <- make.names(metrica_local)
+        plot_id <- paste0("boxplot_task_plot_", metrica_clean)
+        filtro_id <- paste0("filtro_metrica_valor_task_", metrica_clean)
+        
+        output[[plot_id]] <- renderPlotly({
+          req(input[[filtro_id]])
+          data <- filtro_data_task(metrica_local, input[[filtro_id]])
+          
+          data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
+          val_range <- input[[filtro_id]]
+          data <- data[!is.na(data[[metrica_local]]) & data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
+          
+          plot_data <- data %>%
+            mutate(
+              Tarea = as.factor(.data[[input$task_col]]),
+              Jugador = .data[[input$player_col]],
+              Valor = .data[[metrica_local]],
+              tooltip = paste0("Jugador: ", Jugador, "<br>Tarea: ", Tarea, "<br>", metrica_local, ": ", round(Valor, 2))
+            )
+          
+          p <- ggplot(plot_data, aes(x = Tarea, y = Valor, fill = Tarea, text = tooltip)) +
+            geom_boxplot(outlier.shape = 21, outlier.size = 1.5, outlier.color = "black", alpha = 0.6) +
+            theme_minimal(base_size = 14) +
+            labs(
+              title = paste("Distribución de", metrica_local, "por Tarea"),
+              x = "Tarea", y = metrica_local
+            ) +
+            theme(
+              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+              axis.title = element_text(face = "bold", size = 14),
+              axis.text = element_text(size = 12),
+              axis.text.x = element_text(angle = 45),
+              legend.position = "none"
+            )
+          
+          ggplotly(p, tooltip = "text")
+        })
+      })
+    }
   })
   
   #' Output: Gráfico de Z-score por jugador
@@ -1619,3 +1654,4 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
