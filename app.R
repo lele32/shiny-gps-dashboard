@@ -110,10 +110,9 @@ ui <- fluidPage(
                           lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
                             tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
                           }),
-                          tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL)),
-                          tags$div(class = "filter-column", uiOutput("filtro_metrica_valor_z"))
+                          tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE))
                  ),
-                 plotlyOutput("zscore_plot")
+                 uiOutput("zscore_plot_ui")
         ),
         
         # 🧪 Análisis de sesión puntual
@@ -465,15 +464,26 @@ server <- function(input, output, session) {
   
   # Filtro para valores de métrica en gráfico Z-score
   output$filtro_metrica_valor_z <- renderUI({
-    req(read_data(), input$metric_z)
-    if (!(input$metric_z %in% colnames(read_data()))) return(NULL)
-    values <- suppressWarnings(as.numeric(read_data()[[input$metric_z]]))
-    values <- values[!is.na(values) & is.finite(values)]
-    if (length(values) == 0) return(NULL)
+    req(input$metric_z, read_data())
     
-    sliderInput("filtro_metrica_valor_z", paste("Filter", input$metric_z),
-                min = floor(min(values)), max = ceiling(max(values)),
-                value = c(floor(min(values)), ceiling(max(values))))
+    sliders <- lapply(input$metric_z, function(metrica) {
+      metrica_clean <- make.names(metrica)
+      if (!(metrica %in% names(read_data()))) return(NULL)
+      
+      values <- suppressWarnings(as.numeric(read_data()[[metrica]]))
+      values <- values[!is.na(values) & is.finite(values)]
+      if (length(values) == 0) return(NULL)
+      
+      sliderInput(
+        inputId = paste0("filtro_metrica_valor_z_", metrica_clean),
+        label = paste("Filtro de valores para", metrica),
+        min = floor(min(values)),
+        max = ceiling(max(values)),
+        value = c(floor(min(values)), ceiling(max(values)))
+      )
+    })
+    
+    do.call(tagList, sliders)
   })
   
   # Filtro para valores de métrica en análisis de sesión
@@ -810,40 +820,29 @@ server <- function(input, output, session) {
   #' - Métrica (`metric_z` y `filtro_metrica_valor_z`)
   #'
   #' Devuelve un `data.frame` con los datos filtrados listos para calcular z-scores.
-  filtro_data_z <- reactive({
+  filtro_data_z <- function(metrica, rango) {
     req(read_data())
     data <- read_data()
-    
     # ────────────────────────────────────────────────
     # Filtros categóricos
     # ────────────────────────────────────────────────
     
-    if (!is.null(input$player_col) && input$player_col %in% colnames(data) &&
-        !is.null(input$filtro_jugador_z)) {
+    if (!is.null(input$player_col) && input$player_col %in% colnames(data) && !is.null(input$filtro_jugador_z)) {
       data <- data[data[[input$player_col]] %in% input$filtro_jugador_z, ]
     }
-    
-    if (!is.null(input$position_col) && input$position_col %in% colnames(data) &&
-        !is.null(input$filtro_puesto_z)) {
+    if (!is.null(input$position_col) && input$position_col %in% colnames(data) && !is.null(input$filtro_puesto_z)) {
       data <- data[data[[input$position_col]] %in% input$filtro_puesto_z, ]
     }
-    
-    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) &&
-        !is.null(input$filtro_matchday_z)) {
+    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) && !is.null(input$filtro_matchday_z)) {
       data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_z, ]
     }
-    
-    if (!is.null(input$task_col) && input$task_col %in% colnames(data) &&
-        !is.null(input$filtro_tarea_z)) {
+    if (!is.null(input$task_col) && input$task_col %in% colnames(data) && !is.null(input$filtro_tarea_z)) {
       data <- data[data[[input$task_col]] %in% input$filtro_tarea_z, ]
     }
-    
-    if (!is.null(input$date_col) && input$date_col %in% colnames(data) &&
-        !is.null(input$filtro_fecha_z)) {
+    if (!is.null(input$date_col) && input$date_col %in% colnames(data) && !is.null(input$filtro_fecha_z)) {
       fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
       data <- data[!is.na(fechas) & fechas >= input$filtro_fecha_z[1] & fechas <= input$filtro_fecha_z[2], ]
     }
-    
     if (!is.null(input$filtro_duracion_input_z)) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
@@ -861,14 +860,15 @@ server <- function(input, output, session) {
       }
     }
     
-    if (!is.null(input$metric_z) && input$metric_z %in% colnames(data) &&
-        !is.null(input$filtro_metrica_valor_z)) {
-      metric_vals <- suppressWarnings(as.numeric(data[[input$metric_z]]))
-      data <- data[!is.na(metric_vals) & metric_vals >= input$filtro_metrica_valor_z[1] & metric_vals <= input$filtro_metrica_valor_z[2], ]
+    # Filtrar por valores de la métrica específica
+    if (!is.null(metrica) && metrica %in% colnames(data) && !is.null(rango)) {
+      vals <- suppressWarnings(as.numeric(data[[metrica]]))
+      keep <- !is.na(vals) & vals >= rango[1] & vals <= rango[2]
+      data <- data[keep, ]
     }
     
     return(data)
-  })
+  }
   
   #' Reactive: Filtro de datos para análisis de sesión específica
   #'
@@ -1094,6 +1094,30 @@ server <- function(input, output, session) {
     }) |> tagList()
   })
   
+  # 🧠 UI dinámico: Gráfico + Filtro para cada métrica seleccionada en el tab de Z-score
+  output$zscore_plot_ui <- renderUI({
+    req(input$metric_z, read_data())
+    
+    lapply(input$metric_z, function(metrica) {
+      metrica_clean <- make.names(metrica)
+      values <- suppressWarnings(as.numeric(read_data()[[metrica]]))
+      values <- values[!is.na(values) & is.finite(values)]
+      
+      tagList(
+        tags$hr(),
+        tags$h4(paste("Z-score:", metrica)),
+        sliderInput(
+          inputId = paste0("filtro_metrica_valor_z_", metrica_clean),
+          label = paste("Filtro de valores para", metrica),
+          min = floor(min(values)),
+          max = ceiling(max(values)),
+          value = c(floor(min(values)), ceiling(max(values)))
+        ),
+        plotlyOutput(outputId = paste0("zscore_plot_", metrica_clean), height = "400px")
+      )
+    }) |> tagList()
+  })
+  
   #' Output: Tabla resumen de estadísticos descriptivos
   #'
   #' Calcula media, mínimo, máximo y desvío estándar para la métrica seleccionada,
@@ -1277,76 +1301,104 @@ server <- function(input, output, session) {
   #' calculado a partir de la media y desvío estándar global por jugador (no media móvil).
   #' Las facetas muestran un gráfico individual por jugador, y se colorea según valores altos,
   #' bajos o neutros. Incluye loess smoothing por jugador y áreas coloreadas para zonas críticas.
-  output$zscore_plot <- renderPlotly({
-    req(filtro_data_z(), input$metric_z, input$player_col, input$date_col)
+  observe({
+    req(input$metric_z)
     
-    data <- filtro_data_z()
-    
-    # Parsear fechas y métrica
-    data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-    data[[input$metric_z]] <- suppressWarnings(as.numeric(data[[input$metric_z]]))
-    data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[input$metric_z]]), ]
-    
-    # Calcular Z-score global por jugador
-    z_data <- data %>%
-      arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
-      group_by(Jugador = .data[[input$player_col]]) %>%
-      mutate(
-        Valor = .data[[input$metric_z]],
-        media_jugador = mean(Valor, na.rm = TRUE),
-        sd_jugador = sd(Valor, na.rm = TRUE),
-        z = (Valor - media_jugador) / sd_jugador,
-        Fecha = as.Date(.data[[input$date_col]]),
-        z_color = case_when(
-          z >= 1.5 ~ "Alto",
-          z <= -1.5 ~ "Bajo",
-          TRUE ~ "Neutral"
-        ),
-        tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Z-score: ", round(z, 2))
-      ) %>%
-      ungroup() %>%
-      filter(!is.na(z), is.finite(z))
-    
-    # Jugadores a mostrar
-    jugadores_disponibles <- unique(z_data$Jugador)
-    jugadores_default <- jugadores_disponibles[1:min(12, length(jugadores_disponibles))]
-    jugadores_seleccionados <- if (!is.null(input$filtro_jugador_z)) input$filtro_jugador_z else jugadores_default
-    z_data <- z_data %>% filter(Jugador %in% jugadores_seleccionados)
-    
-    # Paleta de colores
-    colores_base <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
-    fondo_rojo  <- "#fdecea"
-    fondo_verde <- "#eafaf1"
-    
-    fecha_min <- min(z_data$Fecha, na.rm = TRUE)
-    fecha_max <- max(z_data$Fecha, na.rm = TRUE)
-    
-    # Gráfico
-    p <- ggplot(z_data, aes(x = Fecha, y = z, text = tooltip, color = z_color)) +
-      annotate("rect", xmin = fecha_min, xmax = fecha_max,
-               ymin = 1.5, ymax = Inf, fill = fondo_rojo, alpha = 0.4) +
-      annotate("rect", xmin = fecha_min, xmax = fecha_max,
-               ymin = -Inf, ymax = -1.5, fill = fondo_verde, alpha = 0.4) +
-      geom_smooth(aes(group = Jugador),method = "loess", span = 0.9, se = FALSE, color = "#34495e", linewidth = 0.6)+
-      geom_point(size = 1) +
-      scale_color_manual(values = colores_base, name = "Z-score") +
-      geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
-      facet_wrap(~Jugador, scales = "free_y", ncol = 4) +
-      theme_minimal(base_size = 14) +
-      labs(
-        title = paste("Z-score de", input$metric_z, "por jugador"),
-        x = "Fecha", y = "Z-score"
-      ) +
-      theme(
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
-        axis.title = element_text(face = "bold", size = 14),
-        axis.text = element_text(size = 12),
-        axis.text.x = element_text(angle = 45),
-        strip.text = element_text(face = "bold", size = 13)
-      )
-    
-    ggplotly(p, tooltip = "text") %>%
-      layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
+    for (metrica in input$metric_z) {
+      local({
+        metrica_local <- metrica
+        metrica_clean <- make.names(metrica_local)
+        plot_id <- paste0("zscore_plot_", metrica_clean)
+        filtro_id <- paste0("filtro_metrica_valor_z_", metrica_clean)
+        
+        output[[plot_id]] <- renderPlotly({
+          req(input[[filtro_id]], input$player_col, input$date_col)
+          
+          # Llamamos a filtro_data_z pasando los argumentos correctos
+          data <- filtro_data_z(metrica = metrica_local, rango = input[[filtro_id]])
+          
+          # Validación
+          if (!(metrica_local %in% names(data))) return(NULL)
+          
+          data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+          data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
+          data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[metrica_local]]), ]
+          
+          
+          # Filtrar por rango de valores
+          val_range <- input[[filtro_id]]
+          data <- data[data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
+          
+          # Calcular z-score por jugador
+          z_data <- data %>%
+            arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
+            group_by(Jugador = .data[[input$player_col]]) %>%
+            mutate(
+              Valor = .data[[metrica_local]],
+              media_jugador = mean(Valor, na.rm = TRUE),
+              sd_jugador = sd(Valor, na.rm = TRUE),
+              z = (Valor - media_jugador) / sd_jugador,
+              Fecha = as.Date(.data[[input$date_col]]),
+              z_color = case_when(
+                z >= 1.5 ~ "Alto",
+                z <= -1.5 ~ "Bajo",
+                TRUE ~ "Neutral"
+              ),
+              tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Z-score: ", round(z, 2))
+            ) %>%
+            ungroup() %>%
+            filter(!is.na(z), is.finite(z))
+          
+          # Filtrar jugadores: mostrar solo 12 por defecto si no se seleccionó ninguno
+          if (!is.null(input$filtro_jugador_z) && length(input$filtro_jugador_z) > 0) {
+            z_data <- z_data %>% filter(Jugador %in% input$filtro_jugador_z)
+          } else {
+            jugadores_default <- unique(z_data$Jugador)[1:min(12, length(unique(z_data$Jugador)))]
+            z_data <- z_data %>% filter(Jugador %in% jugadores_default)
+          }
+          
+          if (nrow(z_data) == 0) return(NULL)
+          
+          # Colores
+          colores_base <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
+          fondo_rojo  <- "#fdecea"
+          fondo_verde <- "#eafaf1"
+          fecha_min <- min(z_data$Fecha, na.rm = TRUE)
+          fecha_max <- max(z_data$Fecha, na.rm = TRUE)
+          
+          # Número de columnas dinámico (máximo 4 por fila)
+          jugadores_unicos <- length(unique(z_data$Jugador))
+          ncol_facetas <- min(4, jugadores_unicos)
+          
+          # Gráfico
+          p <- ggplot(z_data, aes(x = Fecha, y = z, text = tooltip, color = z_color)) +
+            annotate("rect", xmin = fecha_min, xmax = fecha_max,
+                     ymin = 1.5, ymax = Inf, fill = fondo_rojo, alpha = 0.4) +
+            annotate("rect", xmin = fecha_min, xmax = fecha_max,
+                     ymin = -Inf, ymax = -1.5, fill = fondo_verde, alpha = 0.4) +
+            geom_smooth(aes(group = Jugador),method = "loess", span = 0.9, se = FALSE, color = "#34495e", linewidth = 0.6)+
+            geom_point(size = 1.2) +
+            scale_color_manual(values = colores_base, name = "Z-score") +
+            geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
+            facet_wrap(~Jugador, scales = "free_y", ncol = 4) +
+            theme_minimal(base_size = 14) +
+            labs(
+              title = paste("Z-score de", metrica_local, "por jugador"),
+              x = "Fecha", y = "Z-score"
+            ) +
+            theme(
+              plot.title = element_text(hjust = 0.5, face = "bold", size = 18),
+              axis.title = element_text(face = "bold", size = 14),
+              axis.text = element_text(size = 12),
+              axis.text.x = element_text(angle = 45),
+              strip.text = element_text(face = "bold", size = 13)
+            )
+          
+          ggplotly(p, tooltip = "text") %>%
+            layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
+        })
+      })
+    }
   })
   
   #' Output: Gráfico de barras ordenadas por jugador en sesión
@@ -1654,4 +1706,3 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
-
