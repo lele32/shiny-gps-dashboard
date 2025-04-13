@@ -4,18 +4,25 @@ Este dashboard en **R Shiny** permite visualizar, filtrar y analizar datos GPS d
 
 ---
 
-## 🚀 Características principales
+## 📂 Funcionalidades actuales
 
-- ✅ **Carga flexible de datos** (`.csv`, `.xlsx`, `.json`)
-- ✅ Mapeo dinámico de columnas clave
-- ✅ Filtros personalizados por jugador, posición, fecha, match day, tarea y duración
-- ✅ Filtros independientes por cada gráfico
-- ✅ Visualización de métricas en el tiempo
-- ✅ Gráficos tipo boxplot por Match Day y por Tarea
-- ✅ Análisis individual por sesión (por fecha)
-- ✅ Gráfico de Z-score por jugador (cálculo dinámico)
-- ✅ Interfaz limpia, responsive y estética (usando `shinythemes` y `bslib`)
-- ✅ Exportable a shinyapps.io o servidor propio
+- **Carga de archivos**: permite cargar bases en formato `.csv`, `.xlsx` o `.json`.
+- **Mapeo flexible de columnas**: podés seleccionar qué columnas corresponden a:
+  - Jugador
+  - Puesto
+  - Fecha
+  - Match Day
+  - Tarea
+  - Duración (columna directa o calculada)
+  - Métricas (permite múltiples)
+- **Filtros dinámicos** por:
+  - Jugador
+  - Puesto
+  - Match Day
+  - Tarea
+  - Rango de fechas
+  - Duración de sesión
+  - Valores de cada métrica
 
 ---
 
@@ -37,13 +44,52 @@ El archivo cargado debe contener al menos algunas de las siguientes columnas:
 
 ---
 
-## 🧪 Visualizaciones disponibles
+## 📊 Visualizaciones disponibles
 
-- 📊 **Promedio de métricas por fecha y jugador**
-- 📦 **Boxplot por Match Day**
-- 📦 **Boxplot por tipo de Tarea**
-- 📈 **Z-score por jugador con suavizado Loess**
-- 🧪 **Análisis puntual de sesión con métricas múltiples**
+1. **📅 Métrica en el tiempo**
+   - Promedio por jugador y fecha
+   - Gráfico de barras interactivas (`plotly`)
+   - Un gráfico por cada métrica seleccionada
+
+2. **📦 Distribución por Match Day**
+   - Boxplots por MD para cada métrica
+   - Visualiza la variabilidad entre jugadores
+
+3. **🧪 Distribución por Tarea**
+   - Boxplots por tipo de tarea
+   - Útil para diferenciar cargas en entrenamientos y partidos
+
+4. **📈 Z-score por Fecha**
+   - Z-score por jugador con media y SD global (sin incluir el valor actual)
+   - Smoothed trend (`loess`), áreas sombreadas ±1.5 Z
+
+5. **📋 Análisis de sesión**
+   - Filtros para seleccionar una sesión puntual
+   - Gráfico de barras ordenadas por jugador con media y ±1 / ±2 SD
+   - Filtros independientes por cada métrica
+
+6. **📉 Z-score competitivo**
+   - Compara el partido actual con los 3–5 partidos previos
+   - Cálculo por jugador, incluye tabla resumen con media, SD y Z-score
+
+---
+
+## ⚙️ Próximas funcionalidades (en desarrollo)
+
+- Exportación automática de informes por sesión y jugador
+- Guardado persistente de base de datos
+- Nuevas visualizaciones:
+  - ACWR (Acute-Chronic Work Ratio)
+  - KPI dashboards
+  - Relaciones entre métricas
+- Parámetros de referencia personalizados
+
+---
+
+## 🧠 Requisitos
+
+- R (versión reciente)
+- Paquetes: `shiny`, `ggplot2`, `plotly`, `dplyr`, `lubridate`, `DT`, `readxl`, `readr`, `jsonlite`
 
 ---
 
