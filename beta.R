@@ -18,6 +18,8 @@ library(slider)          # Rolling window stats
 library(shinyWidgets)    # Custom inputs
 library(tidyr)           # Data reshaping
 library(fontawesome)     # íconos modernos
+library(TTR)             # Para usar TTR::EMA
+
 
 # =======================================================
 # ⚙️ OPTIONS
@@ -184,7 +186,35 @@ ui <- fluidPage(
                  uiOutput("zscore_comp_plot_ui"),
                  tags$hr(),
                  DTOutput("tabla_resumen_comp")
-        )
+          ),
+        tabPanel("📈 ACWR",
+                 tags$div(class = "filter-row",
+                          tags$div(class = "filter-column", uiOutput("filtro_jugador_acwr")),
+                          tags$div(class = "filter-column", uiOutput("filtro_puesto_acwr")),
+                          tags$div(class = "filter-column", uiOutput("filtro_matchday_acwr")),
+                          tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
+                          tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
+                          tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
+                          tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                          
+                          # 🎯 Nuevo bloque para Agudo / Crónico usando sliders
+                          tags$div(class = "filter-column",
+                                   sliderInput(
+                                     inputId = "acwr_agudo_dias",
+                                     label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
+                                     min = 3, max = 14, value = 7, step = 1
+                                   )
+                          ),
+                          tags$div(class = "filter-column",
+                                   sliderInput(
+                                     inputId = "acwr_cronico_dias",
+                                     label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
+                                     min = 14, max = 42, value = 28, step = 1
+                                   )
+                          )
+                 ),
+                 uiOutput("acwr_plot_ui")
+        ),
       )
     )
   )
@@ -312,9 +342,9 @@ server <- function(input, output, session) {
     }
     
     if (length(numeric_metrics) > 0) {
-      lapply(c("metric", "metric_box", "metric_task", "metric_z"), update_inputs)
+      lapply(c("metric", "metric_box", "metric_task", "metric_z", "metric_acwr"), update_inputs)
     } else {
-      lapply(c("metric", "metric_box", "metric_task", "metric_z"), function(id) {
+      lapply(c("metric", "metric_box", "metric_task", "metric_z", "metric_acwr"), function(id) {
         updateSelectInput(session, id, choices = character(0))
       })
     }
@@ -447,9 +477,13 @@ server <- function(input, output, session) {
     output$filtro_duracion_z     <- create_duration_filter("filtro_duracion_input_z")
     output$filtro_duracion_sesion <- create_duration_filter("filtro_duracion_input_sesion")
     output$filtro_duracion_z_comp <- create_duration_filter("filtro_duracion_input_z_comp")
+    
+    output$filtro_puesto_acwr    <- create_filter_ui("filtro_puesto_acwr", "position_col", "Filter by Position:")
+    output$filtro_matchday_acwr  <- create_filter_ui("filtro_matchday_acwr", "matchday_col", "Filter by Match Day:")
+    output$filtro_tarea_acwr     <- create_filter_ui("filtro_tarea_acwr", "task_col", "Filter by Task:")
+    output$filtro_fecha_acwr     <- create_date_filter("filtro_fecha_acwr", "date_col")
+    output$filtro_duracion_acwr  <- create_duration_filter("filtro_duracion_input_acwr")
   })
-  
-  
   
   
   #Filtros aplicados a grafico de Boxplot de Métrica en MD
@@ -599,6 +633,28 @@ server <- function(input, output, session) {
                 min = floor(min(values)),
                 max = ceiling(max(values)),
                 value = c(floor(min(values)), ceiling(max(values))))
+  })
+  
+  # Filtro seleecion jugador para ACWR
+    output$filtro_jugador_acwr <- renderUI({
+    req(read_data(), input$player_col)
+    data <- read_data()
+    
+    jugadores_unicos <- sort(unique(data[[input$player_col]]))
+    
+    if (length(jugadores_unicos) >= 12) {
+      default_selected <- head(jugadores_unicos, 12)
+    } else {
+      default_selected <- jugadores_unicos
+    }
+    
+    selectInput(
+      "filtro_jugador_acwr", 
+      "Jugador:", 
+      choices = jugadores_unicos, 
+      selected = default_selected,
+      multiple = TRUE
+    )
   })
   
   # =======================================================
@@ -1050,6 +1106,70 @@ server <- function(input, output, session) {
     return(data)
   }
   
+  #' 🔵 Reactive: Filtro para datos de ACWR
+  #'
+  #' Aplica filtros específicos para el gráfico de ACWR:
+  #' - Jugador (`filtro_jugador_acwr`)
+  #' - Puesto (`filtro_puesto_acwr`)
+  #' - Match Day (`filtro_matchday_acwr`)
+  #' - Tarea (`filtro_tarea_acwr`)
+  #' - Fecha (`filtro_fecha_acwr`)
+  #' - Duración (`filtro_duracion_input_acwr`)
+  #' - Rango de valores de cada métrica (`filtro_metrica_valor_acwr`)
+  #'
+  #' Retorna un dataframe filtrado listo para calcular ACWR.
+  filtro_data_acwr <- function(metrica, rango) {
+    req(read_data())
+    data <- read_data()
+    
+    # Filtros categóricos
+    if (!is.null(input$player_col) && input$player_col %in% colnames(data) && !is.null(input$filtro_jugador_acwr)) {
+      data <- data[data[[input$player_col]] %in% input$filtro_jugador_acwr, ]
+    }
+    if (!is.null(input$position_col) && input$position_col %in% colnames(data) && !is.null(input$filtro_puesto_acwr)) {
+      data <- data[data[[input$position_col]] %in% input$filtro_puesto_acwr, ]
+    }
+    if (!is.null(input$matchday_col) && input$matchday_col %in% colnames(data) && !is.null(input$filtro_matchday_acwr)) {
+      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_acwr, ]
+    }
+    if (!is.null(input$task_col) && input$task_col %in% colnames(data) && !is.null(input$filtro_tarea_acwr)) {
+      data <- data[data[[input$task_col]] %in% input$filtro_tarea_acwr, ]
+    }
+    
+    # Filtro por fecha
+    if (!is.null(input$date_col) && input$date_col %in% colnames(data) && !is.null(input$filtro_fecha_acwr)) {
+      fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+      data <- data[!is.na(fechas) & fechas >= input$filtro_fecha_acwr[1] & fechas <= input$filtro_fecha_acwr[2], ]
+    }
+    
+    # Filtro por duración
+    if (!is.null(input$filtro_duracion_input_acwr)) {
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
+        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                 !is.null(input$end_col) && input$end_col != "None" &&
+                 input$start_col %in% colnames(data) && input$end_col %in% colnames(data)) {
+        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_acwr[1] & dur <= input$filtro_duracion_input_acwr[2]
+        data <- data[keep, ]
+      }
+    }
+    
+    # Filtro de valores de la métrica
+    if (!is.null(metrica) && metrica %in% names(data) && !is.null(rango)) {
+      valores <- suppressWarnings(as.numeric(data[[metrica]]))
+      keep <- !is.na(valores) & valores >= rango[1] & valores <= rango[2]
+      data <- data[keep, ]
+    }
+    
+    return(data)
+  }
+  
   # 🧠 UI dinámico: Gráfico + Filtro por cada métrica seleccionada metrica en el tiempo
   output$barras_fecha_ui <- renderUI({
     req(input$metric, read_data())
@@ -1169,6 +1289,31 @@ server <- function(input, output, session) {
           value = c(floor(min(values)), ceiling(max(values)))
         ),
         plotlyOutput(outputId = paste0("zscore_comp_plot_", metrica_clean), height = "400px")
+      )
+    }) |> tagList()
+  })
+  
+  # 🧠 UI dinámico: Gráfico + Filtro por cada métrica seleccionada en ACWR
+  # 🔵 Output: UI dinámica para ACWR
+  output$acwr_plot_ui <- renderUI({
+    req(input$metric_acwr, read_data())
+    
+    lapply(input$metric_acwr, function(metrica) {
+      metrica_clean <- make.names(metrica)
+      values <- suppressWarnings(as.numeric(read_data()[[metrica]]))
+      values <- values[!is.na(values) & is.finite(values)]
+      
+      tagList(
+        tags$hr(),
+        tags$h4(paste("ACWR:", metrica)),
+        sliderInput(
+          inputId = paste0("filtro_metrica_valor_acwr_", metrica_clean),
+          label = paste("Filtro de valores para", metrica),
+          min = floor(min(values)),
+          max = ceiling(max(values)),
+          value = c(floor(min(values)), ceiling(max(values)))
+        ),
+        plotlyOutput(outputId = paste0("acwr_plot_", metrica_clean), height = "400px")
       )
     }) |> tagList()
   })
@@ -1898,6 +2043,162 @@ server <- function(input, output, session) {
         color = 'black',
         fontWeight = 'bold'
       )
+  })
+  
+  # 🔵 Output: Gráfico de ACWR Exponencial
+  observe({
+    req(input$metric_acwr, input$acwr_agudo_dias, input$acwr_cronico_dias)
+    
+    for (metrica in input$metric_acwr) {
+      local({
+        metrica_local <- metrica
+        metrica_clean <- make.names(metrica_local)
+        plot_id <- paste0("acwr_plot_", metrica_clean)
+        filtro_id <- paste0("filtro_metrica_valor_acwr_", metrica_clean)
+        
+        output[[plot_id]] <- renderPlotly({
+          req(read_data(), input$player_col, input$date_col, input[[filtro_id]])
+          data <- read_data()
+          
+          # ==========================
+          # 🔹 Aplicar filtros
+          # ==========================
+          if (!is.null(input$player_col) && input$player_col %in% names(data) && !is.null(input$filtro_jugador_acwr)) {
+            data <- data[data[[input$player_col]] %in% input$filtro_jugador_acwr, ]
+          }
+          if (!is.null(input$position_col) && input$position_col %in% names(data) && !is.null(input$filtro_puesto_acwr)) {
+            data <- data[data[[input$position_col]] %in% input$filtro_puesto_acwr, ]
+          }
+          if (!is.null(input$matchday_col) && input$matchday_col %in% names(data) && !is.null(input$filtro_matchday_acwr)) {
+            data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_acwr, ]
+          }
+          if (!is.null(input$task_col) && input$task_col %in% names(data) && !is.null(input$filtro_tarea_acwr)) {
+            data <- data[data[[input$task_col]] %in% input$filtro_tarea_acwr, ]
+          }
+          if (!is.null(input$date_col) && input$date_col %in% names(data) && !is.null(input$filtro_fecha_acwr)) {
+            fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+            data[[input$date_col]] <- as.Date(fechas)
+            data <- data[!is.na(data[[input$date_col]]) & data[[input$date_col]] >= input$filtro_fecha_acwr[1] & data[[input$date_col]] <= input$filtro_fecha_acwr[2], ]
+          }
+          if (!is.null(input$filtro_duracion_input_acwr)) {
+            dur <- NULL
+            if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
+              dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+            } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                       !is.null(input$end_col) && input$end_col != "None" &&
+                       input$start_col %in% names(data) && input$end_col %in% names(data)) {
+              hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+              hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+              dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+            }
+            if (!is.null(dur)) {
+              keep <- !is.na(dur) & dur >= input$filtro_duracion_input_acwr[1] & dur <= input$filtro_duracion_input_acwr[2]
+              data <- data[keep, ]
+            }
+          }
+          
+          req(metrica_local %in% names(data))
+          data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
+          val_range <- input[[filtro_id]]
+          data <- data %>% filter(between(.data[[metrica_local]], val_range[1], val_range[2]))
+          
+          dias_agudo <- input$acwr_agudo_dias
+          dias_cronico <- input$acwr_cronico_dias
+          
+          lambda_agudo <- log(2) / dias_agudo
+          lambda_cronico <- log(2) / dias_cronico
+          
+          acwr_data <- data %>%
+            arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
+            group_by(Jugador = .data[[input$player_col]]) %>%
+            mutate(
+              EWMA_agudo = as.numeric(stats::filter(.data[[metrica_local]], lambda_agudo, method = "recursive")),
+              EWMA_cronico = as.numeric(stats::filter(.data[[metrica_local]], lambda_cronico, method = "recursive")),
+              ACWR = EWMA_agudo / EWMA_cronico,
+              Fecha = as.Date(.data[[input$date_col]])
+            ) %>%
+            ungroup() %>%
+            filter(!is.na(ACWR), is.finite(ACWR)) %>%
+            group_by(Jugador, Fecha) %>%
+            summarise(
+              ACWR = mean(ACWR, na.rm = TRUE),
+              .groups = "drop"
+            ) %>%
+            mutate(
+              tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>ACWR: ", round(ACWR, 2)),
+              color = ifelse(ACWR > 1.5, "#fd002b", "#c8c8c8")
+            )
+          
+          if (nrow(acwr_data) == 0) return(NULL)
+          
+          # Fondos de zonas de riesgo
+          min_fecha <- min(acwr_data$Fecha, na.rm = TRUE)
+          max_fecha <- max(acwr_data$Fecha, na.rm = TRUE)
+          
+          zonas_riesgo <- tibble::tibble(
+            xmin = c(min_fecha, min_fecha),
+            xmax = c(max_fecha, max_fecha),
+            ymin = c(-Inf, 0.8),
+            ymax = c(1.5, Inf),
+            fill = c("#eafaf1", "#fdecea"),
+            alpha = c(0.4, 0.4)
+          )
+          
+          # Gráfico
+          p <- ggplot(acwr_data, aes(x = Fecha, y = ACWR, text = tooltip)) +
+            
+            # Zonas de riesgo
+            geom_rect(
+              data = zonas_riesgo,
+              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = fill, alpha = alpha),
+              inherit.aes = FALSE,
+              show.legend = FALSE
+            ) +
+            
+            # Barras
+            geom_col(aes(fill = color), width = 1, show.legend = FALSE) +
+            
+            # Línea suavizada
+            geom_smooth(aes(group = Jugador), method = "loess", span = 0.8, se = FALSE, color = "#ffffff", size = 0.8) +
+            
+            # Línea horizontal en ACWR = 1
+            geom_hline(yintercept = 1, linetype = "dashed", color = "#ffffff", linewidth = 1.2) +
+            
+            facet_wrap(~Jugador, ncol = 4, scales = "fixed") +
+            scale_fill_identity() +
+            scale_alpha_identity() +
+            expand_limits(y = 0) +
+            theme_minimal(base_size = 14) +
+            labs(
+              title = paste("ACWR Exponencial –", metrica_local),
+              x = "Fecha", y = "ACWR"
+            ) +
+            theme(
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.grid.minor = element_blank(),
+              panel.grid.major = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 9, color = "#ffffff"),
+              axis.text.y = element_text(size = 11, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              plot.title = element_text(
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Righteous"
+              ),
+              strip.text = element_text(size = 12, face = "bold", color = "#ffffff"),
+              strip.background = element_blank(),
+              legend.position = "none"
+            )
+          
+          ggplotly(p, tooltip = "text") %>%
+            layout(
+              plot_bgcolor = "#1e1e1e",
+              paper_bgcolor = "#1e1e1e",
+              font = list(color = "#ffffff")
+            )
+        })
+      })
+    }
   })
 }
 
