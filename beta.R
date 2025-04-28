@@ -2049,6 +2049,16 @@ server <- function(input, output, session) {
   observe({
     req(input$metric_acwr, input$acwr_agudo_dias, input$acwr_cronico_dias)
     
+    # Funcion EWMA personalizada
+    ewma_custom <- function(x, lambda) {
+      out <- numeric(length(x))
+      out[1] <- x[1]
+      for (i in 2:length(x)) {
+        out[i] <- lambda * x[i] + (1 - lambda) * out[i - 1]
+      }
+      return(out)
+    }
+    
     for (metrica in input$metric_acwr) {
       local({
         metrica_local <- metrica
@@ -2112,61 +2122,48 @@ server <- function(input, output, session) {
             arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
             group_by(Jugador = .data[[input$player_col]]) %>%
             mutate(
-              EWMA_agudo = as.numeric(stats::filter(.data[[metrica_local]], lambda_agudo, method = "recursive")),
-              EWMA_cronico = as.numeric(stats::filter(.data[[metrica_local]], lambda_cronico, method = "recursive")),
-              ACWR = EWMA_agudo / EWMA_cronico,
-              Fecha = as.Date(.data[[input$date_col]])
+              EWMA_agudo = ewma_custom(.data[[metrica_local]], lambda_agudo),
+              EWMA_cronico = ewma_custom(.data[[metrica_local]], lambda_cronico),
+              ACWR = EWMA_agudo / EWMA_cronico
             ) %>%
             ungroup() %>%
             filter(!is.na(ACWR), is.finite(ACWR)) %>%
-            group_by(Jugador, Fecha) %>%
-            summarise(
-              ACWR = mean(ACWR, na.rm = TRUE),
-              .groups = "drop"
-            ) %>%
             mutate(
+              Fecha = as.Date(.data[[input$date_col]]),
               tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>ACWR: ", round(ACWR, 2)),
-              color = ifelse(ACWR > 1.5, "#fd002b", "#c8c8c8")
+              color = case_when(
+                ACWR > 1.5 ~ "#fd002b",
+                ACWR >= 0.8 & ACWR <= 1.5 ~ "#eafaf1",
+                TRUE ~ "#fd002b"
+              )
             )
           
           if (nrow(acwr_data) == 0) return(NULL)
           
-          # Fondos de zonas de riesgo
-          min_fecha <- min(acwr_data$Fecha, na.rm = TRUE)
-          max_fecha <- max(acwr_data$Fecha, na.rm = TRUE)
-          
-          zonas_riesgo <- tibble::tibble(
-            xmin = c(min_fecha, min_fecha),
-            xmax = c(max_fecha, max_fecha),
-            ymin = c(-Inf, 0.8),
-            ymax = c(1.5, Inf),
-            fill = c("#eafaf1", "#fdecea"),
-            alpha = c(0.4, 0.4)
-          )
+          # Asignar colores según rangos
+          acwr_data <- acwr_data %>%
+            mutate(color = case_when(
+              ACWR < 0.8 ~ "#ffcccc",           # Rojo suave
+              ACWR >= 0.8 & ACWR <= 1.5 ~ "#ccffcc",  # Verde suave
+              ACWR > 1.5 ~ "#fd002b"             # Rojo fuerte
+            ))
           
           # Gráfico
           p <- ggplot(acwr_data, aes(x = Fecha, y = ACWR, text = tooltip)) +
             
-            # Zonas de riesgo
-            geom_rect(
-              data = zonas_riesgo,
-              aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, fill = fill, alpha = alpha),
-              inherit.aes = FALSE,
-              show.legend = FALSE
-            ) +
+            # Puntos coloreados según valor de ACWR
+            geom_point(aes(color = color), size = 2.2, show.legend = FALSE) +
             
-            # Barras
-            geom_col(aes(fill = color), width = 1, show.legend = FALSE) +
+            # Línea suavizada de tendencia por jugador (con SE)
+            geom_smooth(aes(group = Jugador), method = "loess", span = 0.8, se = TRUE, color = "#ffffff", size = 0.8) +
             
-            # Línea suavizada
-            geom_smooth(aes(group = Jugador), method = "loess", span = 0.8, se = FALSE, color = "#ffffff", size = 0.8) +
-            
-            # Línea horizontal en ACWR = 1
-            geom_hline(yintercept = 1, linetype = "dashed", color = "#ffffff", linewidth = 1.2) +
-            
+            # Facet por jugador
             facet_wrap(~Jugador, ncol = 4, scales = "fixed") +
-            scale_fill_identity() +
-            scale_alpha_identity() +
+            
+            # Escala de colores
+            scale_color_identity() +
+            
+            # Estética general
             expand_limits(y = 0) +
             theme_minimal(base_size = 14) +
             labs(
@@ -2190,6 +2187,7 @@ server <- function(input, output, session) {
               legend.position = "none"
             )
           
+          # Render interactivo
           ggplotly(p, tooltip = "text") %>%
             layout(
               plot_bgcolor = "#1e1e1e",
