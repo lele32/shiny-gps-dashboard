@@ -20,7 +20,6 @@ library(tidyr)           # Data reshaping
 library(fontawesome)     # íconos modernos
 library(TTR)             # Para usar TTR::EMA
 
-
 # =======================================================
 # ⚙️ OPTIONS
 # =======================================================
@@ -110,6 +109,7 @@ ui <- fluidPage(
   # Layout principal con sidebar
   sidebarLayout(
     sidebarPanel(
+      textInput("google_sheet_url", "Google Sheet URL or ID (optional):", value = ""),
       fileInput("file", "Upload GPS Data", accept = c(".csv", ".xlsx", ".json")),
       tags$hr(),
       uiOutput("file_info"),
@@ -186,7 +186,7 @@ ui <- fluidPage(
                  uiOutput("zscore_comp_plot_ui"),
                  tags$hr(),
                  DTOutput("tabla_resumen_comp")
-          ),
+        ),
         tabPanel("📈 ACWR",
                  tags$div(class = "filter-row",
                           tags$div(class = "filter-column", uiOutput("filtro_jugador_acwr")),
@@ -225,45 +225,92 @@ ui <- fluidPage(
 # =======================================================
 server <- function(input, output, session) {
   
-  # REACTIVO PRINCIPAL: CARGA Y FORMATEO DEL ARCHIVO --------------------------
+  # ================================================================
+  # 📦 FUNCIÓN REACTIVA: LECTURA Y FORMATEO DE ARCHIVO
+  # ================================================================
+  
   read_data <- reactive({
-    req(input$file)
-    ext <- tools::file_ext(input$file$name)
-    file_path <- input$file$datapath
+    google_sheet_url <- input$google_sheet_url
+    file_input <- input$file
     
-    if (ext == "csv") {
-      # Detectar delimitador automáticamente (coma o punto y coma)
-      first_line <- readLines(file_path, n = 1)
-      delim <- if (grepl(";", first_line)) ";" else ","
+    if (nzchar(google_sheet_url)) {
+      # Si pegaron un Google Sheets ID o URL
+      tryCatch({
+        # Armar URL si solo pegan el ID
+        if (!grepl("^https?://", google_sheet_url)) {
+          google_sheet_url <- paste0("https://docs.google.com/spreadsheets/d/", google_sheet_url, "/export?format=csv")
+        } else {
+          # Si es URL completa, modificar para exportar como CSV
+          google_sheet_url <- sub("/edit.*", "/export?format=csv", google_sheet_url)
+        }
+        
+        data <- readr::read_csv(google_sheet_url, show_col_types = FALSE)
+      }, error = function(e) {
+        showModal(modalDialog(
+          title = "Error al leer Google Sheets",
+          paste("Ocurrió un error:", e$message),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+        return(NULL)
+      })
+    } else if (!is.null(file_input)) {
+      file_path <- file_input$datapath
+      ext <- tools::file_ext(file_input$name)
       
-      # Leer todas las líneas del archivo como texto
-      raw_lines <- readLines(file_path, warn = FALSE)
-      
-      # Detectar la primera línea con encabezado válido: "Player Name" o "Username"
-      header_line <- which(grepl('^(\"?Player Name\"?|\"?Username\"?)\\s*[,;]', raw_lines))[1]
-      
-      if (is.na(header_line)) {
-        stop("No se pudo detectar una línea de encabezado válida (Player Name o Username).")
-      }
-      
-      # Leer los datos a partir de la línea detectada
-      data <- read_delim(
-        file = file_path,
-        delim = delim,
-        skip = header_line - 1,
-        locale = locale(encoding = "UTF-8"),
-        show_col_types = FALSE
-      )
-    } else if (ext == "xlsx") {
-      data <- read_excel(file_path)
-    } else if (ext == "json") {
-      data <- fromJSON(file_path, flatten = TRUE)
+      tryCatch({
+        data <- switch(ext,
+                       "csv" = {
+                         first_line <- readLines(file_path, n = 1)
+                         delim <- if (grepl(";", first_line)) ";" else ","
+                         
+                         raw_lines <- readLines(file_path, warn = FALSE)
+                         header_line <- which(grepl('^(\"?Player Name\"?|\"?Username\"?)\\s*[,;]', raw_lines))[1]
+                         
+                         if (!is.na(header_line) && header_line > 1) {
+                           readr::read_delim(
+                             file = file_path,
+                             delim = delim,
+                             skip = header_line - 1,
+                             locale = locale(encoding = "UTF-8"),
+                             show_col_types = FALSE
+                           )
+                         } else {
+                           readr::read_delim(
+                             file = file_path,
+                             delim = delim,
+                             locale = locale(encoding = "UTF-8"),
+                             show_col_types = FALSE
+                           )
+                         }
+                       },
+                       "xlsx" = readxl::read_excel(file_path),
+                       "json" = jsonlite::fromJSON(file_path, flatten = TRUE),
+                       {
+                         stop("Tipo de archivo no soportado.")
+                       })
+      }, error = function(e) {
+        showModal(modalDialog(
+          title = "Error al leer archivo",
+          paste("Ocurrió un error:", e$message),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+        return(NULL)
+      })
     } else {
-      stop("Unsupported file type.")
+      return(NULL)
+    }
+    
+    req(data)
+    
+    if (!is.data.frame(data)) {
+      stop("El archivo no contiene un formato válido de tabla.")
     }
     
     colnames(data) <- make.names(colnames(data))
-    # Mapeo automático de columnas basado en nombres
+    
+    # Mapeo automático
     update_mapped_columns <- function(cols) {
       guess_column <- function(possible_names) {
         match <- tolower(cols) %in% tolower(possible_names)
@@ -272,14 +319,13 @@ server <- function(input, output, session) {
       
       updateSelectInput(session, "player_col", selected = guess_column(c("player", "player name", "username", "jugador")))
       updateSelectInput(session, "position_col", selected = guess_column(c("position", "pos", "rol", "puesto")))
-      updateSelectInput(session, "matchday_col", selected = guess_column(c("match day", "matchday","match.day", "md", "dia", "día")))
+      updateSelectInput(session, "matchday_col", selected = guess_column(c("match day", "matchday", "match.day", "md", "dia", "día")))
       updateSelectInput(session, "task_col", selected = guess_column(c("task", "activity", "drill", "selection", "tarea")))
       updateSelectInput(session, "date_col", selected = guess_column(c("date", "fecha", "session date", "day")))
       updateSelectInput(session, "duration_col", selected = guess_column(c("duration", "duración", "duration_min")))
       updateSelectInput(session, "start_col", selected = guess_column(c("start", "inicio", "hora inicio", "start.hour")))
-      updateSelectInput(session, "end_col", selected = guess_column(c("end", "fin", "hora fin", "end_time","final.hour")))
+      updateSelectInput(session, "end_col", selected = guess_column(c("end", "fin", "hora fin", "end_time", "final.hour")))
       
-      # Detectar métricas numéricas candidatas
       numeric_metrics <- cols[sapply(data[cols], is.numeric)]
       updateSelectInput(session, "metric_col", choices = numeric_metrics, selected = character(0))
     }
@@ -288,13 +334,24 @@ server <- function(input, output, session) {
     return(data)
   })
   
-  # INFORMACIÓN DEL ARCHIVO ----------------------------------------------------
+  # ================================================================
+  # 📄 INFORMACIÓN DEL ARCHIVO
+  # ================================================================
+  
   output$file_info <- renderUI({
     req(input$file)
-    tags$p(tags$b("File:"), input$file$name, " - ", round(input$file$size / 1024, 2), "KB")
+    
+    if (grepl("^https://docs\\.google\\.com", input$file$name)) {
+      tags$p(tags$b("Archivo cargado:"), "Google Sheets Link")
+    } else {
+      tags$p(tags$b("Archivo cargado:"), input$file$name, " - ", round(input$file$size / 1024, 2), "KB")
+    }
   })
   
-  # MAPEOS DE COLUMNAS CLAVE ---------------------------------------------------
+  # ================================================================
+  # 🔍 MAPEOS DE COLUMNAS CLAVE
+  # ================================================================
+  
   output$column_mapping <- renderUI({
     req(read_data())
     cols <- colnames(read_data())
@@ -636,7 +693,7 @@ server <- function(input, output, session) {
   })
   
   # Filtro seleecion jugador para ACWR
-    output$filtro_jugador_acwr <- renderUI({
+  output$filtro_jugador_acwr <- renderUI({
     req(read_data(), input$player_col)
     data <- read_data()
     
