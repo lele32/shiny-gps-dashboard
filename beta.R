@@ -19,6 +19,7 @@ library(shinyWidgets)    # Custom inputs
 library(tidyr)           # Data reshaping
 library(fontawesome)     # íconos modernos
 library(TTR)             # Para usar TTR::EMA
+library(shinyalert)      # Para alertas tipo toast
 
 # =======================================================
 # ⚙️ OPTIONS
@@ -43,7 +44,7 @@ tema_gps <- bslib::bs_theme(
 # 🧩 Interfaz de usuario (UI)
 # ──────────────────────────────────────────────
 ui <- fluidPage(
-  theme = tema_gps,
+   theme = tema_gps,
   
   # Estilos personalizados y fuentes
   tags$head(
@@ -110,7 +111,9 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       textInput("google_sheet_url", "Google Sheet URL or ID (optional):", value = ""),
-      fileInput("file", "Upload GPS Data", accept = c(".csv", ".xlsx", ".json")),
+      fileInput("file", "Upload GPS Data",  multiple = TRUE, accept = c(".csv", ".xlsx", ".json")),
+      actionButton("reset_base", "Reset DB", icon = icon("trash"), class = "btn-danger"),
+      uiOutput("estado_base"),
       tags$hr(),
       uiOutput("file_info"),
       uiOutput("column_mapping")
@@ -226,25 +229,46 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   
   # ================================================================
-  # 📦 FUNCIÓN REACTIVA: LECTURA Y FORMATEO DE ARCHIVO
+  # 📦 BASE GLOBAL Y LECTURA DE ARCHIVOS / GOOGLE SHEETS
   # ================================================================
   
+  base_datos_global <- reactiveVal(NULL)
+  
   read_data <- reactive({
+    req(base_datos_global())
+    base_datos_global()
+  })
+  
+  observeEvent({
+    input$file
+    input$google_sheet_url
+  }, {
+    
     google_sheet_url <- input$google_sheet_url
     file_input <- input$file
     
+    data_new <- NULL
+    
     if (nzchar(google_sheet_url)) {
-      # Si pegaron un Google Sheets ID o URL
+      # 🔹 Leer de Google Sheets
       tryCatch({
-        # Armar URL si solo pegan el ID
         if (!grepl("^https?://", google_sheet_url)) {
           google_sheet_url <- paste0("https://docs.google.com/spreadsheets/d/", google_sheet_url, "/export?format=csv")
         } else {
-          # Si es URL completa, modificar para exportar como CSV
           google_sheet_url <- sub("/edit.*", "/export?format=csv", google_sheet_url)
         }
         
-        data <- readr::read_csv(google_sheet_url, show_col_types = FALSE)
+        data_new <- readr::read_csv(google_sheet_url, show_col_types = FALSE)
+        
+        # 🔹 Toast SOLO si cargó bien
+        shinyalert(
+          title = "✅ Google Sheet Cargado",
+          text = "Datos de Google Sheets cargados exitosamente.",
+          type = "success",
+          timer = 2500,
+          showConfirmButton = FALSE
+        )
+        
       }, error = function(e) {
         showModal(modalDialog(
           title = "Error al leer Google Sheets",
@@ -254,63 +278,92 @@ server <- function(input, output, session) {
         ))
         return(NULL)
       })
-    } else if (!is.null(file_input)) {
-      file_path <- file_input$datapath
-      ext <- tools::file_ext(file_input$name)
       
+    } else if (!is.null(file_input)) {
+      # 🔹 Leer múltiples archivos locales
       tryCatch({
-        data <- switch(ext,
-                       "csv" = {
-                         first_line <- readLines(file_path, n = 1)
-                         delim <- if (grepl(";", first_line)) ";" else ","
-                         
-                         raw_lines <- readLines(file_path, warn = FALSE)
-                         header_line <- which(grepl('^(\"?Player Name\"?|\"?Username\"?)\\s*[,;]', raw_lines))[1]
-                         
-                         if (!is.na(header_line) && header_line > 1) {
-                           readr::read_delim(
-                             file = file_path,
-                             delim = delim,
-                             skip = header_line - 1,
-                             locale = locale(encoding = "UTF-8"),
-                             show_col_types = FALSE
-                           )
-                         } else {
-                           readr::read_delim(
-                             file = file_path,
-                             delim = delim,
-                             locale = locale(encoding = "UTF-8"),
-                             show_col_types = FALSE
-                           )
-                         }
-                       },
-                       "xlsx" = readxl::read_excel(file_path),
-                       "json" = jsonlite::fromJSON(file_path, flatten = TRUE),
-                       {
-                         stop("Tipo de archivo no soportado.")
-                       })
+        data_list <- lapply(seq_len(nrow(file_input)), function(i) {
+          file_path <- file_input$datapath[i]
+          ext <- tools::file_ext(file_input$name[i])
+          
+          switch(ext,
+                 "csv" = {
+                   first_line <- readLines(file_path, n = 1)
+                   delim <- if (grepl(";", first_line)) ";" else ","
+                   
+                   raw_lines <- readLines(file_path, warn = FALSE)
+                   header_line <- which(grepl('^(\"?Player Name\"?|\"?Username\"?)\\s*[,;]', raw_lines))[1]
+                   
+                   if (!is.na(header_line) && header_line > 1) {
+                     readr::read_delim(file_path, delim = delim, skip = header_line - 1, locale = locale(encoding = "UTF-8"), show_col_types = FALSE)
+                   } else {
+                     readr::read_delim(file_path, delim = delim, locale = locale(encoding = "UTF-8"), show_col_types = FALSE)
+                   }
+                 },
+                 "xlsx" = readxl::read_excel(file_path),
+                 "json" = jsonlite::fromJSON(file_path, flatten = TRUE),
+                 stop("Tipo de archivo no soportado.")
+          )
+        })
+        
+        data_new <- bind_rows(data_list)
+        
+        # 🔹 Toast de carga exitosa de archivos (después de bind_rows)
+        shinyalert(
+          title = "✅ Archivo(s) Cargado(s)",
+          text = paste0("Se cargaron ", nrow(file_input), " archivo(s) correctamente."),
+          type = "success",
+          timer = 2500,
+          showConfirmButton = FALSE
+        )
+        
       }, error = function(e) {
         showModal(modalDialog(
-          title = "Error al leer archivo",
+          title = "Error al leer archivo(s)",
           paste("Ocurrió un error:", e$message),
           easyClose = TRUE,
           footer = NULL
         ))
         return(NULL)
       })
-    } else {
-      return(NULL)
     }
     
-    req(data)
+    req(data_new)
     
-    if (!is.data.frame(data)) {
+    if (!is.data.frame(data_new)) {
       stop("El archivo no contiene un formato válido de tabla.")
     }
     
-    colnames(data) <- make.names(colnames(data))
+    colnames(data_new) <- make.names(colnames(data_new))
     
-    # Mapeo automático
+    # ========================================
+    # 🔥 Agregar datos nuevos a la base global
+    # ========================================
+    
+    if (is.null(base_datos_global())) {
+      base_datos_global(data_new)
+    } else if (is.data.frame(base_datos_global()) && is.data.frame(data_new)) {
+      base_combinada <- bind_rows(base_datos_global(), data_new)
+      
+      # Evitar duplicados por Jugador + Fecha
+      if (all(c("Jugador", "Fecha") %in% colnames(base_combinada))) {
+        base_combinada <- base_combinada %>% distinct(Jugador, Fecha, .keep_all = TRUE)
+      }
+      
+      base_datos_global(base_combinada)
+    } else {
+      showModal(modalDialog(
+        title = "Error",
+        "Los datos cargados no tienen formato de tabla válido.",
+        easyClose = TRUE,
+        footer = NULL
+      ))
+    }
+
+    # ========================================
+    # 🔥 Actualizar mapeo de columnas
+    # ========================================
+    
     update_mapped_columns <- function(cols) {
       guess_column <- function(possible_names) {
         match <- tolower(cols) %in% tolower(possible_names)
@@ -326,12 +379,11 @@ server <- function(input, output, session) {
       updateSelectInput(session, "start_col", selected = guess_column(c("start", "inicio", "hora inicio", "start.hour")))
       updateSelectInput(session, "end_col", selected = guess_column(c("end", "fin", "hora fin", "end_time", "final.hour")))
       
-      numeric_metrics <- cols[sapply(data[cols], is.numeric)]
+      numeric_metrics <- cols[sapply(base_datos_global()[cols], is.numeric)]
       updateSelectInput(session, "metric_col", choices = numeric_metrics, selected = character(0))
     }
     
-    update_mapped_columns(colnames(data))
-    return(data)
+    update_mapped_columns(colnames(base_datos_global()))
   })
   
   # ================================================================
@@ -339,12 +391,35 @@ server <- function(input, output, session) {
   # ================================================================
   
   output$file_info <- renderUI({
-    req(input$file)
+    req(input$file, input$google_sheet_url)
     
-    if (grepl("^https://docs\\.google\\.com", input$file$name)) {
-      tags$p(tags$b("Archivo cargado:"), "Google Sheets Link")
+    # Si hay URL de Google Sheet pegada
+    if (nzchar(input$google_sheet_url)) {
+      tags$p(
+        tags$b("Archivo cargado:"), "Google Sheets",
+        tags$br(),
+        tags$b("Link:"), a(input$google_sheet_url, href = input$google_sheet_url, target = "_blank")
+      )
+      
+    } else if (!is.null(input$file)) {
+      # Si se subieron múltiples archivos locales
+      file_names <- input$file$name
+      file_sizes <- input$file$size / 1024  # Convertir bytes a KB
+      total_size <- sum(file_sizes, na.rm = TRUE)
+      
+      tagList(
+        tags$p(tags$b("Archivos cargados:")),
+        tags$ul(
+          lapply(seq_along(file_names), function(i) {
+            tags$li(paste0(file_names[i], " - ", round(file_sizes[i], 2), " KB"))
+          })
+        ),
+        tags$p(tags$b("Tamaño total:"), paste0(round(total_size, 2), " KB"))
+      )
+      
     } else {
-      tags$p(tags$b("Archivo cargado:"), input$file$name, " - ", round(input$file$size / 1024, 2), "KB")
+      # No hay archivo cargado
+      tags$p("No hay archivos cargados.")
     }
   })
   
@@ -353,8 +428,8 @@ server <- function(input, output, session) {
   # ================================================================
   
   output$column_mapping <- renderUI({
-    req(read_data())
-    cols <- colnames(read_data())
+    req(base_datos_global())
+    cols <- colnames(base_datos_global())
     
     mapping_inputs <- function(id, label, multiple = FALSE, include_none = FALSE) {
       choices <- if (include_none) c("None", cols) else cols
@@ -372,6 +447,68 @@ server <- function(input, output, session) {
       mapping_inputs("end_col", "Select End Time Column:", include_none = TRUE),
       mapping_inputs("metric_col", "Select Available Metrics:", multiple = TRUE)
     )
+  })
+  
+  # ================================================================
+  # ♻️ RESET DE BASE DE DATOS GLOBAL
+  # ================================================================
+  
+  observeEvent(input$reset_base, {
+    showModal(modalDialog(
+      title = "Confirmar Reset",
+      "¿Estás seguro que deseas vaciar toda la base de datos y limpiar la carga de archivos?",
+      footer = tagList(
+        modalButton("Cancelar"),
+        actionButton("confirm_reset", "Resetear", class = "btn btn-danger")
+      ),
+      easyClose = TRUE
+    ))
+  })
+  
+  observeEvent(input$confirm_reset, {
+    # 🔹 Resetear base global
+    base_datos_global(NULL)
+    
+    # 🔹 Limpiar inputs de carga
+    updateTextInput(session, "google_sheet_url", value = "")
+    updateFileInput(session, "file", label = "Upload New Files", multiple = TRUE)
+    
+    # 🔹 Limpiar mapeos
+    updateSelectInput(session, "player_col", choices = character(0), selected = NULL)
+    updateSelectInput(session, "position_col", choices = character(0), selected = NULL)
+    updateSelectInput(session, "matchday_col", choices = character(0), selected = NULL)
+    updateSelectInput(session, "task_col", choices = character(0), selected = NULL)
+    updateSelectInput(session, "date_col", choices = character(0), selected = NULL)
+    updateSelectInput(session, "duration_col", choices = character(0), selected = NULL)
+    updateSelectInput(session, "start_col", choices = character(0), selected = NULL)
+    updateSelectInput(session, "end_col", choices = character(0), selected = NULL)
+    updateSelectInput(session, "metric_col", choices = character(0), selected = NULL)
+    
+    # 🔹 Cerrar modal de confirmación
+    removeModal()
+    
+    # 🔥 Toast de éxito
+    shinyalert(
+      title = "✅ Base de Datos Reseteada",
+      text = "Puedes comenzar a cargar nuevos archivos.",
+      type = "success",
+      timer = 2500,  # milisegundos
+      showConfirmButton = FALSE
+    )
+  })
+
+  # ================================================================
+  # 🧾 ESTADO DE LA BASE DE DATOS
+  # ================================================================
+  output$estado_base <- renderUI({
+    data <- base_datos_global()
+    
+    if (is.null(data) || nrow(data) == 0) {
+      tags$p("🗑️ Base vacía. No hay datos cargados.", style = "color: #fd002b; font-weight: bold;")
+    } else {
+      tags$p(paste0("✅ Base actualizada: ", nrow(data), " registros"),
+             style = "color: #00e676; font-weight: bold;")
+    }
   })
   
   #' 🔄 Actualiza inputs de métricas individuales por pestaña
