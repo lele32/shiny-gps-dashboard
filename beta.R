@@ -48,14 +48,21 @@ ui <- fluidPage(
   
   # Estilos personalizados y fuentes
   tags$head(
+    # Fuentes y Bootstrap Icons
     tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Righteous&family=Open+Sans&display=swap"),
+    tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"),
+    
+    # Estilos generales y Visual Studio Code Tabs
     tags$style(HTML("
+    /* TITULOS PRINCIPALES */
     h2 {
       font-family: 'Righteous', cursive;
       color: #fd002b;
       text-transform: uppercase;
       font-size: 36px;
     }
+    
+    /* FILAS Y COLUMNAS DE FILTROS */
     .filter-row { 
       display: flex; 
       flex-wrap: wrap; 
@@ -65,20 +72,50 @@ ui <- fluidPage(
     .filter-column { 
       flex: 1 1 45%; 
     }
+    
+    /* INPUTS GENERALES */
     .shiny-input-container {
       font-family: 'Neo Sans Std', sans-serif;
       color: #ffffff;
     }
-    .tabbable > .nav-tabs > li > a {
-      color: #ffffff;
-      background-color: #1E1E1E;
-      border-color: #fd002b;
+    
+    /* NAVBAR TABS estilo Visual Studio Code */
+    .nav-tabs {
+      background-color: #1e1e1e;
+      border-bottom: 1px solid #2c2c2c;
     }
-    .tabbable > .nav-tabs > li.active > a {
-      background-color: #fd002b;
+    .nav-tabs > li > a {
       color: #ffffff;
+      background-color: #1e1e1e;
+      border: none;
+      margin-right: 2px;
+      transition: all 0.3s ease;
+      font-weight: bold;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 15px;
+      padding: 10px 15px;
     }
-    /* Header DataTables */
+    .nav-tabs > li.active > a,
+    .nav-tabs > li.active > a:focus,
+    .nav-tabs > li.active > a:hover {
+      color: #fd002b;
+      background-color: #1e1e1e;
+      border: none;
+      border-bottom: 3px solid #fd002b;
+    }
+    .nav-tabs > li > a:hover {
+      color: #fd002b;
+      background-color: #2c2c2c;
+      border: none;
+    }
+    .nav-tabs > li > a > i {
+      margin-right: 6px;
+    }
+    .nav-tabs > li > a:active {
+      transform: translateY(1px);
+    }
+    
+    /* DATATABLES HEADER */
     table.dataTable thead th {
       background-color: #fd002b !important;
       color: #ffffff !important;
@@ -86,16 +123,55 @@ ui <- fluidPage(
       font-size: 15px !important;
       font-weight: bold !important;
     }
-    /* Cuerpo de la tabla */
+    
+    /* DATATABLES BODY */
     table.dataTable tbody td {
       background-color: #1e1e1e !important;
       color: #ffffff !important;
       font-family: 'Open Sans', sans-serif !important;
       font-size: 14px !important;
     }
-    /* Hover en filas */
+    
+    /* DATATABLES ROW HOVER */
     table.dataTable tbody tr:hover {
       background-color: #2a2a2a !important;
+    }
+    
+        /* BOTONES ESTILO VISUAL STUDIO CODE */
+    .btn {
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-weight: bold;
+      font-size: 14px;
+      color: #ffffff;
+      background-color: #2c2c2c;
+      border: 1px solid #fd002b;
+      padding: 8px 16px;
+      transition: all 0.3s ease;
+      border-radius: 6px;
+    }
+    
+    .btn:hover {
+      background-color: #3c3c3c;
+      color: #fd002b;
+      border-color: #fd002b;
+      transform: translateY(-1px);
+    }
+    
+    .btn:active {
+      background-color: #1e1e1e;
+      border-color: #fd002b;
+      transform: translateY(2px);
+    }
+    
+    .btn-danger {
+      background-color: #fd002b;
+      border-color: #fd002b;
+    }
+    
+    .btn-danger:hover {
+      background-color: #ff1744;
+      border-color: #ff1744;
+      color: #ffffff;
     }
   "))
   ),
@@ -122,101 +198,110 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(
         
-        tabPanel("Data Table", DTOutput("table")),
-        
-        tabPanel("📊 Métrica en el tiempo",
-                 tags$div(class = "filter-row",
-                          lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
-                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                          }),
-                          tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL, multiple = TRUE))
-                 ),
-                 uiOutput("barras_fecha_ui")
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-table"), "Data Table"),
+          DTOutput("table")
         ),
         
-        tabPanel("📦 Boxplot por Match Day",
-                 tags$div(class = "filter-row",
-                          lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
-                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                          }),
-                          tags$div(class = "filter-column", selectInput("metric_box", "Select Metrics:", choices = NULL, multiple = TRUE))
-                 ),
-                 uiOutput("boxplot_matchday_ui")
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-graph-up"), "Métrica en el tiempo"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL, multiple = TRUE))
+          ),
+          uiOutput("barras_fecha_ui")
         ),
         
-        tabPanel("📦 Boxplot por Tarea",
-                 tags$div(class = "filter-row",
-                          lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
-                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                          }),
-                          tags$div(class = "filter-column", selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE))
-                 ),
-                 uiOutput("boxplot_task_ui")
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-box"), "Boxplot por Match Day"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", selectInput("metric_box", "Select Metrics:", choices = NULL, multiple = TRUE))
+          ),
+          uiOutput("boxplot_matchday_ui")
         ),
         
-        tabPanel("📈 Z-score por Fecha",
-                 tags$div(class = "filter-row",
-                          lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
-                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                          }),
-                          tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE))
-                 ),
-                 uiOutput("zscore_plot_ui")
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot por Tarea"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE))
+          ),
+          uiOutput("boxplot_task_ui")
         ),
         
-        tabPanel("🧪 Análisis de sesión",
-                 tags$div(class = "filter-row",
-                          lapply(c("jugador_sesion", "puesto_sesion", "matchday_sesion", "tarea_sesion", "duracion_sesion"), function(id) {
-                            tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                          }),
-                          tags$div(class = "filter-column", uiOutput("filtro_sesion_selector")),
-                          tags$div(class = "filter-column", selectInput("metricas_sesion_plot", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                          tags$div(class = "filter-column", uiOutput("filtro_fecha_sesion"))
-                 ),
-                 uiOutput("graficos_metricas_sesion")
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-activity"), "Z-score por Fecha"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE))
+          ),
+          uiOutput("zscore_plot_ui")
         ),
         
-        tabPanel("📊 Competitive Analysis",
-                 tags$div(class = "filter-row",
-                          tags$div(class = "filter-column", uiOutput("filtro_jugador_z_comp")),
-                          tags$div(class = "filter-column", uiOutput("filtro_puesto_z_comp")),
-                          tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
-                          tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
-                          tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
-                          tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                          tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
-                 ),
-                 uiOutput("zscore_comp_plot_ui"),
-                 tags$hr(),
-                 DTOutput("tabla_resumen_comp")
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-activity"), "Análisis de sesión"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador_sesion", "puesto_sesion", "matchday_sesion", "tarea_sesion", "duracion_sesion"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", uiOutput("filtro_sesion_selector")),
+                   tags$div(class = "filter-column", selectInput("metricas_sesion_plot", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                   tags$div(class = "filter-column", uiOutput("filtro_fecha_sesion"))
+          ),
+          uiOutput("graficos_metricas_sesion")
         ),
-        tabPanel("📈 ACWR",
-                 tags$div(class = "filter-row",
-                          tags$div(class = "filter-column", uiOutput("filtro_jugador_acwr")),
-                          tags$div(class = "filter-column", uiOutput("filtro_puesto_acwr")),
-                          tags$div(class = "filter-column", uiOutput("filtro_matchday_acwr")),
-                          tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
-                          tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
-                          tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
-                          tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                          
-                          # 🎯 Nuevo bloque para Agudo / Crónico usando sliders
-                          tags$div(class = "filter-column",
-                                   sliderInput(
-                                     inputId = "acwr_agudo_dias",
-                                     label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
-                                     min = 3, max = 14, value = 7, step = 1
-                                   )
-                          ),
-                          tags$div(class = "filter-column",
-                                   sliderInput(
-                                     inputId = "acwr_cronico_dias",
-                                     label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
-                                     min = 14, max = 42, value = 28, step = 1
-                                   )
-                          )
-                 ),
-                 uiOutput("acwr_plot_ui")
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
+          tags$div(class = "filter-row",
+                   tags$div(class = "filter-column", uiOutput("filtro_jugador_z_comp")),
+                   tags$div(class = "filter-column", uiOutput("filtro_puesto_z_comp")),
+                   tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
+                   tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
+                   tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
+                   tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                   tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
+          ),
+          uiOutput("zscore_comp_plot_ui"),
+          tags$hr(),
+          DTOutput("tabla_resumen_comp")
+        ),
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-lightning-charge"), "ACWR"),
+          tags$div(class = "filter-row",
+                   tags$div(class = "filter-column", uiOutput("filtro_jugador_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_puesto_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_matchday_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
+                   tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                   tags$div(class = "filter-column",
+                            sliderInput(
+                              inputId = "acwr_agudo_dias",
+                              label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
+                              min = 3, max = 14, value = 7, step = 1
+                            )
+                   ),
+                   tags$div(class = "filter-column",
+                            sliderInput(
+                              inputId = "acwr_cronico_dias",
+                              label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
+                              min = 14, max = 42, value = 28, step = 1
+                            )
+                   )
+          ),
+          uiOutput("acwr_plot_ui")
         ),
       )
     )
