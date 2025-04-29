@@ -46,13 +46,16 @@ tema_gps <- bslib::bs_theme(
 ui <- fluidPage(
   theme = tema_gps,
   
+  # ===============================================================
+  # ✨ ESTILOS PERSONALIZADOS (Actualizado para Shiny Selectize)
+  # ===============================================================
   # Estilos personalizados y fuentes
   tags$head(
     # Fuentes y Bootstrap Icons
-    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Righteous&family=Open+Sans&display=swap"),
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Righteous&family=Open+Sans&family=Inter&display=swap"),
     tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"),
     
-    # Estilos generales y Visual Studio Code Tabs
+    # Estilos personalizados
     tags$style(HTML("
     /* TITULOS PRINCIPALES */
     h2 {
@@ -61,24 +64,71 @@ ui <- fluidPage(
       text-transform: uppercase;
       font-size: 36px;
     }
-    
+
     /* FILAS Y COLUMNAS DE FILTROS */
-    .filter-row { 
-      display: flex; 
-      flex-wrap: wrap; 
-      gap: 20px; 
-      margin-bottom: 20px; 
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 20px;
     }
-    .filter-column { 
-      flex: 1 1 45%; 
+    .filter-column {
+      flex: 1 1 45%;
     }
-    
+
     /* INPUTS GENERALES */
     .shiny-input-container {
-      font-family: 'Neo Sans Std', sans-serif;
+      font-family: 'Inter', sans-serif;
       color: #ffffff;
     }
-    
+
+    /* SELECT INPUTS BASE */
+    select, input, textarea {
+      background-color: #1e1e1e;
+      color: #d3d3d3;
+      border: 1px solid #2c2c2c;
+      font-family: 'Inter', sans-serif;
+    }
+    select:focus, input:focus, textarea:focus {
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border: 1px solid #fd002b;
+      outline: none;
+    }
+
+    /* SELECTIZE (Shiny selectInput) */
+    .selectize-control .selectize-input {
+      background-color: #1e1e1e !important;
+      color: #d3d3d3 !important;
+      border: 1px solid #2c2c2c !important;
+    }
+
+    .selectize-control .selectize-input.full {
+      background-color: #1e1e1e !important;
+      color: #d3d3d3 !important;
+    }
+
+    .selectize-control .item {
+      color: #d3d3d3 !important;
+    }
+
+    .selectize-control .selectize-dropdown {
+      background-color: #1e1e1e !important;
+      border: 1px solid #2c2c2c !important;
+    }
+
+    .selectize-dropdown .option {
+      color: #d3d3d3 !important;
+      background-color: #1e1e1e !important;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .selectize-dropdown .option:hover,
+    .selectize-dropdown .option.active {
+      background-color: #2c2c2c !important;
+      color: #fd002b !important;
+    }
+
     /* NAVBAR TABS estilo Visual Studio Code */
     .nav-tabs {
       background-color: #1e1e1e;
@@ -91,7 +141,7 @@ ui <- fluidPage(
       margin-right: 2px;
       transition: all 0.3s ease;
       font-weight: bold;
-      font-family: 'Fira Code', 'Consolas', monospace;
+      font-family: 'Inter', sans-serif;
       font-size: 15px;
       padding: 10px 15px;
     }
@@ -108,38 +158,32 @@ ui <- fluidPage(
       background-color: #2c2c2c;
       border: none;
     }
-    .nav-tabs > li > a > i {
-      margin-right: 6px;
-    }
-    .nav-tabs > li > a:active {
-      transform: translateY(1px);
-    }
-    
+
     /* DATATABLES HEADER */
     table.dataTable thead th {
       background-color: #fd002b !important;
       color: #ffffff !important;
-      font-family: 'Righteous', cursive !important;
+      font-family: 'Inter', sans-serif !important;
       font-size: 15px !important;
       font-weight: bold !important;
     }
-    
+
     /* DATATABLES BODY */
     table.dataTable tbody td {
       background-color: #1e1e1e !important;
       color: #ffffff !important;
-      font-family: 'Open Sans', sans-serif !important;
+      font-family: 'Inter', sans-serif !important;
       font-size: 14px !important;
     }
-    
+
     /* DATATABLES ROW HOVER */
     table.dataTable tbody tr:hover {
       background-color: #2a2a2a !important;
     }
-    
-        /* BOTONES ESTILO VISUAL STUDIO CODE */
+
+    /* BOTONES ESTILO VISUAL STUDIO CODE */
     .btn {
-      font-family: 'Fira Code', 'Consolas', monospace;
+      font-family: 'Inter', sans-serif;
       font-weight: bold;
       font-size: 14px;
       color: #ffffff;
@@ -149,25 +193,21 @@ ui <- fluidPage(
       transition: all 0.3s ease;
       border-radius: 6px;
     }
-    
     .btn:hover {
       background-color: #3c3c3c;
       color: #fd002b;
       border-color: #fd002b;
       transform: translateY(-1px);
     }
-    
     .btn:active {
       background-color: #1e1e1e;
       border-color: #fd002b;
       transform: translateY(2px);
     }
-    
     .btn-danger {
       background-color: #fd002b;
       border-color: #fd002b;
     }
-    
     .btn-danger:hover {
       background-color: #ff1744;
       border-color: #ff1744;
@@ -1651,7 +1691,7 @@ server <- function(input, output, session) {
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Righteous"
+                family = "Inter"
               ),
               legend.position = "none",
               legend.text = element_text(color = "#ffffff"),
@@ -1725,7 +1765,7 @@ server <- function(input, output, session) {
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Righteous"
+                family = "Inter"
               ),
               legend.position = "none"
             )
@@ -1792,7 +1832,7 @@ server <- function(input, output, session) {
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Righteous"
+                family = "Inter"
               ),
               legend.position = "none"
             )
@@ -1904,7 +1944,7 @@ server <- function(input, output, session) {
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Righteous"
+                family = "Inter"
               ),
               strip.text = element_text(face = "bold", size = 13, color = "#ffffff"),
               legend.position = "bottom",
@@ -2012,7 +2052,7 @@ server <- function(input, output, session) {
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Righteous"
+                family = "Inter"
               )
             )
           
@@ -2167,7 +2207,7 @@ server <- function(input, output, session) {
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Righteous"
+                family = "Inter"
               ),
               legend.position = "right",
               legend.text = element_text(color = "#ffffff"),
@@ -2459,7 +2499,7 @@ server <- function(input, output, session) {
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Righteous"
+                family = "Inter"
               ),
               strip.text = element_text(size = 12, face = "bold", color = "#ffffff"),
               strip.background = element_blank(),
@@ -2481,5 +2521,4 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
 
