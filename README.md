@@ -1,28 +1,46 @@
 # 📊 GPS Data Dashboard
 
-Este dashboard en **R Shiny** permite visualizar, filtrar y analizar datos GPS deportivos de forma interactiva. Fue diseñado para facilitar el análisis de sesiones individuales o acumuladas por jugador, posición, match day y tipo de tarea, con múltiples gráficos personalizables.
+Este dashboard en **R Shiny** permite visualizar, filtrar y analizar datos GPS deportivos de forma interactiva. Fue diseñado para facilitar el análisis de sesiones individuales o acumuladas por jugador, posición, match day y tipo de tarea, con múltiples gráficos personalizables y estética inspirada en Visual Studio Code.
 
 ---
 
-## 📂 Funcionalidades actuales
+## ⚙️ Funcionalidades actuales
 
-- **Carga de archivos**: permite cargar bases en formato `.csv`, `.xlsx` o `.json`.
+- **Carga acumulativa de datos**:
+  - Carga múltiples archivos `.csv`, `.xlsx`, `.json` de forma progresiva.
+  - Soporte para pegar links de **Google Sheets** como fuente directa.
+  - Detección automática del delimitador y encabezado.
+
+- **Base de datos persistente en memoria**:
+  - Se acumulan las sesiones cargadas sin sobrescribir datos anteriores.
+  - Prevención automática de duplicados por `Jugador + Fecha`.
+
+- **Botón de reset**:
+  - Limpia la base de datos y resetea todos los inputs de carga.
+
 - **Mapeo flexible de columnas**: podés seleccionar qué columnas corresponden a:
   - Jugador
   - Puesto
   - Fecha
   - Match Day
   - Tarea
-  - Duración (columna directa o calculada)
-  - Métricas (permite múltiples)
-- **Filtros dinámicos** por:
+  - Duración (columna directa o calculada desde hora de inicio y fin)
+  - Métricas (permite múltiples métricas numéricas)
+
+- **Filtros dinámicos por gráfico**:
   - Jugador
   - Puesto
   - Match Day
   - Tarea
-  - Rango de fechas
-  - Duración de sesión
-  - Valores de cada métrica
+  - Fecha (rango)
+  - Duración de sesión (rango)
+  - Rango de valores por métrica
+
+- **Interfaz visual optimizada**:
+  - Estética minimalista y funcional (paleta LIFT: rojo, gris, negro).
+  - Tipografías personalizadas (Righteous, Inter).
+  - Tabs con íconos estilo Visual Studio Code.
+  - `selectInput` y `selectizeInput` totalmente estilizados.
 
 ---
 
@@ -40,7 +58,7 @@ El archivo cargado debe contener al menos algunas de las siguientes columnas:
   - `Duration`: Duración directa (en minutos)
   - `Start time / End time`: Si no hay duración directa
 
-> ⚠️ **IMPORTANTE:** Si bien algunas columnas son opcionales, para aprovechar al máximo las funcionalidades del dashboard, se recomienda que el archivo contenga al menos: jugador, fecha, duración (directa o derivada), y varias métricas numéricas.
+> ⚠️ **IMPORTANTE:** Para aprovechar al máximo las funcionalidades, se recomienda incluir: jugador, fecha, duración (directa o derivada), y varias métricas numéricas.
 
 ---
 
@@ -48,48 +66,66 @@ El archivo cargado debe contener al menos algunas de las siguientes columnas:
 
 1. **📅 Métrica en el tiempo**
    - Promedio por jugador y fecha
-   - Gráfico de barras interactivas (`plotly`)
-   - Un gráfico por cada métrica seleccionada
+   - Gráfico de barras (`plotly`)
+   - Un gráfico independiente por métrica seleccionada
 
 2. **📦 Distribución por Match Day**
    - Boxplots por MD para cada métrica
-   - Visualiza la variabilidad entre jugadores
+   - Compara variabilidad entre jugadores
 
 3. **🧪 Distribución por Tarea**
-   - Boxplots por tipo de tarea
-   - Útil para diferenciar cargas en entrenamientos y partidos
+   - Boxplots por tipo de tarea o drill
 
 4. **📈 Z-score por Fecha**
-   - Z-score por jugador con media y SD global (sin incluir el valor actual)
-   - Smoothed trend (`loess`), áreas sombreadas ±1.5 Z
+   - Cálculo de Z-score con ventana móvil por jugador (sin incluir el valor actual)
+   - Líneas suavizadas, escalado automático, comparaciones internas
 
-5. **📋 Análisis de sesión**
-   - Filtros para seleccionar una sesión puntual
-   - Gráfico de barras ordenadas por jugador con media y ±1 / ±2 SD
-   - Filtros independientes por cada métrica
+5. **🧪 Análisis de sesión puntual**
+   - Selección de sesión por fecha, jugador, tarea o MD
+   - Gráfico ordenado por jugador con media ±1/±2 SD
 
-6. **📉 Z-score competitivo**
-   - Compara el partido actual con los 3–5 partidos previos
-   - Cálculo por jugador, incluye tabla resumen con media, SD y Z-score
+6. **📊 Competitive Analysis**
+   - Z-score por jugador en partido actual vs 3–5 partidos anteriores
+   - Tabla resumen con media histórica, valor actual y Z-score
+
+7. **📉 ACWR (Acute-Chronic Work Ratio)**
+   - Cálculo exponencial con parámetros ajustables (agudo y crónico)
+   - Visualización con zonas de riesgo y líneas suavizadas
+   - Código de colores automático:
+     - 🔴 ACWR > 1.5
+     - 🟢 0.8 ≤ ACWR ≤ 1.5
+     - 🔴 ACWR < 0.8
 
 ---
 
-## ⚙️ Próximas funcionalidades (en desarrollo)
+## 🔜 Próximas funcionalidades (en desarrollo)
 
-- Exportación automática de informes por sesión y jugador
-- Guardado persistente de base de datos
-- Nuevas visualizaciones:
-  - ACWR (Acute-Chronic Work Ratio)
-  - KPI dashboards
-  - Relaciones entre métricas
-- Parámetros de referencia personalizados
+- 🧾 **Exportación de reportes PDF**
+  - Por jugador, sesión o período
+
+- 📈 **Reporte Match vs Semana**
+  - Ratio entre cargas de partido y media semanal
+
+- 💡 **Panel de KPIs**
+  - Indicadores clave por sesión o jugador (Player Load, HSR, etc.)
+
+- 🎯 **Tarjetas informativas por tab**
+  - Uso de `valueBox` para mostrar indicadores clave al ingresar a cada visualización
+
+- 🧩 **Exploración de nuevos widgets**
+  - Alternativas como `echarts4r`, `highcharter`, `shinyWidgets`, etc.
 
 ---
 
 ## 🧠 Requisitos
 
-- R (versión reciente)
-- Paquetes: `shiny`, `ggplot2`, `plotly`, `dplyr`, `lubridate`, `DT`, `readxl`, `readr`, `jsonlite`
+- **Lenguaje**: R (versión reciente)
+- **Paquetes requeridos**:
+
+r
+install.packages(c("shiny", "readr", "readxl", "jsonlite", "DT", "ggplot2", 
+                   "plotly", "dplyr", "lubridate", "hms", "bslib", 
+                   "shinythemes", "rsconnect", "slider", "shinyWidgets", "tidyr"))
 
 ---
 
