@@ -2476,19 +2476,6 @@ server <- function(input, output, session) {
   #' partidos anteriores, sin incluir el partido actual. Se muestra un gráfico por jugador.
   # Output: Gráfico de Z-score competitivo
   # UI dinámico para múltiples métricas en Z-score competitivo
-  output$zscore_comp_plot <- renderUI({
-    req(input$metric_z_comp, read_data())
-    
-    plots <- lapply(input$metric_z_comp, function(metrica) {
-      metrica_clean <- make.names(metrica)
-      plot_id <- paste0("zscore_comp_plot_", metrica_clean)
-      plotlyOutput(plot_id, height = "500px")
-    })
-    
-    do.call(tagList, plots)
-  })
-  
-  # RenderPlotly para cada métrica seleccionada en el panel competitivo
   observe({
     req(input$metric_z_comp)
     
@@ -2507,11 +2494,11 @@ server <- function(input, output, session) {
           date_col <- input$date_col
           window_size <- input$ventana_movil_z_comp
           
-          # Parsear fecha
+          # Parsear fechas
           data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
           data_full <- data_full[!is.na(data_full[[date_col]]), ]
           
-          # Match Day = MD
+          # Filtrar por Match Day si corresponde
           if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
             data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
             data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
@@ -2550,9 +2537,8 @@ server <- function(input, output, session) {
             data_full <- data_full[keep, ]
           }
           
-          # Calcular rolling stats anteriores
+          # Calcular stats rolling (antes del partido)
           fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-          
           stats_movil <- data_full %>%
             filter(.data[[date_col]] < fecha_partido) %>%
             arrange(.data[[player_col]], .data[[date_col]]) %>%
@@ -2563,33 +2549,28 @@ server <- function(input, output, session) {
               .groups = "drop"
             )
           
-          # Datos del partido actual
+          # Consolidar valor de sesión
           data_sesion <- data_full %>%
             filter(as.character(.data[[date_col]]) == input$filtro_sesion_selector_comp) %>%
-            mutate(Jugador = .data[[player_col]]) %>%
-            select(Jugador, Fecha = .data[[date_col]], Valor = .data[[metrica_local]])
+            group_by(Jugador = .data[[player_col]]) %>%
+            summarise(Valor = mean(.data[[metrica_local]], na.rm = TRUE), .groups = "drop")
           
-          # Calcular Z-score
+          # Calcular Z-score final
           data_final <- left_join(data_sesion, stats_movil, by = "Jugador") %>%
             mutate(
-              z = (Valor - media_movil) / sd_movil
-            ) %>%
-            filter(!is.na(z) & is.finite(z)) %>%
-            group_by(Jugador) %>%
-            summarise(
-              z = mean(z, na.rm = TRUE),
+              z = (Valor - media_movil) / sd_movil,
               z_color = case_when(
                 z >= 1.5 ~ "Alto",
                 z <= -1.5 ~ "Bajo",
                 TRUE ~ "Neutral"
               ),
-              tooltip = paste0("Jugador: ", Jugador, "<br>Z-score: ", round(z, 2)),
-              .groups = "drop"
+              tooltip = paste0("Jugador: ", Jugador, "<br>Z-score: ", round(z, 2))
             ) %>%
+            filter(!is.na(z) & is.finite(z)) %>%
             arrange(z) %>%
-            mutate(Jugador = factor(Jugador, levels = unique(Jugador)))  # Evita duplicados
+            mutate(Jugador = factor(Jugador, levels = unique(Jugador)))
           
-          if (nrow(data_final) == 0 || all(is.na(data_final$z))) {
+          if (nrow(data_final) == 0) {
             return(plotly_empty(type = "bar") %>% layout(title = "No hay datos suficientes para mostrar el gráfico."))
           }
           
@@ -2625,9 +2606,10 @@ server <- function(input, output, session) {
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "transparent",
-              paper_bgcolor = "transparent",
-              font = list(color = "#ffffff")
+              plot_bgcolor = "rgba(0,0,0,0)",
+              paper_bgcolor = "rgba(0,0,0,0)",
+              font = list(color = "#ffffff"),
+              margin = list(l = 40, r = 40, b = 60, t = 80)
             )
         })
       })
@@ -3069,6 +3051,5 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
 
 
