@@ -2939,6 +2939,27 @@ server <- function(input, output, session) {
         #' - colores: rojo > 1.2, verde < 0.8, gris intermedio
         #' - usa filtros de jugador, puesto, tarea, duración, fechas seleccionadas y ventana MD
       
+        observe({
+          req(read_data(), input$player_col, input$date_col)
+          
+          data <- read_data()
+          
+          columnas_a_excluir <- c(
+            input$player_col, input$date_col, input$matchday_col,
+            input$task_col, input$position_col, input$duration_col,
+            input$start_col, input$end_col
+          )
+          
+          metricas_disponibles <- setdiff(names(data), columnas_a_excluir)
+          metricas_disponibles <- metricas_disponibles[sapply(data[metricas_disponibles], is.numeric)]
+          
+          updateSelectInput(
+            inputId = "metricas_microciclo",
+            choices = metricas_disponibles,
+            selected = head(metricas_disponibles, 3)
+          )
+        }) 
+        
         output$microciclo_ratio_plot_ui <- renderUI({
           req(input$metricas_microciclo)
           plotlyOutput("plot_microciclo_ratio", height = "600px")
