@@ -2940,25 +2940,16 @@ server <- function(input, output, session) {
         #' - usa filtros de jugador, puesto, tarea, duración, fechas seleccionadas y ventana MD
       
         observe({
-          req(read_data(), input$player_col, input$date_col)
-          
+          req(read_data())
           data <- read_data()
           
-          columnas_a_excluir <- c(
-            input$player_col, input$date_col, input$matchday_col,
-            input$task_col, input$position_col, input$duration_col,
-            input$start_col, input$end_col
-          )
+          # Detectar columnas numéricas (candidatas a métricas)
+          posibles_metricas <- names(data)[sapply(data, is.numeric)]
           
-          metricas_disponibles <- setdiff(names(data), columnas_a_excluir)
-          metricas_disponibles <- metricas_disponibles[sapply(data[metricas_disponibles], is.numeric)]
-          
-          updateSelectInput(
-            inputId = "metricas_microciclo",
-            choices = metricas_disponibles,
-            selected = head(metricas_disponibles, 3)
-          )
-        }) 
+          updateSelectInput(session, "metricas_microciclo",
+                            choices = posibles_metricas,
+                            selected = posibles_metricas[1])
+        })
         
         output$microciclo_ratio_plot_ui <- renderUI({
           req(input$metricas_microciclo)
