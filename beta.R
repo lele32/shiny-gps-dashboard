@@ -2063,8 +2063,8 @@ server <- function(input, output, session) {
             ) +
             theme_minimal(base_size = 14) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "transparent", color = NA),
+              panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
@@ -2079,8 +2079,8 @@ server <- function(input, output, session) {
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
+              plot_bgcolor = "transparent",
+              paper_bgcolor = "transparent",
               font = list(color = "#ffffff")
             )
         })
@@ -2143,8 +2143,8 @@ server <- function(input, output, session) {
             ) +
             theme_minimal(base_size = 14) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "transparent", color = NA),
+              panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
@@ -2159,8 +2159,8 @@ server <- function(input, output, session) {
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
+              plot_bgcolor = "transparent",
+              paper_bgcolor = "transparent",
               font = list(color = "#ffffff")
             )
         })
@@ -2223,8 +2223,8 @@ server <- function(input, output, session) {
               x = "Tarea", y = metrica_local
             ) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "transparent", color = NA),
+              panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
@@ -2239,8 +2239,8 @@ server <- function(input, output, session) {
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
+              plot_bgcolor = "transparent",
+              paper_bgcolor = "transparent",
               font = list(color = "#ffffff")
             )
         })
@@ -2332,8 +2332,8 @@ server <- function(input, output, session) {
               x = "Fecha", y = "Z-score"
             ) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "transparent", color = NA),
+              panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
@@ -2348,8 +2348,8 @@ server <- function(input, output, session) {
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
+              plot_bgcolor = "transparent",
+              paper_bgcolor = "transparent",
               font = list(color = "#ffffff"),
               legend = list(orientation = "h", x = 0.3, y = -0.2)
             )
@@ -2447,8 +2447,8 @@ server <- function(input, output, session) {
               x = "Jugador", y = metrica_local
             ) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "transparent", color = NA),
+              panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
@@ -2462,8 +2462,8 @@ server <- function(input, output, session) {
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
+              plot_bgcolor = "transparent",
+              paper_bgcolor = "transparent",
               font = list(color = "#ffffff")
             )
         })
@@ -2607,8 +2607,8 @@ server <- function(input, output, session) {
               x = "Jugador", y = "Z-score"
             ) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "transparent", color = NA),
+              panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
@@ -2625,8 +2625,8 @@ server <- function(input, output, session) {
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
+              plot_bgcolor = "transparent",
+              paper_bgcolor = "transparent",
               font = list(color = "#ffffff")
             )
         })
@@ -2907,8 +2907,8 @@ server <- function(input, output, session) {
               x = "Fecha", y = "ACWR"
             ) +
             theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              plot.background = element_rect(fill = "transparent", color = NA),
+              panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.minor = element_blank(),
               panel.grid.major = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 9, color = "#ffffff"),
@@ -2926,8 +2926,8 @@ server <- function(input, output, session) {
           # Convertir a gráfico interactivo
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#1e1e1e",
-              paper_bgcolor = "#1e1e1e",
+              plot_bgcolor = "transparent",
+              paper_bgcolor = "transparent",
               font = list(color = "#ffffff")
             )
         })
@@ -3039,8 +3039,8 @@ server <- function(input, output, session) {
             
             theme_minimal(base_size = 14) +
             theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              plot.background = element_rect(fill = "transparent", color = NA),
+              panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
@@ -3057,8 +3057,8 @@ server <- function(input, output, session) {
           # Versión interactiva con estética personalizada
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#1e1e1e",
-              paper_bgcolor = "#1e1e1e",
+              plot_bgcolor = "transparent",
+              paper_bgcolor = "transparent",
               font = list(color = "#ffffff")
             )
         })
