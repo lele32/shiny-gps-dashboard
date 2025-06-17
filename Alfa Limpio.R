@@ -32,12 +32,12 @@ options(shiny.maxRequestSize = 500 * 1024^2)  # Allow large file uploads
 tema_gps <- bslib::bs_theme(
   version = 5,
   bootswatch = "flatly",
-  bg = "#0E1117",         # Fondo oscuro elegante
-  fg = "#ffffff",         # Texto blanco
-  primary = "#00FFFF",    # Acento: azul eléctrico (puede alternarse con verde menta o violeta)
-  secondary = "#7F00FF",  # Acento secundario: violeta
-  base_font = bslib::font_google("Inter"),
-  heading_font = bslib::font_google("Space Grotesk")
+  base_font = bslib::font_google("Open Sans"),
+  heading_font = bslib::font_google("Righteous"),
+  bg = "#1E1E1E",        # Negro LIFT
+  fg = "#ffffff",        # Blanco LIFT
+  primary = "#fd002b",   # Rojo LIFT
+  secondary = "#c8c8c8"  # Gris LIFT
 )
 
 # ──────────────────────────────────────────────
@@ -51,420 +51,302 @@ ui <- fluidPage(
   # ===============================================================
   # Estilos personalizados y fuentes
   tags$head(
-    # Bootstrap Icons (para íconos visuales)
+    # Fuentes y Bootstrap Icons
+    tags$link(rel = "stylesheet", href = "https://fonts.googleapis.com/css2?family=Righteous&family=Open+Sans&family=Inter&display=swap"),
     tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"),
     
     # Estilos personalizados
     tags$style(HTML("
-      /* Tipografía base */
-      body {
-        font-family: 'Satoshi', sans-serif;
-      }
+    /* TITULOS PRINCIPALES */
+    h2 {
+      font-family: 'Righteous', cursive;
+      color: #fd002b;
+      text-transform: uppercase;
+      font-size: 36px;
+    }
 
-      h1, h2, h3, h4, h5 {
-        font-family: 'Geist', sans-serif;
-      }
-
-      /* Fondo blur estilo glassmorphism */
-      .glass-box {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(0, 255, 255, 0.15);
-        border-radius: 20px;
-        backdrop-filter: blur(14px);
-        padding: 20px;
-        box-shadow: 0 0 12px rgba(0,255,255,0.04);
-      }
-
-    /* FILTROS */
+    /* FILAS Y COLUMNAS DE FILTROS */
     .filter-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 24px;
-      margin-bottom: 24px;
+      gap: 20px;
+      margin-bottom: 20px;
     }
     .filter-column {
       flex: 1 1 45%;
     }
 
-    /* CONTAINERS / INPUTS */
+    /* INPUTS GENERALES */
     .shiny-input-container {
-      font-family: 'Satoshi', sans-serif;
+      font-family: 'Inter', sans-serif;
       color: #ffffff;
     }
+
+    /* SELECT INPUTS BASE */
     select, input, textarea {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(0,255,255,0.2);
-      color: #ffffff;
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-      font-family: 'Satoshi', sans-serif;
-      transition: all 0.3s ease;
+      background-color: #1e1e1e;
+      color: #d3d3d3;
+      border: 1px solid #2c2c2c;
+      font-family: 'Inter', sans-serif;
     }
     select:focus, input:focus, textarea:focus {
+      background-color: #1e1e1e;
+      color: #ffffff;
+      border: 1px solid #fd002b;
       outline: none;
-      border-color: #00FFFF;
-      box-shadow: 0 0 6px rgba(0,255,255,0.5);
     }
 
-    /* SELECTIZE STYLE */
+    /* SELECTIZE (Shiny selectInput) */
     .selectize-control .selectize-input {
-      background: rgba(255,255,255,0.05) !important;
-      border-radius: 12px !important;
-      border: 1px solid rgba(0,255,255,0.2) !important;
-      color: #ffffff !important;
-      backdrop-filter: blur(10px);
+      background-color: #1e1e1e !important;
+      color: #d3d3d3 !important;
+      border: 1px solid #2c2c2c !important;
     }
 
-    .selectize-dropdown, .selectize-input.full, .selectize-dropdown .option {
-      background: rgba(14,17,23,0.95) !important;
-      color: #ffffff !important;
+    .selectize-control .selectize-input.full {
+      background-color: #1e1e1e !important;
+      color: #d3d3d3 !important;
+    }
+
+    .selectize-control .item {
+      color: #d3d3d3 !important;
+    }
+
+    .selectize-control .selectize-dropdown {
+      background-color: #1e1e1e !important;
+      border: 1px solid #2c2c2c !important;
+    }
+
+    .selectize-dropdown .option {
+      color: #d3d3d3 !important;
+      background-color: #1e1e1e !important;
+      font-family: 'Inter', sans-serif;
     }
 
     .selectize-dropdown .option:hover,
     .selectize-dropdown .option.active {
-      background: #1f2937 !important;
-      color: #00FFFF !important;
+      background-color: #2c2c2c !important;
+      color: #fd002b !important;
     }
 
-    /* TABS estilo Baremetrics */
+    /* NAVBAR TABS estilo Visual Studio Code */
     .nav-tabs {
-      background: rgba(255,255,255,0.02);
-      border-bottom: 1px solid #00FFFF;
+      background-color: #1e1e1e;
+      border-bottom: 1px solid #2c2c2c;
     }
     .nav-tabs > li > a {
       color: #ffffff;
-      font-weight: bold;
-      font-family: 'Satoshi', sans-serif;
+      background-color: #1e1e1e;
       border: none;
+      margin-right: 2px;
       transition: all 0.3s ease;
+      font-weight: bold;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      padding: 10px 15px;
     }
     .nav-tabs > li.active > a,
+    .nav-tabs > li.active > a:focus,
+    .nav-tabs > li.active > a:hover {
+      color: #fd002b;
+      background-color: #1e1e1e;
+      border: none;
+      border-bottom: 3px solid #fd002b;
+    }
     .nav-tabs > li > a:hover {
-      color: #00FFFF;
-      border-bottom: 3px solid #00FFFF;
-      background: transparent;
+      color: #fd002b;
+      background-color: #2c2c2c;
+      border: none;
     }
 
-    /* BOTONES GLASS + NEÓN */
-    .btn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(0,255,255,0.3);
-      color: #ffffff;
-      border-radius: 12px;
-      padding: 10px 20px;
-      font-family: 'Satoshi', sans-serif;
-      transition: all 0.3s ease;
-    }
-    .btn:hover {
-      background: rgba(0,255,255,0.1);
-      border-color: #00FFFF;
-      color: #00FFFF;
-      box-shadow: 0 0 10px rgba(0,255,255,0.3);
-    }
-
-    .btn-danger {
-      background: #FF1744;
-      border-color: #FF1744;
-    }
-    .btn-danger:hover {
-      background: #ff4c68;
-      border-color: #ff4c68;
-      color: #ffffff;
-    }
-
-    /* DATATABLES HEADERS */
+    /* DATATABLES HEADER */
     table.dataTable thead th {
-      background: #00FFFF !important;
-      color: #0E1117 !important;
-      font-family: 'Satoshi', sans-serif;
-      font-weight: bold;
-      font-size: 14px;
+      background-color: #fd002b !important;
+      color: #ffffff !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 15px !important;
+      font-weight: bold !important;
     }
 
     /* DATATABLES BODY */
     table.dataTable tbody td {
-      background: #0E1117 !important;
+      background-color: #1e1e1e !important;
       color: #ffffff !important;
-      font-family: 'Satoshi', sans-serif;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 14px !important;
     }
 
-    /* FILAS hover */
+    /* DATATABLES ROW HOVER */
     table.dataTable tbody tr:hover {
-      background-color: rgba(0,255,255,0.08) !important;
+      background-color: #2a2a2a !important;
+    }
+
+    /* BOTONES ESTILO VISUAL STUDIO CODE */
+    .btn {
+      font-family: 'Inter', sans-serif;
+      font-weight: bold;
+      font-size: 14px;
+      color: #ffffff;
+      background-color: #2c2c2c;
+      border: 1px solid #fd002b;
+      padding: 8px 16px;
+      transition: all 0.3s ease;
+      border-radius: 6px;
+    }
+    .btn:hover {
+      background-color: #3c3c3c;
+      color: #fd002b;
+      border-color: #fd002b;
+      transform: translateY(-1px);
+    }
+    .btn:active {
+      background-color: #1e1e1e;
+      border-color: #fd002b;
+      transform: translateY(2px);
+    }
+    .btn-danger {
+      background-color: #fd002b;
+      border-color: #fd002b;
+    }
+    .btn-danger:hover {
+      background-color: #ff1744;
+      border-color: #ff1744;
+      color: #ffffff;
     }
   "))
   ),
   
-  # Encabezado principal estilo Hero minimalista
+  # Encabezado principal
   tags$div(
-    style = "
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-    margin-bottom: 30px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(0, 255, 255, 0.2);
-    border-radius: 20px;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 8px 30px rgba(0, 255, 255, 0.08);
-  ",
-    
-    tags$img(
-      src = "logo.png",
-      height = "90px",
-      style = "margin-bottom: 15px; filter: drop-shadow(0 0 8px rgba(0,255,255,0.3));"
-    ),
-    
+    style = "text-align: center; padding: 20px;",
+    tags$img(src = "logo.png", height = "80px", style = "margin-bottom: 10px;"),
     tags$h2("📊 GPS Data Dashboard")
   ),
   
   # Layout principal con sidebar
-  fluidRow(
-    # 🧭 Sidebar izquierdo
-    column(
-      width = 3,
-      sidebarPanel(
-        width = 12,  # Usa todo el ancho de la columna
-        style = "
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(0, 255, 255, 0.15);
-          border-radius: 20px;
-          backdrop-filter: blur(14px);
-          padding: 20px;
-          margin-top: 20px;
-          box-shadow: 0 0 12px rgba(0,255,255,0.04);
-        ",
-        
-        # Input Google Sheet
-        textInput(
-          "google_sheet_url", 
-          label = tags$span(style = "color:#ffffff;", "Google Sheet URL or ID (optional):"), 
-          value = ""
-        ),
-        
-        # File Upload
-        fileInput("file", "Upload GPS Data", 
-                  multiple = TRUE, 
-                  accept = c(".csv", ".xlsx", ".json"),
-                  buttonLabel = "📁 Select Files...",
-                  placeholder = "No file selected"),
-        
-        # Botón Reset
-        actionButton("reset_base", "Reset DB", 
-                     icon = icon("trash"),
-                     class = "btn btn-danger",
-                     style = "width:100%; margin-top:10px; margin-bottom:15px;"),
-        
-        # Estado DB
-        uiOutput("estado_base"),
-        
-        tags$hr(style = "border-color: rgba(255,255,255,0.1);"),
-        
-        # Info del archivo
-        uiOutput("file_info"),
-        uiOutput("column_mapping")
-      )
+  sidebarLayout(
+    sidebarPanel(
+      textInput("google_sheet_url", "Google Sheet URL or ID (optional):", value = ""),
+      fileInput("file", "Upload GPS Data",  multiple = TRUE, accept = c(".csv", ".xlsx", ".json")),
+      actionButton("reset_base", "Reset DB", icon = icon("trash"), class = "btn-danger"),
+      uiOutput("estado_base"),
+      tags$hr(),
+      uiOutput("file_info"),
+      uiOutput("column_mapping")
     ),
     
-    column(
-      width = 9,
-      mainPanel(
-        width = 12,
-        style = "
-          background: rgba(255, 255, 255, 0.03);
-          border-radius: 20px;
-          backdrop-filter: blur(12px);
-          box-shadow: 0 0 12px rgba(255, 255, 255, 0.04);
-          padding: 20px;
-          margin-top: 20px;
-        ",
-        tabsetPanel(
-          type = "tabs",
-          id = "main_tabs",
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-table"), "Data Table"),
-            DTOutput("table")
+    mainPanel(
+      tabsetPanel(
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-table"), "Data Table"),
+          DTOutput("table")
+        ),
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-graph-up"), "Métrica en el tiempo"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL, multiple = TRUE))
           ),
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-graph-up"), "Métrica en el tiempo"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
-                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                }),
-                tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL, multiple = TRUE))
-              ),
-              column(
-                width = 8,
-                uiOutput("barras_fecha_ui")
-              )
-            )
+          uiOutput("barras_fecha_ui")
+        ),
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-box"), "Boxplot por Match Day"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", selectInput("metric_box", "Select Metrics:", choices = NULL, multiple = TRUE))
           ),
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-box"), "Boxplot por Match Day"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
-                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                }),
-                tags$div(class = "filter-column", selectInput("metric_box", "Select Metrics:", choices = NULL, multiple = TRUE))
-              ),
-              column(
-                width = 8,
-                uiOutput("boxplot_matchday_ui")
-              )
-            )
+          uiOutput("boxplot_matchday_ui")
+        ),
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot por Tarea"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE))
           ),
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot por Tarea"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
-                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                }),
-                tags$div(class = "filter-column", selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE))
-              ),
-              column(
-                width = 8,
-                uiOutput("boxplot_task_ui")
-              )
-            )
+          uiOutput("boxplot_task_ui")
+        ),
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-activity"), "Z-score por Fecha"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE))
           ),
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-activity"), "Z-score por Fecha"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
-                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                }),
-                tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE))
-              ),
-              column(
-                width = 8,
-                uiOutput("zscore_plot_ui")
-              )
-            )
+          uiOutput("zscore_plot_ui")
+        ),
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-activity"), "Análisis de sesión"),
+          tags$div(class = "filter-row",
+                   lapply(c("jugador_sesion", "puesto_sesion", "matchday_sesion", "tarea_sesion", "duracion_sesion"), function(id) {
+                     tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                   }),
+                   tags$div(class = "filter-column", uiOutput("filtro_sesion_selector")),
+                   tags$div(class = "filter-column", selectInput("metricas_sesion_plot", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                   tags$div(class = "filter-column", uiOutput("filtro_fecha_sesion"))
           ),
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-activity"), "Análisis de sesión"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                lapply(c("jugador_sesion", "puesto_sesion", "matchday_sesion", "tarea_sesion", "duracion_sesion"), function(id) {
-                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                }),
-                tags$div(class = "filter-column", uiOutput("filtro_sesion_selector")),
-                tags$div(class = "filter-column", selectInput("metricas_sesion_plot", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", uiOutput("filtro_fecha_sesion"))
-              ),
-              column(
-                width = 8,
-                uiOutput("graficos_metricas_sesion")
-              )
-            )
+          uiOutput("graficos_metricas_sesion")
+        ),
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
+          tags$div(class = "filter-row",
+                   tags$div(class = "filter-column", uiOutput("filtro_jugador_z_comp")),
+                   tags$div(class = "filter-column", uiOutput("filtro_puesto_z_comp")),
+                   tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
+                   tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
+                   tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
+                   tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                   tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
           ),
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                tags$div(class = "filter-column", uiOutput("filtro_jugador_z_comp")),
-                tags$div(class = "filter-column", uiOutput("filtro_puesto_z_comp")),
-                tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
-                tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
-                tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
-                tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
-              ),
-              column(
-                width = 8,
-                uiOutput("zscore_comp_plot_ui"),
-                tags$hr(),
-                DTOutput("tabla_resumen_comp")
-              )
-            )
+          uiOutput("zscore_comp_plot_ui"),
+          tags$hr(),
+          DTOutput("tabla_resumen_comp")
+        ),
+        
+        tabPanel(
+          title = tagList(tags$i(class = "bi bi-lightning-charge"), "ACWR"),
+          tags$div(class = "filter-row",
+                   tags$div(class = "filter-column", uiOutput("filtro_jugador_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_puesto_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_matchday_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
+                   tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
+                   tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                   tags$div(class = "filter-column",
+                            sliderInput(
+                              inputId = "acwr_agudo_dias",
+                              label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
+                              min = 3, max = 14, value = 7, step = 1
+                            )
+                   ),
+                   tags$div(class = "filter-column",
+                            sliderInput(
+                              inputId = "acwr_cronico_dias",
+                              label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
+                              min = 14, max = 42, value = 28, step = 1
+                            )
+                   )
           ),
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-lightning-charge"), "ACWR"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                tags$div(class = "filter-column", uiOutput("filtro_jugador_acwr")),
-                tags$div(class = "filter-column", uiOutput("filtro_puesto_acwr")),
-                tags$div(class = "filter-column", uiOutput("filtro_matchday_acwr")),
-                tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
-                tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
-                tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
-                tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput(
-                  inputId = "acwr_agudo_dias",
-                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
-                  min = 3, max = 14, value = 7, step = 1
-                )),
-                tags$div(class = "filter-column", sliderInput(
-                  inputId = "acwr_cronico_dias",
-                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
-                  min = 14, max = 42, value = 28, step = 1
-                ))
-              ),
-              column(
-                width = 8,
-                uiOutput("acwr_plot_ui")
-              )
-            )
-          ),
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-bar-chart-line"), "Análisis de Microciclo"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                tags$div(class = "filter-column", uiOutput("filtro_jugador_micro")),
-                tags$div(class = "filter-column", uiOutput("filtro_puesto_micro")),
-                tags$div(class = "filter-column", uiOutput("filtro_tarea_micro")),
-                tags$div(class = "filter-column", uiOutput("filtro_duracion_micro")),
-                tags$div(class = "filter-column", selectInput("metricas_microciclo", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput(
-                  inputId = "ventana_movil_micro",
-                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Rolling partidos anteriores"),
-                  min = 3, max = 10, value = 5, step = 1
-                )),
-                tags$div(class = "filter-column", uiOutput("selector_fechas_entreno_micro"))
-              ),
-              column(
-                width = 8,
-                uiOutput("microciclo_ratio_plot_ui")
-              )
-            )
-          )
-        )
+          uiOutput("acwr_plot_ui")
+        ),
       )
-    )  
+    )
   )
 )
-
 
 # =======================================================
 # ⚙️ SERVER
@@ -820,19 +702,6 @@ server <- function(input, output, session) {
                       selected = input$metric_col[1])
   })
   
-  #' 📌 Actualiza selectInput de métricas para el tab Microciclo
-  observe({
-    req(read_data(), input$metric_col)
-    data <- read_data()
-    selected_metrics <- input$metric_col
-    valid_metrics <- selected_metrics[selected_metrics %in% colnames(data)]
-    numeric_metrics <- valid_metrics[sapply(data[valid_metrics], is.numeric)]
-    
-    updateSelectInput(session, "metricas_microciclo",
-                      choices = numeric_metrics,
-                      selected = head(numeric_metrics, 1))
-  })
-  
   # Crea un filtro UI selectInput dinámico basado en la columna indicada
   # === UI dinámico para filtros de selectInput categóricos (jugador, puesto, etc.) ===
   create_filter_ui <- function(id, colname, label) {
@@ -1105,113 +974,6 @@ server <- function(input, output, session) {
       selected = default_selected,
       multiple = TRUE
     )
-  })
-  
-  # 🔧 UI Outputs para filtros de Análisis de Microciclo
-  
-  output$filtro_jugador_micro <- renderUI({
-    req(read_data(), input$player_col)
-    data <- read_data()
-    
-    if (input$player_col %in% names(data)) {
-      jugadores <- unique(data[[input$player_col]])
-      selectInput("filtro_jugador_micro", "Jugador:", choices = jugadores, multiple = TRUE)
-    } else {
-      return(NULL)
-    }
-  })
-  
-  output$filtro_puesto_micro <- renderUI({
-    req(read_data(), input$position_col)
-    data <- read_data()
-    
-    if (input$position_col %in% names(data)) {
-      puestos <- unique(data[[input$position_col]])
-      selectInput("filtro_puesto_micro", "Puesto:", choices = puestos, multiple = TRUE)
-    } else {
-      return(NULL)
-    }
-  })
-  
-  output$filtro_tarea_micro <- renderUI({
-    req(read_data(), input$task_col)
-    data <- read_data()
-    
-    if (input$task_col %in% names(data)) {
-      tareas <- unique(data[[input$task_col]])
-      selectInput("filtro_tarea_micro", "Tarea:", choices = tareas, multiple = TRUE)
-    } else {
-      return(NULL)
-    }
-  })
-  
-  output$filtro_duracion_micro <- renderUI({
-    req(read_data())
-    data <- read_data()
-    dur <- NULL
-    
-    # 🔹 Si hay columna directa de duración
-    if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
-      dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
-    } 
-    
-    # 🔹 Si hay columnas de hora inicio y fin
-    else if (!is.null(input$start_col) && input$start_col != "None" &&
-             !is.null(input$end_col) && input$end_col != "None" &&
-             input$start_col %in% names(data) && input$end_col %in% names(data)) {
-      hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-      hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-      dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
-    }
-    
-    # 🔹 Validar duración
-    if (!is.null(dur)) {
-      dur <- dur[!is.na(dur) & is.finite(dur) & dur > 0]
-      
-      if (length(dur) == 0) return(NULL)
-      
-      sliderInput(
-        inputId = "filtro_duracion_micro",
-        label = "Duración (min):",
-        min = floor(min(dur)),
-        max = ceiling(max(dur)),
-        value = c(floor(min(dur)), ceiling(max(dur))),
-        step = 1
-      )
-    } else {
-      return(NULL)
-    }
-  })
-  
-  output$selector_fechas_entreno_micro <- renderUI({
-    req(read_data(), input$date_col, input$matchday_col)
-    data <- read_data()
-    
-    if (input$date_col %in% names(data) && input$matchday_col %in% names(data)) {
-      fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
-      md <- as.character(data[[input$matchday_col]])
-      
-      fechas_entreno <- fechas[!is.na(fechas) & !is.na(md) & !grepl("^MD", md, ignore.case = TRUE)]
-      fechas_unicas <- sort(unique(as.Date(fechas_entreno)))
-      
-      if (length(fechas_unicas) == 0) return(NULL)
-      
-      shinyWidgets::pickerInput(
-        inputId = "fechas_entreno_micro",
-        label = "Fechas entrenamiento a comparar:",
-        choices = fechas_unicas,
-        selected = tail(fechas_unicas, 3),
-        multiple = TRUE,
-        options = list(
-          `actions-box` = TRUE,
-          `live-search` = TRUE,
-          `selected-text-format` = "count > 2",
-          `style` = "background-color: #1e1e1e; color: #ffffff;"
-        )
-      )
-    } else {
-      return(NULL)
-    }
   })
   
   # =======================================================
@@ -1727,75 +1489,6 @@ server <- function(input, output, session) {
     return(data)
   }
   
-  #' 🔵 Reactive: Filtro para datos de Análisis de Microciclo
-  #'
-  #' Este bloque genera una base filtrada para comparar el acumulado de los últimos partidos 
-  #' seleccionados mediante una ventana móvil (`ventana_movil_micro`) con el acumulado de días 
-  #' específicos de semana seleccionados manualmente (`filtro_fechas_micro`).
-  #'
-  #' Filtros aplicados:
-  #' - Jugador (`filtro_jugador_micro`)
-  #' - Puesto (`filtro_puesto_micro`)
-  #' - Tarea (`filtro_tarea_micro`)
-  #' - Duración (`filtro_duracion_micro`)
-  #' - Ventana móvil para partidos (`ventana_movil_micro`)
-  #' - Fechas seleccionadas manualmente (`filtro_fechas_micro`)
-  
-  data_microciclo <- reactive({
-    req(read_data(), input$metric_col, input$ventana_movil_micro, input$filtro_fechas_micro)
-    
-    data <- read_data()
-    
-    # Aplicar filtros básicos
-    if (!is.null(input$player_col) && !is.null(input$filtro_jugador_micro)) {
-      data <- data[data[[input$player_col]] %in% input$filtro_jugador_micro, ]
-    }
-    if (!is.null(input$position_col) && !is.null(input$filtro_puesto_micro)) {
-      data <- data[data[[input$position_col]] %in% input$filtro_puesto_micro, ]
-    }
-    if (!is.null(input$task_col) && !is.null(input$filtro_tarea_micro)) {
-      data <- data[data[[input$task_col]] %in% input$filtro_tarea_micro, ]
-    }
-    
-    # Filtro por duración
-    if (!is.null(input$filtro_duracion_micro)) {
-      dur <- NULL
-      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
-        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
-      } else if (!is.null(input$start_col) && input$start_col != "None" &&
-                 !is.null(input$end_col) && input$end_col != "None" &&
-                 input$start_col %in% names(data) && input$end_col %in% names(data)) {
-        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
-      }
-      if (!is.null(dur)) {
-        keep <- !is.na(dur) & dur >= input$filtro_duracion_micro[1] & dur <= input$filtro_duracion_micro[2]
-        data <- data[keep, ]
-      }
-    }
-    
-    # Rolling de últimos partidos (matchday = "MD")
-    data_matchday <- data %>% 
-      filter(!is.null(input$matchday_col), .data[[input$matchday_col]] == "MD") %>%
-      arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
-      group_by(.data[[input$player_col]]) %>%
-      slice_head(n = input$ventana_movil_micro) %>%
-      mutate(grupo = "Partidos") %>%
-      ungroup()
-    
-    # Días de semana seleccionados manualmente
-    fechas_semana <- input$filtro_fechas_micro
-    data_semana <- data %>%
-      filter(.data[[input$date_col]] %in% fechas_semana) %>%
-      mutate(grupo = "Semana")
-    
-    # Combinar
-    data_out <- bind_rows(data_matchday, data_semana)
-    
-    return(data_out)
-  })
-  
   # 🧠 UI dinámico: Gráfico + Filtro por cada métrica seleccionada metrica en el tiempo
   output$barras_fecha_ui <- renderUI({
     req(input$metric, read_data())
@@ -1944,72 +1637,6 @@ server <- function(input, output, session) {
     }) |> tagList()
   })
   
-  # UI Dinámico para el checkbox de fechas (no-MD)
-  output$filtro_fechas_micro <- renderUI({
-    req(read_data(), input$date_col, input$matchday_col)
-    data <- read_data()
-    
-    fechas_validas <- data %>%
-      filter(!is.na(.data[[input$date_col]]) &
-               !is.na(.data[[input$matchday_col]]) &
-               !grepl("MD", .data[[input$matchday_col]], ignore.case = TRUE)) %>%
-      distinct(fecha = .data[[input$date_col]]) %>%
-      arrange(desc(fecha))
-    
-    checkboxGroupInput("fechas_micro", "Seleccionar Fechas para comparación:",
-                       choices = fechas_validas$fecha,
-                       selected = head(fechas_validas$fecha, 3))
-  })
-  
-  # Datos filtrados para microciclo (matchday y comparación)
-  filtro_data_micro <- reactive({
-    req(read_data(), input$player_col, input$date_col, input$matchday_col, input$metric_col)
-    
-    data <- read_data()
-    data[[input$date_col]] <- as.Date(data[[input$date_col]])
-    
-    # Aplicar filtros comunes
-    if (!is.null(input$filtro_jugador_micro)) {
-      data <- data[data[[input$player_col]] %in% input$filtro_jugador_micro, ]
-    }
-    if (!is.null(input$filtro_puesto_micro) && !is.null(input$position_col)) {
-      data <- data[data[[input$position_col]] %in% input$filtro_puesto_micro, ]
-    }
-    if (!is.null(input$filtro_tarea_micro) && !is.null(input$task_col)) {
-      data <- data[data[[input$task_col]] %in% input$filtro_tarea_micro, ]
-    }
-    if (!is.null(input$filtro_duracion_micro)) {
-      dur <- NULL
-      if (!is.null(input$duration_col) && input$duration_col != "None") {
-        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
-      } else if (!is.null(input$start_col) && !is.null(input$end_col)) {
-        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
-      }
-      if (!is.null(dur)) {
-        data <- data[!is.na(dur) & dur >= input$filtro_duracion_micro[1] & dur <= input$filtro_duracion_micro[2], ]
-      }
-    }
-    
-    # Datos para el promedio móvil de últimos partidos
-    data_md <- data %>%
-      filter(grepl("MD", .data[[input$matchday_col]], ignore.case = TRUE)) %>%
-      arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
-      group_by(Jugador = .data[[input$player_col]]) %>%
-      slice_head(n = input$ventana_movil_micro) %>%
-      mutate(grupo = "Partidos") %>%
-      ungroup()
-    
-    # Datos para días seleccionados como "semana"
-    data_ref <- data %>%
-      filter(.data[[input$date_col]] %in% input$fechas_micro) %>%
-      mutate(grupo = "Semana")
-    
-    bind_rows(data_md, data_ref)
-  })
-  
-  
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
   #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
@@ -2030,63 +1657,58 @@ server <- function(input, output, session) {
           req(filtro_data(), input[[filtro_id]])
           data <- filtro_data()
           
-          # Limpieza de datos
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
           data <- data[!is.na(data[[metrica_local]]) & !is.na(data[[input$date_col]]), ]
           
-          # Aplicar filtro por rango de valores
+          # Aplicar filtro de valores de esta métrica específica
           val_range <- input[[filtro_id]]
           data <- data[data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
           
-          # Agregación por jugador y fecha
           plot_data <- data %>%
             group_by(Fecha = as.Date(.data[[input$date_col]]), Jugador = .data[[input$player_col]]) %>%
             summarise(Promedio = mean(.data[[metrica_local]], na.rm = TRUE), .groups = "drop") %>%
             mutate(
               Fecha = factor(Fecha, levels = sort(unique(Fecha))),
-              tooltip = paste0(
-                "<b>Jugador:</b> ", Jugador,
-                "<br><b>Fecha:</b> ", Fecha,
-                "<br><b>Promedio:</b> ", round(Promedio, 2)
-              )
+              tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Promedio: ", round(Promedio, 2))
             )
-          
-          # Gráfico
           p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador, text = tooltip)) +
             geom_col(position = position_dodge2(preserve = "single"), width = 0.7) +
             scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 5)]) +
-            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$Jugador)))) +
+            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$Jugador)))) +
             labs(
               title = paste("Promedio de", metrica_local, "por Fecha y Jugador"),
               x = "Fecha", y = metrica_local
             ) +
             theme_minimal(base_size = 14) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
-              axis.text.y = element_text(color = "#ffffff"),
-              axis.title = element_text(color = "#ffffff", face = "bold"),
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
-                family = "Geist"
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Inter"
               ),
-              legend.position = "none"
+              legend.position = "none",
+              legend.text = element_text(color = "#ffffff"),
+              legend.title = element_text(color = "#ffffff", face = "bold")
             )
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
+              plot_bgcolor = "#1e1e1e",
+              paper_bgcolor = "#1e1e1e",
               font = list(color = "#ffffff")
             )
         })
       })
     }
   })
+  
   #' Output: Gráfico Boxplot por Match Day
   #'
   #' Este gráfico muestra la distribución de una métrica seleccionada (`input$metric_box`)
@@ -2106,67 +1728,54 @@ server <- function(input, output, session) {
           data <- filtro_data_box(metrica_local, input[[filtro_id]])
           req(data, input$matchday_col, input$player_col, metrica_local, input[[filtro_id]])
           
-          # Conversión segura y filtrado
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           val_range <- input[[filtro_id]]
-          data <- data[!is.na(data[[metrica_local]]) & 
-                         data[[metrica_local]] >= val_range[1] & 
-                         data[[metrica_local]] <= val_range[2], ]
+          data <- data[!is.na(data[[metrica_local]]) & data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
           
-          # Preparación del dataset para el gráfico
           plot_data <- data %>%
             mutate(
               MatchDay = as.factor(.data[[input$matchday_col]]),
               Jugador = .data[[input$player_col]],
               Valor = .data[[metrica_local]],
-              tooltip = paste0(
-                "<b>Jugador:</b> ", Jugador,
-                "<br><b>Match Day:</b> ", MatchDay,
-                "<br><b>", metrica_local, ":</b> ", round(Valor, 2)
-              )
+              tooltip = paste0("Jugador: ", Jugador, "<br>Match Day: ", MatchDay, "<br>", metrica_local, ": ", round(Valor, 2))
             )
           
-          # Gráfico Boxplot
           p <- ggplot(plot_data, aes(x = MatchDay, y = Valor, text = tooltip)) +
             geom_boxplot(
               aes(fill = MatchDay),
-              outlier.shape = 21,
+              outlier.shape = 21,             # Forma con borde + relleno
               outlier.size = 2,
-              outlier.fill = "#ffffff",
-              outlier.color = "#fd002b",
+              outlier.fill = "#ffffff",       # Color interior blanco
+              outlier.color = "#ffffff",      # Borde también blanco (o "#fd002b" si querés contraste)
               alpha = 0.7
             ) +
-            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$MatchDay)))) +
+            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$MatchDay)))) +
+            theme_minimal(base_size = 14) +
             labs(
               title = paste("Distribución de", metrica_local, "por Match Day"),
               x = "Match Day", y = metrica_local
             ) +
-            theme_minimal(base_size = 14) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
-              axis.text.y = element_text(color = "#ffffff"),
-              axis.title = element_text(color = "#ffffff", face = "bold"),
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20,
-                color = "#00FFFF", family = "Geist"
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Inter"
               ),
               legend.position = "none"
             )
           
-          ggplotly(p, tooltip = "text") %>%
-            layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
-              font = list(color = "#ffffff")
-            )
+          ggplotly(p, tooltip = "text")
         })
       })
     }
   })
+  
   #' Output: Gráfico Boxplot por Tarea
   #'
   #' Este gráfico muestra la distribución de una métrica seleccionada (`input$metric_task`)
@@ -2186,67 +1795,54 @@ server <- function(input, output, session) {
           req(input[[filtro_id]])
           data <- filtro_data_task(metrica_local, input[[filtro_id]])
           
-          # Conversión y filtro por rango de valores
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           val_range <- input[[filtro_id]]
-          data <- data[!is.na(data[[metrica_local]]) &
-                         data[[metrica_local]] >= val_range[1] &
-                         data[[metrica_local]] <= val_range[2], ]
+          data <- data[!is.na(data[[metrica_local]]) & data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
           
-          # Preparar datos para graficar
           plot_data <- data %>%
             mutate(
               Tarea = as.factor(.data[[input$task_col]]),
               Jugador = .data[[input$player_col]],
               Valor = .data[[metrica_local]],
-              tooltip = paste0(
-                "<b>Jugador:</b> ", Jugador,
-                "<br><b>Tarea:</b> ", Tarea,
-                "<br><b>", metrica_local, ":</b> ", round(Valor, 2)
-              )
+              tooltip = paste0("Jugador: ", Jugador, "<br>Tarea: ", Tarea, "<br>", metrica_local, ": ", round(Valor, 2))
             )
           
-          # Crear gráfico
           p <- ggplot(plot_data, aes(x = Tarea, y = Valor, text = tooltip)) +
             geom_boxplot(
               aes(fill = Tarea),
               outlier.shape = 21,
               outlier.size = 2,
               outlier.fill = "#ffffff",
-              outlier.color = "#fd002b",
+              outlier.color = "#ffffff",
               alpha = 0.7
             ) +
-            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$Tarea)))) +
+            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$Tarea)))) +
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Distribución de", metrica_local, "por Tarea"),
               x = "Tarea", y = metrica_local
             ) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
-              axis.text.y = element_text(color = "#ffffff"),
-              axis.title = element_text(color = "#ffffff", face = "bold"),
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 12, color = "#ffffff"),
+              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20,
-                color = "#00FFFF", family = "Geist"
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Inter"
               ),
               legend.position = "none"
             )
           
-          ggplotly(p, tooltip = "text") %>%
-            layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
-              font = list(color = "#ffffff")
-            )
+          ggplotly(p, tooltip = "text")
         })
       })
     }
   })
+  
   #' Output: Gráfico de Z-score por jugador
   #'
   #' Este gráfico muestra la evolución del Z-score por jugador para una métrica seleccionada,
@@ -2266,16 +1862,22 @@ server <- function(input, output, session) {
         output[[plot_id]] <- renderPlotly({
           req(input[[filtro_id]], input$player_col, input$date_col)
           
+          # Llamamos a filtro_data_z pasando los argumentos correctos
           data <- filtro_data_z(metrica = metrica_local, rango = input[[filtro_id]])
+          
+          # Validación
           if (!(metrica_local %in% names(data))) return(NULL)
           
           data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[metrica_local]]), ]
           
+          
+          # Filtrar por rango de valores
           val_range <- input[[filtro_id]]
           data <- data[data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
           
+          # Calcular z-score por jugador
           z_data <- data %>%
             arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
             group_by(Jugador = .data[[input$player_col]]) %>%
@@ -2290,15 +1892,12 @@ server <- function(input, output, session) {
                 z <= -1.5 ~ "Bajo",
                 TRUE ~ "Neutral"
               ),
-              tooltip = paste0(
-                "<b>Jugador:</b> ", Jugador,
-                "<br><b>Fecha:</b> ", Fecha,
-                "<br><b>Z-score:</b> ", round(z, 2)
-              )
+              tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Z-score: ", round(z, 2))
             ) %>%
             ungroup() %>%
             filter(!is.na(z), is.finite(z))
           
+          # Filtrar jugadores: mostrar solo 12 por defecto si no se seleccionó ninguno
           if (!is.null(input$filtro_jugador_z) && length(input$filtro_jugador_z) > 0) {
             z_data <- z_data %>% filter(Jugador %in% input$filtro_jugador_z)
           } else {
@@ -2308,38 +1907,45 @@ server <- function(input, output, session) {
           
           if (nrow(z_data) == 0) return(NULL)
           
+          # Colores
           colores_base <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
           fondo_rojo  <- "#fdecea"
           fondo_verde <- "#eafaf1"
           fecha_min <- min(z_data$Fecha, na.rm = TRUE)
           fecha_max <- max(z_data$Fecha, na.rm = TRUE)
-          ncol_facetas <- min(4, length(unique(z_data$Jugador)))
           
+          # Número de columnas dinámico (máximo 4 por fila)
+          jugadores_unicos <- length(unique(z_data$Jugador))
+          ncol_facetas <- min(4, jugadores_unicos)
+          
+          # Gráfico
           p <- ggplot(z_data, aes(x = Fecha, y = z, text = tooltip, color = z_color)) +
             annotate("rect", xmin = fecha_min, xmax = fecha_max,
                      ymin = 1.5, ymax = Inf, fill = fondo_rojo, alpha = 0.4) +
             annotate("rect", xmin = fecha_min, xmax = fecha_max,
                      ymin = -Inf, ymax = -1.5, fill = fondo_verde, alpha = 0.4) +
-            geom_smooth(aes(group = Jugador), method = "loess", span = 0.9, se = FALSE,
-                        color = "#34495e", linewidth = 0.6) +
+            geom_smooth(aes(group = Jugador), method = "loess", span = 0.9, se = FALSE, color = "#34495e", linewidth = 0.6) +
             geom_point(size = 1.2) +
             scale_color_manual(values = colores_base, name = "Z-score") +
             geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
-            facet_wrap(~Jugador, scales = "free_y", ncol = ncol_facetas) +
+            facet_wrap(~Jugador, scales = "free_y", ncol = 4) +
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Z-score de", metrica_local, "por jugador"),
               x = "Fecha", y = "Z-score"
             ) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
+              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 20, color = "#00FFFF", family = "Geist"),
+              plot.title = element_text(
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Inter"
+              ),
               strip.text = element_text(face = "bold", size = 13, color = "#ffffff"),
               legend.position = "bottom",
               legend.text = element_text(color = "#ffffff"),
@@ -2347,12 +1953,7 @@ server <- function(input, output, session) {
             )
           
           ggplotly(p, tooltip = "text") %>%
-            layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
-              font = list(color = "#ffffff"),
-              legend = list(orientation = "h", x = 0.3, y = -0.2)
-            )
+            layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
         })
       })
     }
@@ -2425,12 +2026,7 @@ server <- function(input, output, session) {
           media <- mean(resumen$Valor, na.rm = TRUE)
           sd_val <- sd(resumen$Valor, na.rm = TRUE)
           
-          p <- ggplot(resumen, aes(
-            x = Jugador,
-            y = Valor,
-            fill = Valor,
-            text = paste0("<b>Jugador:</b> ", Jugador, "<br><b>Valor:</b> ", round(Valor, 2))
-          )) +
+          p <- ggplot(resumen, aes(x = Jugador, y = Valor, fill = Valor, text = paste0("Jugador: ", Jugador, "<br>Valor: ", round(Valor, 2)))) +
             annotate("rect", xmin = -Inf, xmax = Inf,
                      ymin = media - sd_val, ymax = media + sd_val,
                      alpha = 0.2, fill = "#2c2c2c") +
@@ -2444,28 +2040,23 @@ server <- function(input, output, session) {
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Valores de", metrica_local, "por jugador – Sesión"),
-              x = "Jugador", y = metrica_local
+              y = metrica_local, x = "Jugador"
             ) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20,
-                color = "#00FFFF", family = "Inter"
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                family = "Inter"
               )
             )
           
-          ggplotly(p, tooltip = "text") %>%
-            layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
-              font = list(color = "#ffffff")
-            )
+          ggplotly(p, tooltip = "text")
         })
       })
     }
@@ -2607,15 +2198,15 @@ server <- function(input, output, session) {
               x = "Jugador", y = "Z-score"
             ) +
             theme(
-              plot.background = element_rect(fill = "#0E1117", color = NA),
-              panel.background = element_rect(fill = "#0E1117", color = NA),
+              plot.background = element_rect(fill = "#1e1e1e", color = NA),
+              panel.background = element_rect(fill = "#1e1e1e", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
                 family = "Inter"
               ),
               legend.position = "right",
@@ -2623,12 +2214,7 @@ server <- function(input, output, session) {
               legend.title = element_text(color = "#ffffff", face = "bold")
             )
           
-          ggplotly(p, tooltip = "text") %>%
-            layout(
-              plot_bgcolor = "#0E1117",
-              paper_bgcolor = "#0E1117",
-              font = list(color = "#ffffff")
-            )
+          ggplotly(p, tooltip = "text")
         })
       })
     }
@@ -2745,7 +2331,7 @@ server <- function(input, output, session) {
       ), options = list(dom = 't', paging = FALSE)))
     }
     
-    # Tabla de datos con estilo LIFT
+    # Tabla final
     datatable(
       resumen_final,
       options = list(
@@ -2758,7 +2344,7 @@ server <- function(input, output, session) {
       rownames = FALSE,
       class = 'display nowrap cell-border compact stripe'
     ) %>%
-      # 🎨 Estilo general: fondo oscuro, texto blanco, fuente y tamaño
+      # 🎨 Estilo general de celdas
       formatStyle(
         columns = names(resumen_final),
         backgroundColor = '#1e1e1e',
@@ -2766,14 +2352,14 @@ server <- function(input, output, session) {
         fontFamily = 'Open Sans',
         fontSize = '14px'
       ) %>%
-      # 🎯 Estilo de Z-score (condicional por tramos)
+      # 🎯 Z-score coloreado
       formatStyle(
         'Z_score',
         backgroundColor = styleInterval(
           c(-1.5, 1.5),
           c('#2ecc71', '#f1c40f', '#e74c3c')
         ),
-        color = '#000000',
+        color = 'black',
         fontWeight = 'bold'
       )
   })
@@ -2887,19 +2473,16 @@ server <- function(input, output, session) {
             # Puntos coloreados según valor de ACWR
             geom_point(aes(color = color), size = 2.2, show.legend = FALSE) +
             
-            # Línea suavizada de tendencia por jugador (blanca)
-            geom_smooth(
-              aes(group = Jugador), method = "loess", span = 0.8, se = TRUE,
-              color = "#ffffff", size = 0.8
-            ) +
+            # Línea suavizada de tendencia por jugador (con SE)
+            geom_smooth(aes(group = Jugador), method = "loess", span = 0.8, se = TRUE, color = "#ffffff", size = 0.8) +
             
-            # Facetas por jugador
+            # Facet por jugador
             facet_wrap(~Jugador, ncol = 4, scales = "fixed") +
             
-            # Colores directamente desde la columna
+            # Escala de colores
             scale_color_identity() +
             
-            # Estilo general
+            # Estética general
             expand_limits(y = 0) +
             theme_minimal(base_size = 14) +
             labs(
@@ -2915,7 +2498,7 @@ server <- function(input, output, session) {
               axis.text.y = element_text(size = 11, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
+                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
                 family = "Inter"
               ),
               strip.text = element_text(size = 12, face = "bold", color = "#ffffff"),
@@ -2923,138 +2506,7 @@ server <- function(input, output, session) {
               legend.position = "none"
             )
           
-          # Convertir a gráfico interactivo
-          ggplotly(p, tooltip = "text") %>%
-            layout(
-              plot_bgcolor = "#1e1e1e",
-              paper_bgcolor = "#1e1e1e",
-              font = list(color = "#ffffff")
-            )
-        })
-        
-        #' 🔴 Output: Gráfico de ratio Partido vs Semana
-        #'
-        #' Muestra un gráfico de barras por jugador con el ratio:
-        #' - acumulado de días seleccionados / promedio rolling de partidos (MD)
-        #' - colores: rojo > 1.2, verde < 0.8, gris intermedio
-        #' - usa filtros de jugador, puesto, tarea, duración, fechas seleccionadas y ventana MD
-        
-        observe({
-          req(read_data())
-          data <- read_data()
-          
-          # Detectar columnas numéricas (candidatas a métricas)
-          posibles_metricas <- names(data)[sapply(data, is.numeric)]
-          
-          updateSelectInput(session, "metricas_microciclo",
-                            choices = posibles_metricas,
-                            selected = posibles_metricas[1])
-        })
-        
-        output$microciclo_ratio_plot_ui <- renderUI({
-          req(input$metricas_microciclo)
-          plotlyOutput("plot_microciclo_ratio", height = "600px")
-        })
-        
-        output$plot_microciclo_ratio <- renderPlotly({
-          req(read_data(), input$metricas_microciclo, input$filtro_jugador_micro, input$filtro_tarea_micro,
-              input$filtro_duracion_micro, input$fechas_entreno_micro, input$ventana_movil_micro)
-          
-          data <- read_data()
-          data[[input$date_col]] <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
-          data <- data[!is.na(data[[input$date_col]]), ]
-          
-          partidos <- data[grepl("^MD", data[[input$matchday_col]], ignore.case = TRUE), ]
-          entrenos <- data[!grepl("^MD", data[[input$matchday_col]], ignore.case = TRUE), ]
-          
-          entrenos <- entrenos %>%
-            filter(
-              .data[[input$player_col]] %in% input$filtro_jugador_micro,
-              .data[[input$task_col]] %in% input$filtro_tarea_micro,
-              .data[[input$date_col]] %in% as.Date(input$fechas_entreno_micro)
-            )
-          
-          dur <- NULL
-          if (!is.null(input$duration_col) && input$duration_col != "None") {
-            dur <- suppressWarnings(as.numeric(entrenos[[input$duration_col]]))
-          } else if (!is.null(input$start_col) && !is.null(input$end_col)) {
-            hora_inicio <- suppressWarnings(parse_time(entrenos[[input$start_col]]))
-            hora_fin <- suppressWarnings(parse_time(entrenos[[input$end_col]]))
-            dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
-          }
-          if (!is.null(dur)) {
-            entrenos <- entrenos[!is.na(dur) & dur >= input$filtro_duracion_micro[1] & dur <= input$filtro_duracion_micro[2], ]
-          }
-          
-          resultados <- lapply(input$metricas_microciclo, function(metrica) {
-            if (!metrica %in% names(data)) return(NULL)
-            
-            partidos_ordenados <- partidos %>%
-              arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
-              group_by(Jugador = .data[[input$player_col]]) %>%
-              slice_head(n = input$ventana_movil_micro) %>%
-              summarise(rolling = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
-            
-            entrenos_sumados <- entrenos %>%
-              group_by(Jugador = .data[[input$player_col]]) %>%
-              summarise(acum = sum(.data[[metrica]], na.rm = TRUE), .groups = "drop")
-            
-            left_join(entrenos_sumados, partidos_ordenados, by = "Jugador") %>%
-              mutate(
-                ratio = acum / rolling,
-                metrica = metrica,
-                color = case_when(
-                  ratio > 1.2 ~ "#fd002b",
-                  ratio < 0.8 ~ "#00e676",
-                  TRUE ~ "#c8c8c8"
-                )
-              )
-          })
-          
-          resultados_df <- bind_rows(resultados)
-          if (nrow(resultados_df) == 0) return(NULL)
-          
-          p <- ggplot(resultados_df, aes(
-            x = Jugador, y = ratio, fill = color,
-            text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2))
-          )) +
-            
-            # Barras por jugador con color codificado
-            geom_col(width = 0.8) +
-            
-            # Facetas por métrica
-            facet_wrap(~metrica, scales = "free_y") +
-            
-            # Línea de referencia = 1
-            geom_hline(yintercept = 1, linetype = "dashed", color = "white") +
-            
-            # Colores ya definidos en los datos
-            scale_fill_identity() +
-            
-            # Etiquetas y tema general
-            labs(
-              title = "⚖️ Ratio Partido vs Semana",
-              x = "Jugador", y = "Ratio (Acumulado / Rolling)"
-            ) +
-            
-            theme_minimal(base_size = 14) +
-            theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.grid.major = element_line(color = "#2c2c2c"),
-              panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
-              axis.text.y = element_text(size = 11, color = "#ffffff"),
-              axis.title = element_text(color = "#ffffff", face = "bold", size = 14),
-              strip.text = element_text(color = "#ffffff", face = "bold", size = 13),
-              strip.background = element_blank(),
-              plot.title = element_text(
-                color = "#00FFFF", face = "bold", size = 20,
-                family = "Inter", hjust = 0.5
-              )
-            )
-          
-          # Versión interactiva con estética personalizada
+          # Render interactivo
           ggplotly(p, tooltip = "text") %>%
             layout(
               plot_bgcolor = "#1e1e1e",
@@ -3069,6 +2521,4 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
-
 
