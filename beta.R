@@ -2030,58 +2030,63 @@ server <- function(input, output, session) {
           req(filtro_data(), input[[filtro_id]])
           data <- filtro_data()
           
+          # Limpieza de datos
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
           data <- data[!is.na(data[[metrica_local]]) & !is.na(data[[input$date_col]]), ]
           
-          # Aplicar filtro de valores de esta métrica específica
+          # Aplicar filtro por rango de valores
           val_range <- input[[filtro_id]]
           data <- data[data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
           
+          # Agregación por jugador y fecha
           plot_data <- data %>%
             group_by(Fecha = as.Date(.data[[input$date_col]]), Jugador = .data[[input$player_col]]) %>%
             summarise(Promedio = mean(.data[[metrica_local]], na.rm = TRUE), .groups = "drop") %>%
             mutate(
               Fecha = factor(Fecha, levels = sort(unique(Fecha))),
-              tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Promedio: ", round(Promedio, 2))
+              tooltip = paste0(
+                "<b>Jugador:</b> ", Jugador,
+                "<br><b>Fecha:</b> ", Fecha,
+                "<br><b>Promedio:</b> ", round(Promedio, 2)
+              )
             )
+          
+          # Gráfico
           p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador, text = tooltip)) +
             geom_col(position = position_dodge2(preserve = "single"), width = 0.7) +
             scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 5)]) +
-            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$Jugador)))) +
+            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$Jugador)))) +
             labs(
               title = paste("Promedio de", metrica_local, "por Fecha y Jugador"),
               x = "Fecha", y = metrica_local
             ) +
             theme_minimal(base_size = 14) +
             theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              plot.background = element_rect(fill = "#0E1117", color = NA),
+              panel.background = element_rect(fill = "#0E1117", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
-              axis.text.y = element_text(size = 12, color = "#ffffff"),
-              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
+              axis.text.y = element_text(color = "#ffffff"),
+              axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Inter"
+                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
+                family = "Geist"
               ),
-              legend.position = "none",
-              legend.text = element_text(color = "#ffffff"),
-              legend.title = element_text(color = "#ffffff", face = "bold")
+              legend.position = "none"
             )
           
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "#1e1e1e",
-              paper_bgcolor = "#1e1e1e",
+              plot_bgcolor = "#0E1117",
+              paper_bgcolor = "#0E1117",
               font = list(color = "#ffffff")
             )
         })
       })
     }
   })
-  
   #' Output: Gráfico Boxplot por Match Day
   #'
   #' Este gráfico muestra la distribución de una métrica seleccionada (`input$metric_box`)
@@ -2101,54 +2106,67 @@ server <- function(input, output, session) {
           data <- filtro_data_box(metrica_local, input[[filtro_id]])
           req(data, input$matchday_col, input$player_col, metrica_local, input[[filtro_id]])
           
+          # Conversión segura y filtrado
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           val_range <- input[[filtro_id]]
-          data <- data[!is.na(data[[metrica_local]]) & data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
+          data <- data[!is.na(data[[metrica_local]]) & 
+                         data[[metrica_local]] >= val_range[1] & 
+                         data[[metrica_local]] <= val_range[2], ]
           
+          # Preparación del dataset para el gráfico
           plot_data <- data %>%
             mutate(
               MatchDay = as.factor(.data[[input$matchday_col]]),
               Jugador = .data[[input$player_col]],
               Valor = .data[[metrica_local]],
-              tooltip = paste0("Jugador: ", Jugador, "<br>Match Day: ", MatchDay, "<br>", metrica_local, ": ", round(Valor, 2))
+              tooltip = paste0(
+                "<b>Jugador:</b> ", Jugador,
+                "<br><b>Match Day:</b> ", MatchDay,
+                "<br><b>", metrica_local, ":</b> ", round(Valor, 2)
+              )
             )
           
+          # Gráfico Boxplot
           p <- ggplot(plot_data, aes(x = MatchDay, y = Valor, text = tooltip)) +
             geom_boxplot(
               aes(fill = MatchDay),
-              outlier.shape = 21,             # Forma con borde + relleno
+              outlier.shape = 21,
               outlier.size = 2,
-              outlier.fill = "#ffffff",       # Color interior blanco
-              outlier.color = "#ffffff",      # Borde también blanco (o "#fd002b" si querés contraste)
+              outlier.fill = "#ffffff",
+              outlier.color = "#fd002b",
               alpha = 0.7
             ) +
-            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$MatchDay)))) +
-            theme_minimal(base_size = 14) +
+            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$MatchDay)))) +
             labs(
               title = paste("Distribución de", metrica_local, "por Match Day"),
               x = "Match Day", y = metrica_local
             ) +
+            theme_minimal(base_size = 14) +
             theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              plot.background = element_rect(fill = "#0E1117", color = NA),
+              panel.background = element_rect(fill = "#0E1117", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
-              axis.text.y = element_text(size = 12, color = "#ffffff"),
-              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
+              axis.text.y = element_text(color = "#ffffff"),
+              axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Inter"
+                hjust = 0.5, face = "bold", size = 20,
+                color = "#00FFFF", family = "Geist"
               ),
               legend.position = "none"
             )
           
-          ggplotly(p, tooltip = "text")
+          ggplotly(p, tooltip = "text") %>%
+            layout(
+              plot_bgcolor = "#0E1117",
+              paper_bgcolor = "#0E1117",
+              font = list(color = "#ffffff")
+            )
         })
       })
     }
   })
-  
   #' Output: Gráfico Boxplot por Tarea
   #'
   #' Este gráfico muestra la distribución de una métrica seleccionada (`input$metric_task`)
@@ -2168,54 +2186,67 @@ server <- function(input, output, session) {
           req(input[[filtro_id]])
           data <- filtro_data_task(metrica_local, input[[filtro_id]])
           
+          # Conversión y filtro por rango de valores
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           val_range <- input[[filtro_id]]
-          data <- data[!is.na(data[[metrica_local]]) & data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
+          data <- data[!is.na(data[[metrica_local]]) &
+                         data[[metrica_local]] >= val_range[1] &
+                         data[[metrica_local]] <= val_range[2], ]
           
+          # Preparar datos para graficar
           plot_data <- data %>%
             mutate(
               Tarea = as.factor(.data[[input$task_col]]),
               Jugador = .data[[input$player_col]],
               Valor = .data[[metrica_local]],
-              tooltip = paste0("Jugador: ", Jugador, "<br>Tarea: ", Tarea, "<br>", metrica_local, ": ", round(Valor, 2))
+              tooltip = paste0(
+                "<b>Jugador:</b> ", Jugador,
+                "<br><b>Tarea:</b> ", Tarea,
+                "<br><b>", metrica_local, ":</b> ", round(Valor, 2)
+              )
             )
           
+          # Crear gráfico
           p <- ggplot(plot_data, aes(x = Tarea, y = Valor, text = tooltip)) +
             geom_boxplot(
               aes(fill = Tarea),
               outlier.shape = 21,
               outlier.size = 2,
               outlier.fill = "#ffffff",
-              outlier.color = "#ffffff",
+              outlier.color = "#fd002b",
               alpha = 0.7
             ) +
-            scale_fill_manual(values = rep("#fd002b", length(unique(plot_data$Tarea)))) +
+            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$Tarea)))) +
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Distribución de", metrica_local, "por Tarea"),
               x = "Tarea", y = metrica_local
             ) +
             theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              plot.background = element_rect(fill = "#0E1117", color = NA),
+              panel.background = element_rect(fill = "#0E1117", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
-              axis.text.y = element_text(size = 12, color = "#ffffff"),
-              axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
+              axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
+              axis.text.y = element_text(color = "#ffffff"),
+              axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Inter"
+                hjust = 0.5, face = "bold", size = 20,
+                color = "#00FFFF", family = "Geist"
               ),
               legend.position = "none"
             )
           
-          ggplotly(p, tooltip = "text")
+          ggplotly(p, tooltip = "text") %>%
+            layout(
+              plot_bgcolor = "#0E1117",
+              paper_bgcolor = "#0E1117",
+              font = list(color = "#ffffff")
+            )
         })
       })
     }
   })
-  
   #' Output: Gráfico de Z-score por jugador
   #'
   #' Este gráfico muestra la evolución del Z-score por jugador para una métrica seleccionada,
@@ -2235,22 +2266,16 @@ server <- function(input, output, session) {
         output[[plot_id]] <- renderPlotly({
           req(input[[filtro_id]], input$player_col, input$date_col)
           
-          # Llamamos a filtro_data_z pasando los argumentos correctos
           data <- filtro_data_z(metrica = metrica_local, rango = input[[filtro_id]])
-          
-          # Validación
           if (!(metrica_local %in% names(data))) return(NULL)
           
           data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[metrica_local]]), ]
           
-          
-          # Filtrar por rango de valores
           val_range <- input[[filtro_id]]
           data <- data[data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
           
-          # Calcular z-score por jugador
           z_data <- data %>%
             arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
             group_by(Jugador = .data[[input$player_col]]) %>%
@@ -2265,12 +2290,15 @@ server <- function(input, output, session) {
                 z <= -1.5 ~ "Bajo",
                 TRUE ~ "Neutral"
               ),
-              tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>Z-score: ", round(z, 2))
+              tooltip = paste0(
+                "<b>Jugador:</b> ", Jugador,
+                "<br><b>Fecha:</b> ", Fecha,
+                "<br><b>Z-score:</b> ", round(z, 2)
+              )
             ) %>%
             ungroup() %>%
             filter(!is.na(z), is.finite(z))
           
-          # Filtrar jugadores: mostrar solo 12 por defecto si no se seleccionó ninguno
           if (!is.null(input$filtro_jugador_z) && length(input$filtro_jugador_z) > 0) {
             z_data <- z_data %>% filter(Jugador %in% input$filtro_jugador_z)
           } else {
@@ -2280,45 +2308,38 @@ server <- function(input, output, session) {
           
           if (nrow(z_data) == 0) return(NULL)
           
-          # Colores
           colores_base <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
           fondo_rojo  <- "#fdecea"
           fondo_verde <- "#eafaf1"
           fecha_min <- min(z_data$Fecha, na.rm = TRUE)
           fecha_max <- max(z_data$Fecha, na.rm = TRUE)
+          ncol_facetas <- min(4, length(unique(z_data$Jugador)))
           
-          # Número de columnas dinámico (máximo 4 por fila)
-          jugadores_unicos <- length(unique(z_data$Jugador))
-          ncol_facetas <- min(4, jugadores_unicos)
-          
-          # Gráfico
           p <- ggplot(z_data, aes(x = Fecha, y = z, text = tooltip, color = z_color)) +
             annotate("rect", xmin = fecha_min, xmax = fecha_max,
                      ymin = 1.5, ymax = Inf, fill = fondo_rojo, alpha = 0.4) +
             annotate("rect", xmin = fecha_min, xmax = fecha_max,
                      ymin = -Inf, ymax = -1.5, fill = fondo_verde, alpha = 0.4) +
-            geom_smooth(aes(group = Jugador), method = "loess", span = 0.9, se = FALSE, color = "#34495e", linewidth = 0.6) +
+            geom_smooth(aes(group = Jugador), method = "loess", span = 0.9, se = FALSE,
+                        color = "#34495e", linewidth = 0.6) +
             geom_point(size = 1.2) +
             scale_color_manual(values = colores_base, name = "Z-score") +
             geom_hline(yintercept = 0, linetype = "dashed", color = "gray60") +
-            facet_wrap(~Jugador, scales = "free_y", ncol = 4) +
+            facet_wrap(~Jugador, scales = "free_y", ncol = ncol_facetas) +
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Z-score de", metrica_local, "por jugador"),
               x = "Fecha", y = "Z-score"
             ) +
             theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              plot.background = element_rect(fill = "#0E1117", color = NA),
+              panel.background = element_rect(fill = "#0E1117", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10, color = "#ffffff"),
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
-              plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Inter"
-              ),
+              plot.title = element_text(hjust = 0.5, face = "bold", size = 20, color = "#00FFFF", family = "Geist"),
               strip.text = element_text(face = "bold", size = 13, color = "#ffffff"),
               legend.position = "bottom",
               legend.text = element_text(color = "#ffffff"),
@@ -2326,7 +2347,12 @@ server <- function(input, output, session) {
             )
           
           ggplotly(p, tooltip = "text") %>%
-            layout(legend = list(orientation = "h", x = 0.3, y = -0.2))
+            layout(
+              plot_bgcolor = "#0E1117",
+              paper_bgcolor = "#0E1117",
+              font = list(color = "#ffffff"),
+              legend = list(orientation = "h", x = 0.3, y = -0.2)
+            )
         })
       })
     }
@@ -2399,7 +2425,12 @@ server <- function(input, output, session) {
           media <- mean(resumen$Valor, na.rm = TRUE)
           sd_val <- sd(resumen$Valor, na.rm = TRUE)
           
-          p <- ggplot(resumen, aes(x = Jugador, y = Valor, fill = Valor, text = paste0("Jugador: ", Jugador, "<br>Valor: ", round(Valor, 2)))) +
+          p <- ggplot(resumen, aes(
+            x = Jugador,
+            y = Valor,
+            fill = Valor,
+            text = paste0("<b>Jugador:</b> ", Jugador, "<br><b>Valor:</b> ", round(Valor, 2))
+          )) +
             annotate("rect", xmin = -Inf, xmax = Inf,
                      ymin = media - sd_val, ymax = media + sd_val,
                      alpha = 0.2, fill = "#2c2c2c") +
@@ -2413,23 +2444,28 @@ server <- function(input, output, session) {
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Valores de", metrica_local, "por jugador – Sesión"),
-              y = metrica_local, x = "Jugador"
+              x = "Jugador", y = metrica_local
             ) +
             theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              plot.background = element_rect(fill = "#0E1117", color = NA),
+              panel.background = element_rect(fill = "#0E1117", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
-                family = "Inter"
+                hjust = 0.5, face = "bold", size = 20,
+                color = "#00FFFF", family = "Inter"
               )
             )
           
-          ggplotly(p, tooltip = "text")
+          ggplotly(p, tooltip = "text") %>%
+            layout(
+              plot_bgcolor = "#0E1117",
+              paper_bgcolor = "#0E1117",
+              font = list(color = "#ffffff")
+            )
         })
       })
     }
@@ -2571,15 +2607,15 @@ server <- function(input, output, session) {
               x = "Jugador", y = "Z-score"
             ) +
             theme(
-              plot.background = element_rect(fill = "#1e1e1e", color = NA),
-              panel.background = element_rect(fill = "#1e1e1e", color = NA),
+              plot.background = element_rect(fill = "#0E1117", color = NA),
+              panel.background = element_rect(fill = "#0E1117", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
                 family = "Inter"
               ),
               legend.position = "right",
@@ -2587,7 +2623,12 @@ server <- function(input, output, session) {
               legend.title = element_text(color = "#ffffff", face = "bold")
             )
           
-          ggplotly(p, tooltip = "text")
+          ggplotly(p, tooltip = "text") %>%
+            layout(
+              plot_bgcolor = "#0E1117",
+              paper_bgcolor = "#0E1117",
+              font = list(color = "#ffffff")
+            )
         })
       })
     }
@@ -2704,7 +2745,7 @@ server <- function(input, output, session) {
       ), options = list(dom = 't', paging = FALSE)))
     }
     
-    # Tabla final
+    # Tabla de datos con estilo LIFT
     datatable(
       resumen_final,
       options = list(
@@ -2717,7 +2758,7 @@ server <- function(input, output, session) {
       rownames = FALSE,
       class = 'display nowrap cell-border compact stripe'
     ) %>%
-      # 🎨 Estilo general de celdas
+      # 🎨 Estilo general: fondo oscuro, texto blanco, fuente y tamaño
       formatStyle(
         columns = names(resumen_final),
         backgroundColor = '#1e1e1e',
@@ -2725,14 +2766,14 @@ server <- function(input, output, session) {
         fontFamily = 'Open Sans',
         fontSize = '14px'
       ) %>%
-      # 🎯 Z-score coloreado
+      # 🎯 Estilo de Z-score (condicional por tramos)
       formatStyle(
         'Z_score',
         backgroundColor = styleInterval(
           c(-1.5, 1.5),
           c('#2ecc71', '#f1c40f', '#e74c3c')
         ),
-        color = 'black',
+        color = '#000000',
         fontWeight = 'bold'
       )
   })
@@ -2846,16 +2887,19 @@ server <- function(input, output, session) {
             # Puntos coloreados según valor de ACWR
             geom_point(aes(color = color), size = 2.2, show.legend = FALSE) +
             
-            # Línea suavizada de tendencia por jugador (con SE)
-            geom_smooth(aes(group = Jugador), method = "loess", span = 0.8, se = TRUE, color = "#ffffff", size = 0.8) +
+            # Línea suavizada de tendencia por jugador (blanca)
+            geom_smooth(
+              aes(group = Jugador), method = "loess", span = 0.8, se = TRUE,
+              color = "#ffffff", size = 0.8
+            ) +
             
-            # Facet por jugador
+            # Facetas por jugador
             facet_wrap(~Jugador, ncol = 4, scales = "fixed") +
             
-            # Escala de colores
+            # Colores directamente desde la columna
             scale_color_identity() +
             
-            # Estética general
+            # Estilo general
             expand_limits(y = 0) +
             theme_minimal(base_size = 14) +
             labs(
@@ -2871,7 +2915,7 @@ server <- function(input, output, session) {
               axis.text.y = element_text(size = 11, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#fd002b",
+                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
                 family = "Inter"
               ),
               strip.text = element_text(size = 12, face = "bold", color = "#ffffff"),
@@ -2879,7 +2923,7 @@ server <- function(input, output, session) {
               legend.position = "none"
             )
           
-          # Render interactivo
+          # Convertir a gráfico interactivo
           ggplotly(p, tooltip = "text") %>%
             layout(
               plot_bgcolor = "#1e1e1e",
@@ -2958,22 +3002,47 @@ server <- function(input, output, session) {
           resultados_df <- bind_rows(resultados)
           if (nrow(resultados_df) == 0) return(NULL)
           
-          p <- ggplot(resultados_df, aes(x = Jugador, y = ratio, fill = color, text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2)))) +
+          p <- ggplot(resultados_df, aes(
+            x = Jugador, y = ratio, fill = color,
+            text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2))
+          )) +
+            
+            # Barras por jugador con color codificado
             geom_col(width = 0.8) +
+            
+            # Facetas por métrica
             facet_wrap(~metrica, scales = "free_y") +
+            
+            # Línea de referencia = 1
             geom_hline(yintercept = 1, linetype = "dashed", color = "white") +
+            
+            # Colores ya definidos en los datos
             scale_fill_identity() +
+            
+            # Etiquetas y tema general
+            labs(
+              title = "⚖️ Ratio Partido vs Semana",
+              x = "Jugador", y = "Ratio (Acumulado / Rolling)"
+            ) +
+            
             theme_minimal(base_size = 14) +
-            labs(title = "⚖️ Ratio Partido vs Semana", x = "Jugador", y = "Ratio (Acumulado / Rolling)") +
             theme(
               plot.background = element_rect(fill = "#1e1e1e", color = NA),
               panel.background = element_rect(fill = "#1e1e1e", color = NA),
-              axis.text = element_text(color = "#ffffff"),
-              axis.title = element_text(color = "#ffffff", face = "bold"),
-              strip.text = element_text(color = "#ffffff", face = "bold"),
-              plot.title = element_text(color = "#fd002b", face = "bold", hjust = 0.5)
+              panel.grid.major = element_line(color = "#2c2c2c"),
+              panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
+              axis.text.y = element_text(size = 11, color = "#ffffff"),
+              axis.title = element_text(color = "#ffffff", face = "bold", size = 14),
+              strip.text = element_text(color = "#ffffff", face = "bold", size = 13),
+              strip.background = element_blank(),
+              plot.title = element_text(
+                color = "#00FFFF", face = "bold", size = 20,
+                family = "Inter", hjust = 0.5
+              )
             )
           
+          # Versión interactiva con estética personalizada
           ggplotly(p, tooltip = "text") %>%
             layout(
               plot_bgcolor = "#1e1e1e",
