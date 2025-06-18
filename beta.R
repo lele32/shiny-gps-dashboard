@@ -302,6 +302,7 @@ ui <- fluidPage(
           ),
           column(
             width = 8,
+            class = "glass-box",
             uiOutput("barras_fecha_ui")
           )
         )
@@ -320,6 +321,7 @@ ui <- fluidPage(
           ),
           column(
             width = 8,
+            class = "glass-box",
             uiOutput("boxplot_matchday_ui")
           )
         )
@@ -338,6 +340,7 @@ ui <- fluidPage(
           ),
           column(
             width = 8,
+            class = "glass-box",
             uiOutput("boxplot_task_ui")
           )
         )
@@ -356,6 +359,7 @@ ui <- fluidPage(
           ),
           column(
             width = 8,
+            class = "glass-box",
             uiOutput("zscore_plot_ui")
           )
         )
@@ -376,6 +380,7 @@ ui <- fluidPage(
           ),
           column(
             width = 8,
+            class = "glass-box",
             uiOutput("graficos_metricas_sesion")
           )
         )
@@ -397,6 +402,7 @@ ui <- fluidPage(
           ),
           column(
             width = 8,
+            class = "glass-box",
             uiOutput("zscore_comp_plot_ui"),
             tags$hr(),
             DTOutput("tabla_resumen_comp")
@@ -430,6 +436,7 @@ ui <- fluidPage(
           ),
           column(
             width = 8,
+            class = "glass-box",
             uiOutput("acwr_plot_ui")
           )
         )
@@ -451,10 +458,12 @@ ui <- fluidPage(
               label = tags$span(style = "color:#fd002b; font-weight:bold;", "Rolling partidos anteriores"),
               min = 3, max = 10, value = 5, step = 1
             )),
+            
             tags$div(class = "filter-column", uiOutput("selector_fechas_entreno_micro"))
           ),
           column(
             width = 8,
+            class = "glass-box",
             uiOutput("microciclo_ratio_plot_ui")
           )
         )
@@ -2925,122 +2934,132 @@ server <- function(input, output, session) {
           req(read_data())
           data <- read_data()
           
-          # Detectar columnas numéricas (candidatas a métricas)
-          posibles_metricas <- names(data)[sapply(data, is.numeric)]
+          # Seleccionar solo columnas numéricas que sean distintas a las columnas clave (por seguridad)
+          columnas_clave <- c(input$player_col, input$task_col, input$position_col, input$matchday_col,
+                              input$date_col, input$duration_col, input$start_col, input$end_col)
+          posibles_metricas <- setdiff(names(data)[sapply(data, is.numeric)], columnas_clave)
           
-          updateSelectInput(session, "metricas_microciclo",
-                            choices = posibles_metricas,
-                            selected = posibles_metricas[1])
+          updateSelectInput(
+            session,
+            "metricas_microciclo",
+            choices = input$metricas,
+            selected = head(input$metricas, 1)
+          )
         })
         
+        # 📦 UI para el gráfico
         output$microciclo_ratio_plot_ui <- renderUI({
           req(input$metricas_microciclo)
           plotlyOutput("plot_microciclo_ratio", height = "600px")
         })
-      
+        
+        # 📊 Gráfico de Ratio Partido vs Semana
         output$plot_microciclo_ratio <- renderPlotly({
-          req(read_data(), input$metricas_microciclo, input$filtro_jugador_micro, input$filtro_tarea_micro,
-              input$filtro_duracion_micro, input$fechas_entreno_micro, input$ventana_movil_micro)
+          req(read_data(), input$metricas_microciclo, input$ventana_movil_micro, input$fechas_entreno_micro)
           
           data <- read_data()
-          data[[input$date_col]] <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
+          
+          # 📆 Parsear fechas
+          data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy"))
           data <- data[!is.na(data[[input$date_col]]), ]
           
-          partidos <- data[grepl("^MD", data[[input$matchday_col]], ignore.case = TRUE), ]
-          entrenos <- data[!grepl("^MD", data[[input$matchday_col]], ignore.case = TRUE), ]
-          
-          entrenos <- entrenos %>%
-            filter(
-              .data[[input$player_col]] %in% input$filtro_jugador_micro,
-              .data[[input$task_col]] %in% input$filtro_tarea_micro,
-              .data[[input$date_col]] %in% as.Date(input$fechas_entreno_micro)
-            )
-          
-          dur <- NULL
+          # 🎯 Filtrar por duración (si existe)
           if (!is.null(input$duration_col) && input$duration_col != "None") {
-            dur <- suppressWarnings(as.numeric(entrenos[[input$duration_col]]))
+            data <- data %>%
+              filter(
+                !is.na(.data[[input$duration_col]]),
+                .data[[input$duration_col]] >= input$filtro_duracion_micro[1],
+                .data[[input$duration_col]] <= input$filtro_duracion_micro[2]
+              )
           } else if (!is.null(input$start_col) && !is.null(input$end_col)) {
-            hora_inicio <- suppressWarnings(parse_time(entrenos[[input$start_col]]))
-            hora_fin <- suppressWarnings(parse_time(entrenos[[input$end_col]]))
-            dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
-          }
-          if (!is.null(dur)) {
-            entrenos <- entrenos[!is.na(dur) & dur >= input$filtro_duracion_micro[1] & dur <= input$filtro_duracion_micro[2], ]
+            hora_inicio <- parse_time(data[[input$start_col]])
+            hora_fin <- parse_time(data[[input$end_col]])
+            duracion <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+            data <- data[!is.na(duracion) & duracion >= input$filtro_duracion_micro[1] & duracion <= input$filtro_duracion_micro[2], ]
           }
           
+          # 🎯 Filtrar por jugador, tarea, puesto (si están)
+          if (!is.null(input$filtro_jugador_micro) && length(input$filtro_jugador_micro) > 0) {
+            data <- data[data[[input$player_col]] %in% input$filtro_jugador_micro, ]
+          }
+          
+          if (!is.null(input$filtro_tarea_micro) && length(input$filtro_tarea_micro) > 0) {
+            data <- data[data[[input$task_col]] %in% input$filtro_tarea_micro, ]
+          }
+          
+          if (!is.null(input$filtro_puesto_micro) && length(input$filtro_puesto_micro) > 0) {
+            data <- data[data[[input$position_col]] %in% input$filtro_puesto_micro, ]
+          }
+          
+          # 🏷️ Clasificar como partido o entreno en base a la columna dinámica
+          data$tipo <- ifelse(toupper(data[[input$matchday_col]]) == "MD", "partido", "entreno")
+          
+          # 📦 Entrenos seleccionados por fecha
+          entrenos <- data %>%
+            filter(tipo == "entreno", .data[[input$date_col]] %in% as.Date(input$fechas_entreno_micro))
+          
+          # 📦 Partidos previos (por jugador)
+          partidos <- data %>%
+            filter(tipo == "partido") %>%
+            arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
+            group_by(.data[[input$player_col]]) %>%
+            slice_head(n = input$ventana_movil_micro) %>%
+            ungroup()
+          
+          # 🧮 Calcular ratio por métrica
           resultados <- lapply(input$metricas_microciclo, function(metrica) {
             if (!metrica %in% names(data)) return(NULL)
             
-            partidos_ordenados <- partidos %>%
-              arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
+            entreno_sum <- entrenos %>%
               group_by(Jugador = .data[[input$player_col]]) %>%
-              slice_head(n = input$ventana_movil_micro) %>%
-              summarise(rolling = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+              summarise(entreno = sum(.data[[metrica]], na.rm = TRUE), .groups = "drop")
             
-            entrenos_sumados <- entrenos %>%
+            partido_avg <- partidos %>%
               group_by(Jugador = .data[[input$player_col]]) %>%
-              summarise(acum = sum(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+              summarise(partido = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
             
-            left_join(entrenos_sumados, partidos_ordenados, by = "Jugador") %>%
+            df <- left_join(partido_avg, entreno_sum, by = "Jugador") %>%
               mutate(
-                ratio = acum / rolling,
+                ratio = partido / entreno,
                 metrica = metrica,
                 color = case_when(
+                  is.na(ratio) ~ "#c8c8c8",
                   ratio > 1.2 ~ "#fd002b",
                   ratio < 0.8 ~ "#00e676",
                   TRUE ~ "#c8c8c8"
                 )
               )
+            
+            return(df)
           })
           
-          resultados_df <- bind_rows(resultados)
-          if (nrow(resultados_df) == 0) return(NULL)
+          df_final <- bind_rows(resultados)
+          if (nrow(df_final) == 0) return(NULL)
           
-          p <- ggplot(resultados_df, aes(
-            x = Jugador, y = ratio, fill = color,
-            text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2))
-          )) +
-            
-            # Barras por jugador con color codificado
+          # 📊 Gráfico con estilo LIFT
+          p <- ggplot(df_final, aes(x = Jugador, y = ratio, fill = color,
+                                    text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2)))) +
             geom_col(width = 0.8) +
-            
-            # Facetas por métrica
             facet_wrap(~metrica, scales = "free_y") +
-            
-            # Línea de referencia = 1
-            geom_hline(yintercept = 1, linetype = "dashed", color = "white") +
-            
-            # Colores ya definidos en los datos
+            geom_hline(yintercept = 1, linetype = "dashed", color = "#ffffff") +
             scale_fill_identity() +
-            
-            # Etiquetas y tema general
-            labs(
-              title = "⚖️ Ratio Partido vs Semana",
-              x = "Jugador", y = "Ratio (Acumulado / Rolling)"
-            ) +
-            
+            labs(title = "Ratio Partido vs Semana", x = "Jugador", y = "Ratio (Partido / Entreno)") +
             theme_minimal(base_size = 14) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
               panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
-              axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
-              axis.text.y = element_text(size = 11, color = "#ffffff"),
-              axis.title = element_text(color = "#ffffff", face = "bold", size = 14),
-              strip.text = element_text(color = "#ffffff", face = "bold", size = 13),
-              strip.background = element_blank(),
-              plot.title = element_text(
-                color = "#00FFFF", face = "bold", size = 20,
-                family = "Inter", hjust = 0.5
-              )
+              axis.text = element_text(color = "#ffffff"),
+              axis.title = element_text(color = "#ffffff", face = "bold"),
+              strip.text = element_text(color = "#ffffff", face = "bold"),
+              plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5)
             )
           
-          # Versión interactiva con estética personalizada
           ggplotly(p, tooltip = "text") %>%
             layout(
-              plot_bgcolor = "transparent",
-              paper_bgcolor = "transparent",
+              plot_bgcolor = "rgba(0,0,0,0)",
+              paper_bgcolor = "rgba(0,0,0,0)",
               font = list(color = "#ffffff")
             )
         })
@@ -3051,6 +3070,7 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
+
 
 
 
