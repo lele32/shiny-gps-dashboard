@@ -454,18 +454,27 @@ ui <- fluidPage(
                 tags$div(class = "filter-column", uiOutput("filtro_puesto_micro")),
                 tags$div(class = "filter-column", uiOutput("filtro_tarea_micro")),
                 tags$div(class = "filter-column", uiOutput("filtro_duracion_micro")),
-                tags$div(class = "filter-column", selectInput("metricas_microciclo", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput(
-                  inputId = "ventana_movil_micro",
-                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Rolling partidos anteriores"),
-                  min = 3, max = 10, value = 5, step = 1
-                )),
-                
+                tags$div(class = "filter-column", 
+                         selectInput("metricas_microciclo", "Select Metrics:", choices = NULL, multiple = TRUE)
+                ),
+                tags$div(class = "filter-column", 
+                         sliderInput(
+                           inputId = "ventana_movil_micro",
+                           label = tags$span(style = "color:#fd002b; font-weight:bold;", "Rolling partidos anteriores"),
+                           min = 3, max = 10, value = 5, step = 1
+                         )
+                ),
                 tags$div(class = "filter-column", uiOutput("selector_fechas_entreno_micro"))
               ),
               column(
                 width = 8,
                 class = "glass-box",
+                # 👇 Bloque glass para umbrales + subtítulo
+                tags$div(
+                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; background: rgba(30,30,30,0.85); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
+                  tags$p("Ajustá los umbrales de ratio por métrica:", style = "color: #ffffff; font-size: 1.12em; text-align: center; margin-bottom: 0.2em; letter-spacing: 0.5px;"),
+                  uiOutput("umbral_ratio_microciclo_ui")  # Acá van los sliders por métrica
+                ),
                 uiOutput("microciclo_ratio_plot_ui")
               )
             )
@@ -2020,6 +2029,58 @@ server <- function(input, output, session) {
     bind_rows(data_md, data_ref)
   })
   
+  ## UI Para selector de umbrales de ratio para analisis de microciclo 
+  output$umbral_ratio_microciclo_ui <- renderUI({
+    req(input$metricas_microciclo)
+    n <- length(input$metricas_microciclo)
+    if (n == 0) return(NULL)
+    
+    # Agrupa las métricas en filas de a 3
+    filas <- split(input$metricas_microciclo, ceiling(seq_along(input$metricas_microciclo)/3))
+    
+    tagList(
+      lapply(filas, function(met_group) {
+        # El ancho de cada columna depende de la cantidad de métricas en la fila (máx 3 → 4 columnas de 12)
+        ancho_col <- switch(length(met_group),
+                            '1' = 12,  # Si solo hay una métrica en la fila, ocupa todo el ancho
+                            '2' = 6,   # Si hay dos, 6 cada una
+                            '3' = 4,   # Si hay tres, 4 cada una
+                            4)         # Default 4 (por si acaso)
+        fluidRow(
+          lapply(met_group, function(metrica) {
+            column(
+              width = ancho_col, style = "padding-left: 8px; padding-right: 8px; margin-bottom: 6px;",
+              tags$div(
+                style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 10px 10px 8px 12px; box-shadow: 0 2px 8px #10101040; min-width:200px;",
+                tags$div(
+                  style = "color:#00FFFF; font-weight:600; font-size:1.1em; margin-bottom:6px;",
+                  metrica
+                ),
+                fluidRow(
+                  column(
+                    width = 6, style = "padding-right:6px;",
+                    sliderInput(
+                      inputId = paste0("umbral_bajo_", metrica),
+                      label = tags$span("Bajo", style = "color:#00e676; font-size:0.95em;"),
+                      min = 0, max = 2, value = 0.8, step = 0.01, width = "100%"
+                    )
+                  ),
+                  column(
+                    width = 6, style = "padding-left:6px;",
+                    sliderInput(
+                      inputId = paste0("umbral_alto_", metrica),
+                      label = tags$span("Alto", style = "color:#fd002b; font-size:0.95em;"),
+                      min = 0.8, max = 3, value = 1.5, step = 0.01, width = "100%"
+                    )
+                  )
+                )
+              )
+            )
+          })
+        )
+      })
+    )
+  })
   
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
@@ -2985,7 +3046,6 @@ server <- function(input, output, session) {
           }
           
           # ⚽ Clasificar tipo de sesión: múltiples variantes posibles de partido
-          # Lista de posibles valores que indican PARTIDO
           valores_partido <- c("md", "match", "game", "partido", "juego")
           
           data$tipo <- ifelse(
@@ -2997,6 +3057,12 @@ server <- function(input, output, session) {
           # 📈 Calcular ratios para cada métrica
           resultados <- lapply(input$metricas_microciclo, function(metrica) {
             if (!metrica %in% names(data)) return(NULL)
+            
+            # Leer umbrales para esta métrica
+            umbral_bajo <- input[[paste0("umbral_bajo_", metrica)]]
+            umbral_alto <- input[[paste0("umbral_alto_", metrica)]]
+            if (is.null(umbral_bajo)) umbral_bajo <- 0.8
+            if (is.null(umbral_alto)) umbral_alto <- 1.5
             
             # 📌 Subsets de datos
             partidos_raw <- data %>% filter(tipo == "partido")
@@ -3030,24 +3096,19 @@ server <- function(input, output, session) {
                 paste0("⚠️ Jugadores con menos de ", input$ventana_movil_micro, " partidos: ",
                        paste(conteo_partidos$Jugador, collapse = ", ")),
                 type = "warning",
-                duration = 10
+                duration = 3
               )
             }
             
-            # Calcular ratio
+            # Calcular ratio con umbrales personalizados
             df <- inner_join(partidos_resumen, entreno_resumen, by = "Jugador") %>%
               filter(!is.na(partido), !is.na(entreno), entreno > 0) %>%
               mutate(
                 metrica = metrica,
-                ratio =  entreno / partido,
-                color = case_when(
-                  ratio > 1.5 ~ "#fd002b",   # rojo
-                  ratio < 0.8 ~ "#00e676",   # verde
-                  TRUE ~ "#c8c8c8"           # gris
-                ),
+                ratio = entreno / partido,
                 color_label = case_when(
-                  ratio > 1.2 ~ "Alto (>1.5)",
-                  ratio < 0.8 ~ "Bajo (<0.8)",
+                  ratio > umbral_alto ~ "Alto",
+                  ratio < umbral_bajo ~ "Bajo",
                   TRUE ~ "Normal"
                 )
               )
@@ -3060,6 +3121,9 @@ server <- function(input, output, session) {
             return(NULL)
           }
           
+          # Colores SIEMPRE los 3 labels, en el orden correcto
+          scale_colors <- c("Alto" = "#fd002b", "Bajo" = "#00e676", "Normal" = "#c8c8c8")
+          
           # 📊 GRAFICO
           p <- ggplot(df, aes(
             x = Jugador,
@@ -3070,14 +3134,7 @@ server <- function(input, output, session) {
             geom_col(width = 0.8) +
             facet_wrap(~metrica, scales = "free_y") +
             geom_hline(yintercept = 1, linetype = "dashed", color = "#ffffff") +
-            scale_fill_manual(
-              values = c(
-                "Alto (>1.5)" = "#fd002b",
-                "Bajo (<0.8)" = "#00e676",
-                "Normal" = "#c8c8c8"
-              ),
-              name = "Ratio"
-            ) +
+            scale_fill_manual(values = scale_colors, name = "Ratio") +
             labs(title = "⚖️ Ratio Partido vs Semana", x = "Jugador", y = "Ratio (Partido / Entreno)") +
             theme_minimal(base_size = 14) +
             theme(
@@ -3090,7 +3147,7 @@ server <- function(input, output, session) {
               axis.title = element_text(color = "#ffffff", face = "bold"),
               strip.text = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5),
-              legend.title = element_text(color = "#ffffff", family = "Space Grotesk", size = 16), # Este color es para la leyenda solo en ggplot
+              legend.title = element_text(color = "#ffffff", family = "Space Grotesk", size = 16),
               legend.text = element_text(color = "#ffffff", family = "Inter", size = 14)
             )
           
@@ -3102,14 +3159,7 @@ server <- function(input, output, session) {
                 color = "#ffffff",
                 size = 15
               ),
-              legend = list(
-                font = list(
-                  color = "#ffffff",
-                  size = 16
-                ),
-                bgcolor = "rgba(0,0,0,0)",
-                title = list(text = "<span style='color:#ffffff'>Ratio</span>") # Asegura que Plotly mantenga el color blanco en el título de la leyenda
-              )
+              showlegend = FALSE  # <--- Oculta la leyenda, como tenías
             )
         })
       })
@@ -3119,3 +3169,7 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
+
+
+
+
