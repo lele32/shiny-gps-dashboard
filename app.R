@@ -2984,8 +2984,12 @@ server <- function(input, output, session) {
             data <- data[data[[input$position_col]] %in% input$filtro_puesto_micro, ]
           }
           
+          # ⚽ Clasificar tipo de sesión: múltiples variantes posibles de partido
+          # Lista de posibles valores que indican PARTIDO
+          valores_partido <- c("md", "match", "game", "partido", "juego")
+          
           data$tipo <- ifelse(
-            toupper(trimws(data[[input$matchday_col]])) == "MD",
+            tolower(trimws(as.character(data[[input$matchday_col]]))) %in% valores_partido,
             "partido",
             "entreno"
           )
@@ -3035,7 +3039,7 @@ server <- function(input, output, session) {
               filter(!is.na(partido), !is.na(entreno), entreno > 0) %>%
               mutate(
                 metrica = metrica,
-                ratio = partido / entreno,
+                ratio =  entreno / partido,
                 color = case_when(
                   ratio > 1.5 ~ "#fd002b",   # rojo
                   ratio < 0.8 ~ "#00e676",   # verde
@@ -3115,6 +3119,3 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
-
-
