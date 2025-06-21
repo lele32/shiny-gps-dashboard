@@ -2933,19 +2933,12 @@ server <- function(input, output, session) {
         #' - usa filtros de jugador, puesto, tarea, duración, fechas seleccionadas y ventana MD
         
         observe({
-          req(read_data())
-          data <- read_data()
-          
-          columnas_clave <- c(input$player_col, input$task_col, input$position_col, input$matchday_col,
-                              input$date_col, input$duration_col, input$start_col, input$end_col)
-          
-          posibles_metricas <- setdiff(names(data)[sapply(data, is.numeric)], columnas_clave)
-          
+          req(input$metricas)  # ← Solo necesita el mapeo del lateral
           updateSelectInput(
             session,
-            "metricas_microciclo",
-            choices = posibles_metricas,
-            selected = posibles_metricas[1]
+            inputId = "metricas_microciclo",
+            choices = input$metricas,
+            selected = input$metricas[1]
           )
         })
         
@@ -2991,10 +2984,10 @@ server <- function(input, output, session) {
             data <- data[data[[input$position_col]] %in% input$filtro_puesto_micro, ]
           }
           
-          # ⚽ Clasificar tipo de sesión (Partido o Entreno)
           data$tipo <- ifelse(
-            grepl("\\b(MD|MATCH(DAY)?|GAME|PARTIDO)\\b", toupper(data[[input$matchday_col]])),
-            "partido", "entreno"
+            toupper(trimws(data[[input$matchday_col]])) == "MD",
+            "partido",
+            "entreno"
           )
           
           # 📈 Calcular ratios para cada métrica
@@ -3044,9 +3037,14 @@ server <- function(input, output, session) {
                 metrica = metrica,
                 ratio = partido / entreno,
                 color = case_when(
-                  ratio > 1.2 ~ "#fd002b",   # rojo
+                  ratio > 1.5 ~ "#fd002b",   # rojo
                   ratio < 0.8 ~ "#00e676",   # verde
                   TRUE ~ "#c8c8c8"           # gris
+                ),
+                color_label = case_when(
+                  ratio > 1.2 ~ "Alto (>1.5)",
+                  ratio < 0.8 ~ "Bajo (<0.8)",
+                  TRUE ~ "Normal"
                 )
               )
             return(df)
@@ -3058,13 +3056,24 @@ server <- function(input, output, session) {
             return(NULL)
           }
           
-          # 📊 Estética LIFT
-          p <- ggplot(df, aes(x = Jugador, y = ratio, fill = color,
-                              text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2)))) +
+          # 📊 GRAFICO
+          p <- ggplot(df, aes(
+            x = Jugador,
+            y = ratio,
+            fill = color_label,
+            text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2))
+          )) +
             geom_col(width = 0.8) +
             facet_wrap(~metrica, scales = "free_y") +
             geom_hline(yintercept = 1, linetype = "dashed", color = "#ffffff") +
-            scale_fill_identity() +
+            scale_fill_manual(
+              values = c(
+                "Alto (>1.5)" = "#fd002b",
+                "Bajo (<0.8)" = "#00e676",
+                "Normal" = "#c8c8c8"
+              ),
+              name = "Ratio"
+            ) +
             labs(title = "⚖️ Ratio Partido vs Semana", x = "Jugador", y = "Ratio (Partido / Entreno)") +
             theme_minimal(base_size = 14) +
             theme(
@@ -3072,17 +3081,31 @@ server <- function(input, output, session) {
               panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
               axis.text = element_text(color = "#ffffff"),
               axis.title = element_text(color = "#ffffff", face = "bold"),
               strip.text = element_text(color = "#ffffff", face = "bold"),
-              plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5)
+              plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5),
+              legend.title = element_text(color = "#ffffff", family = "Space Grotesk", size = 16), # Este color es para la leyenda solo en ggplot
+              legend.text = element_text(color = "#ffffff", family = "Inter", size = 14)
             )
           
           ggplotly(p, tooltip = "text") %>%
             layout(
               plot_bgcolor = "rgba(0,0,0,0)",
               paper_bgcolor = "rgba(0,0,0,0)",
-              font = list(color = "#ffffff")
+              font = list(
+                color = "#ffffff",
+                size = 15
+              ),
+              legend = list(
+                font = list(
+                  color = "#ffffff",
+                  size = 16
+                ),
+                bgcolor = "rgba(0,0,0,0)",
+                title = list(text = "<span style='color:#ffffff'>Ratio</span>") # Asegura que Plotly mantenga el color blanco en el título de la leyenda
+              )
             )
         })
       })
@@ -3092,8 +3115,6 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
-
 
 
 

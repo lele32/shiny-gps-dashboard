@@ -46,18 +46,18 @@ tema_gps <- bslib::bs_theme(
 # 🧩 Interfaz de usuario (UI)
 # ──────────────────────────────────────────────
 ui <- fluidPage(
-   theme = tema_gps,
+  theme = tema_gps,
   
-   # ===============================================================
-   # ✨ ESTILOS PERSONALIZADOS (Actualizado para Shiny Selectize)
-   # ===============================================================
-   # Estilos personalizados y fuentes
-   tags$head(
-     # Bootstrap Icons (para íconos visuales)
-     tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"),
-     
-     # Estilos personalizados
-     tags$style(HTML("
+  # ===============================================================
+  # ✨ ESTILOS PERSONALIZADOS (Actualizado para Shiny Selectize)
+  # ===============================================================
+  # Estilos personalizados y fuentes
+  tags$head(
+    # Bootstrap Icons (para íconos visuales)
+    tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"),
+    
+    # Estilos personalizados
+    tags$style(HTML("
       /* Tipografía base */
       body {
         font-family: 'Satoshi', sans-serif;
@@ -195,11 +195,11 @@ ui <- fluidPage(
       background-color: rgba(0,255,255,0.08) !important;
     }
   "))
-   ),
+  ),
   
-   # Encabezado principal estilo Hero minimalista
-   tags$div(
-     style = "
+  # Encabezado principal estilo Hero minimalista
+  tags$div(
+    style = "
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -212,15 +212,15 @@ ui <- fluidPage(
     backdrop-filter: blur(12px);
     box-shadow: 0 8px 30px rgba(0, 255, 255, 0.08);
   ",
-     
-     tags$img(
-       src = "logo.png",
-       height = "90px",
-       style = "margin-bottom: 15px; filter: drop-shadow(0 0 8px rgba(0,255,255,0.3));"
-     ),
-     
-     tags$h2("📊 GPS Data Dashboard")
-   ),
+    
+    tags$img(
+      src = "logo.png",
+      height = "90px",
+      style = "margin-bottom: 15px; filter: drop-shadow(0 0 8px rgba(0,255,255,0.3));"
+    ),
+    
+    tags$h2("📊 GPS Data Dashboard")
+  ),
   
   # Layout principal con sidebar
   fluidRow(
@@ -238,35 +238,35 @@ ui <- fluidPage(
           margin-top: 20px;
           box-shadow: 0 0 12px rgba(0,255,255,0.04);
         ",
-    
-    # Input Google Sheet
-    textInput(
-      "google_sheet_url", 
-      label = tags$span(style = "color:#ffffff;", "Google Sheet URL or ID (optional):"), 
-      value = ""
-    ),
-    
-    # File Upload
-    fileInput("file", "Upload GPS Data", 
-              multiple = TRUE, 
-              accept = c(".csv", ".xlsx", ".json"),
-              buttonLabel = "📁 Select Files...",
-              placeholder = "No file selected"),
-    
-    # Botón Reset
-    actionButton("reset_base", "Reset DB", 
-                 icon = icon("trash"),
-                 class = "btn btn-danger",
-                 style = "width:100%; margin-top:10px; margin-bottom:15px;"),
-    
-    # Estado DB
-    uiOutput("estado_base"),
-    
-    tags$hr(style = "border-color: rgba(255,255,255,0.1);"),
-    
-    # Info del archivo
-    uiOutput("file_info"),
-    uiOutput("column_mapping")
+        
+        # Input Google Sheet
+        textInput(
+          "google_sheet_url", 
+          label = tags$span(style = "color:#ffffff;", "Google Sheet URL or ID (optional):"), 
+          value = ""
+        ),
+        
+        # File Upload
+        fileInput("file", "Upload GPS Data", 
+                  multiple = TRUE, 
+                  accept = c(".csv", ".xlsx", ".json"),
+                  buttonLabel = "📁 Select Files...",
+                  placeholder = "No file selected"),
+        
+        # Botón Reset
+        actionButton("reset_base", "Reset DB", 
+                     icon = icon("trash"),
+                     class = "btn btn-danger",
+                     style = "width:100%; margin-top:10px; margin-bottom:15px;"),
+        
+        # Estado DB
+        uiOutput("estado_base"),
+        
+        tags$hr(style = "border-color: rgba(255,255,255,0.1);"),
+        
+        # Info del archivo
+        uiOutput("file_info"),
+        uiOutput("column_mapping")
       )
     ),
     
@@ -285,195 +285,195 @@ ui <- fluidPage(
         tabsetPanel(
           type = "tabs",
           id = "main_tabs",
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-table"), "Data Table"),
-        DTOutput("table")
-      ),
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-graph-up"), "Métrica en el tiempo"),
-        fluidRow(
-          column(
-            width = 4,
-            class = "glass-box",
-            lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
-              tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-            }),
-            tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL, multiple = TRUE))
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-table"), "Data Table"),
+            DTOutput("table")
           ),
-          column(
-            width = 8,
-            class = "glass-box",
-            uiOutput("barras_fecha_ui")
-          )
-        )
-      ),
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-box"), "Boxplot por Match Day"),
-        fluidRow(
-          column(
-            width = 4,
-            class = "glass-box",
-            lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
-              tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-            }),
-            tags$div(class = "filter-column", selectInput("metric_box", "Select Metrics:", choices = NULL, multiple = TRUE))
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-graph-up"), "Métrica en el tiempo"),
+            fluidRow(
+              column(
+                width = 4,
+                class = "glass-box",
+                lapply(c("jugador", "puesto", "matchday", "tarea", "fecha", "duracion"), function(id) {
+                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                }),
+                tags$div(class = "filter-column", selectInput("metric", "Select Metric:", choices = NULL, multiple = TRUE))
+              ),
+              column(
+                width = 8,
+                class = "glass-box",
+                uiOutput("barras_fecha_ui")
+              )
+            )
           ),
-          column(
-            width = 8,
-            class = "glass-box",
-            uiOutput("boxplot_matchday_ui")
-          )
-        )
-      ),
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot por Tarea"),
-        fluidRow(
-          column(
-            width = 4,
-            class = "glass-box",
-            lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
-              tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-            }),
-            tags$div(class = "filter-column", selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE))
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-box"), "Boxplot por Match Day"),
+            fluidRow(
+              column(
+                width = 4,
+                class = "glass-box",
+                lapply(c("jugador_box", "puesto_box", "matchday_box", "tarea_box", "fecha_box", "duracion_box"), function(id) {
+                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                }),
+                tags$div(class = "filter-column", selectInput("metric_box", "Select Metrics:", choices = NULL, multiple = TRUE))
+              ),
+              column(
+                width = 8,
+                class = "glass-box",
+                uiOutput("boxplot_matchday_ui")
+              )
+            )
           ),
-          column(
-            width = 8,
-            class = "glass-box",
-            uiOutput("boxplot_task_ui")
-          )
-        )
-      ),
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-activity"), "Z-score por Fecha"),
-        fluidRow(
-          column(
-            width = 4,
-            class = "glass-box",
-            lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
-              tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-            }),
-            tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE))
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot por Tarea"),
+            fluidRow(
+              column(
+                width = 4,
+                class = "glass-box",
+                lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
+                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                }),
+                tags$div(class = "filter-column", selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE))
+              ),
+              column(
+                width = 8,
+                class = "glass-box",
+                uiOutput("boxplot_task_ui")
+              )
+            )
           ),
-          column(
-            width = 8,
-            class = "glass-box",
-            uiOutput("zscore_plot_ui")
-          )
-        )
-      ),
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-activity"), "Análisis de sesión"),
-        fluidRow(
-          column(
-            width = 4,
-            class = "glass-box",
-            lapply(c("jugador_sesion", "puesto_sesion", "matchday_sesion", "tarea_sesion", "duracion_sesion"), function(id) {
-              tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-            }),
-            tags$div(class = "filter-column", uiOutput("filtro_sesion_selector")),
-            tags$div(class = "filter-column", selectInput("metricas_sesion_plot", "Select Metrics:", choices = NULL, multiple = TRUE)),
-            tags$div(class = "filter-column", uiOutput("filtro_fecha_sesion"))
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-activity"), "Z-score por Fecha"),
+            fluidRow(
+              column(
+                width = 4,
+                class = "glass-box",
+                lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
+                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                }),
+                tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE))
+              ),
+              column(
+                width = 8,
+                class = "glass-box",
+                uiOutput("zscore_plot_ui")
+              )
+            )
           ),
-          column(
-            width = 8,
-            class = "glass-box",
-            uiOutput("graficos_metricas_sesion")
-          )
-        )
-      ),
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
-        fluidRow(
-          column(
-            width = 4,
-            class = "glass-box",
-            tags$div(class = "filter-column", uiOutput("filtro_jugador_z_comp")),
-            tags$div(class = "filter-column", uiOutput("filtro_puesto_z_comp")),
-            tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
-            tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
-            tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
-            tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
-            tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-activity"), "Análisis de sesión"),
+            fluidRow(
+              column(
+                width = 4,
+                class = "glass-box",
+                lapply(c("jugador_sesion", "puesto_sesion", "matchday_sesion", "tarea_sesion", "duracion_sesion"), function(id) {
+                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                }),
+                tags$div(class = "filter-column", uiOutput("filtro_sesion_selector")),
+                tags$div(class = "filter-column", selectInput("metricas_sesion_plot", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                tags$div(class = "filter-column", uiOutput("filtro_fecha_sesion"))
+              ),
+              column(
+                width = 8,
+                class = "glass-box",
+                uiOutput("graficos_metricas_sesion")
+              )
+            )
           ),
-          column(
-            width = 8,
-            class = "glass-box",
-            uiOutput("zscore_comp_plot_ui"),
-            tags$hr(),
-            DTOutput("tabla_resumen_comp")
-          )
-        )
-      ),
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-lightning-charge"), "ACWR"),
-        fluidRow(
-          column(
-            width = 4,
-            class = "glass-box",
-            tags$div(class = "filter-column", uiOutput("filtro_jugador_acwr")),
-            tags$div(class = "filter-column", uiOutput("filtro_puesto_acwr")),
-            tags$div(class = "filter-column", uiOutput("filtro_matchday_acwr")),
-            tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
-            tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
-            tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
-            tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
-            tags$div(class = "filter-column", sliderInput(
-              inputId = "acwr_agudo_dias",
-              label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
-              min = 3, max = 14, value = 7, step = 1
-            )),
-            tags$div(class = "filter-column", sliderInput(
-              inputId = "acwr_cronico_dias",
-              label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
-              min = 14, max = 42, value = 28, step = 1
-            ))
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
+            fluidRow(
+              column(
+                width = 4,
+                class = "glass-box",
+                tags$div(class = "filter-column", uiOutput("filtro_jugador_z_comp")),
+                tags$div(class = "filter-column", uiOutput("filtro_puesto_z_comp")),
+                tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
+                tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
+                tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
+                tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
+              ),
+              column(
+                width = 8,
+                class = "glass-box",
+                uiOutput("zscore_comp_plot_ui"),
+                tags$hr(),
+                DTOutput("tabla_resumen_comp")
+              )
+            )
           ),
-          column(
-            width = 8,
-            class = "glass-box",
-            uiOutput("acwr_plot_ui")
-          )
-        )
-      ),
-      
-      tabPanel(
-        title = tagList(tags$i(class = "bi bi-bar-chart-line"), "Análisis de Microciclo"),
-        fluidRow(
-          column(
-            width = 4,
-            class = "glass-box",
-            tags$div(class = "filter-column", uiOutput("filtro_jugador_micro")),
-            tags$div(class = "filter-column", uiOutput("filtro_puesto_micro")),
-            tags$div(class = "filter-column", uiOutput("filtro_tarea_micro")),
-            tags$div(class = "filter-column", uiOutput("filtro_duracion_micro")),
-            tags$div(class = "filter-column", selectInput("metricas_microciclo", "Select Metrics:", choices = NULL, multiple = TRUE)),
-            tags$div(class = "filter-column", sliderInput(
-              inputId = "ventana_movil_micro",
-              label = tags$span(style = "color:#fd002b; font-weight:bold;", "Rolling partidos anteriores"),
-              min = 3, max = 10, value = 5, step = 1
-            )),
-            
-            tags$div(class = "filter-column", uiOutput("selector_fechas_entreno_micro"))
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-lightning-charge"), "ACWR"),
+            fluidRow(
+              column(
+                width = 4,
+                class = "glass-box",
+                tags$div(class = "filter-column", uiOutput("filtro_jugador_acwr")),
+                tags$div(class = "filter-column", uiOutput("filtro_puesto_acwr")),
+                tags$div(class = "filter-column", uiOutput("filtro_matchday_acwr")),
+                tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
+                tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
+                tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
+                tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                tags$div(class = "filter-column", sliderInput(
+                  inputId = "acwr_agudo_dias",
+                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
+                  min = 3, max = 14, value = 7, step = 1
+                )),
+                tags$div(class = "filter-column", sliderInput(
+                  inputId = "acwr_cronico_dias",
+                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
+                  min = 14, max = 42, value = 28, step = 1
+                ))
+              ),
+              column(
+                width = 8,
+                class = "glass-box",
+                uiOutput("acwr_plot_ui")
+              )
+            )
           ),
-          column(
-            width = 8,
-            class = "glass-box",
-            uiOutput("microciclo_ratio_plot_ui")
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-bar-chart-line"), "Análisis de Microciclo"),
+            fluidRow(
+              column(
+                width = 4,
+                class = "glass-box",
+                tags$div(class = "filter-column", uiOutput("filtro_jugador_micro")),
+                tags$div(class = "filter-column", uiOutput("filtro_puesto_micro")),
+                tags$div(class = "filter-column", uiOutput("filtro_tarea_micro")),
+                tags$div(class = "filter-column", uiOutput("filtro_duracion_micro")),
+                tags$div(class = "filter-column", selectInput("metricas_microciclo", "Select Metrics:", choices = NULL, multiple = TRUE)),
+                tags$div(class = "filter-column", sliderInput(
+                  inputId = "ventana_movil_micro",
+                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Rolling partidos anteriores"),
+                  min = 3, max = 10, value = 5, step = 1
+                )),
+                
+                tags$div(class = "filter-column", uiOutput("selector_fechas_entreno_micro"))
+              ),
+              column(
+                width = 8,
+                class = "glass-box",
+                uiOutput("microciclo_ratio_plot_ui")
+              )
+            )
           )
         )
       )
-    )
+    )  
   )
-)  
-)
 )
 
 
@@ -613,7 +613,7 @@ server <- function(input, output, session) {
         footer = NULL
       ))
     }
-
+    
     # ========================================
     # 🔥 Actualizar mapeo de columnas
     # ========================================
@@ -750,7 +750,7 @@ server <- function(input, output, session) {
       showConfirmButton = FALSE
     )
   })
-
+  
   # ================================================================
   # 🧾 ESTADO DE LA BASE DE DATOS
   # ================================================================
@@ -2931,21 +2931,14 @@ server <- function(input, output, session) {
         #' - acumulado de días seleccionados / promedio rolling de partidos (MD)
         #' - colores: rojo > 1.2, verde < 0.8, gris intermedio
         #' - usa filtros de jugador, puesto, tarea, duración, fechas seleccionadas y ventana MD
-      
+        
         observe({
-          req(read_data())
-          data <- read_data()
-          
-          columnas_clave <- c(input$player_col, input$task_col, input$position_col, input$matchday_col,
-                              input$date_col, input$duration_col, input$start_col, input$end_col)
-          
-          posibles_metricas <- setdiff(names(data)[sapply(data, is.numeric)], columnas_clave)
-          
+          req(input$metricas)  # ← Solo necesita el mapeo del lateral
           updateSelectInput(
             session,
-            "metricas_microciclo",
-            choices = posibles_metricas,
-            selected = posibles_metricas[1]
+            inputId = "metricas_microciclo",
+            choices = input$metricas,
+            selected = input$metricas[1]
           )
         })
         
@@ -2957,18 +2950,15 @@ server <- function(input, output, session) {
         
         # 📊 Render del gráfico
         output$plot_microciclo_ratio <- renderPlotly({
-          req(read_data(), input$ventana_movil_micro)
+          req(read_data(), input$metricas_microciclo, input$ventana_movil_micro)
           
           data <- read_data()
           
-          # Parsear fechas
-          data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy"))
-          data <- data[!is.na(data[[input$date_col]]), ]
+          # 📆 Parsear fechas y guardar como nueva columna
+          data$fecha_parsed <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
+          data <- data[!is.na(data$fecha_parsed), ]
           
-          # Homogeneizar Jugador
-          data[[input$player_col]] <- tolower(trimws(as.character(data[[input$player_col]])))
-          
-          # Filtrar por duración
+          # 🎯 Filtrar por duración (si existe)
           if (!is.null(input$duration_col) && input$duration_col != "None") {
             data <- data %>%
               filter(
@@ -2983,9 +2973,9 @@ server <- function(input, output, session) {
             data <- data[!is.na(duracion) & duracion >= input$filtro_duracion_micro[1] & duracion <= input$filtro_duracion_micro[2], ]
           }
           
-          # Filtrar por jugador, tarea y puesto
+          # 👤 Filtros adicionales
           if (!is.null(input$filtro_jugador_micro)) {
-            data <- data[data[[input$player_col]] %in% tolower(trimws(input$filtro_jugador_micro)), ]
+            data <- data[data[[input$player_col]] %in% input$filtro_jugador_micro, ]
           }
           if (!is.null(input$filtro_tarea_micro)) {
             data <- data[data[[input$task_col]] %in% input$filtro_tarea_micro, ]
@@ -2994,27 +2984,24 @@ server <- function(input, output, session) {
             data <- data[data[[input$position_col]] %in% input$filtro_puesto_micro, ]
           }
           
-          # Clasificar como partido o entreno
           data$tipo <- ifelse(
             toupper(trimws(data[[input$matchday_col]])) == "MD",
             "partido",
             "entreno"
           )
           
-          partidos_raw <- data %>% filter(tipo == "partido")
-          entrenos <- data %>% filter(tipo == "entreno", .data[[input$date_col]] %in% as.Date(input$fechas_entreno_micro))
-          
-          # Validar métrica seleccionada
-          metricas_usar <- input$metricas_microciclo
-          if (is.null(metricas_usar) || length(metricas_usar) == 0) return(NULL)
-          
-          resultados <- lapply(metricas_usar, function(metrica) {
+          # 📈 Calcular ratios para cada métrica
+          resultados <- lapply(input$metricas_microciclo, function(metrica) {
             if (!metrica %in% names(data)) return(NULL)
             
-            # Calcular últimos partidos por jugador
+            # 📌 Subsets de datos
+            partidos_raw <- data %>% filter(tipo == "partido")
+            entrenos <- data %>% filter(tipo == "entreno", as.Date(fecha_parsed) %in% as.Date(input$fechas_entreno_micro))
+            
+            # Promedio de partidos
             partidos_filtrados <- partidos_raw %>%
-              arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
-              group_by(Jugador = tolower(trimws(.data[[input$player_col]]))) %>%
+              arrange(.data[[input$player_col]], desc(fecha_parsed)) %>%
+              group_by(Jugador = .data[[input$player_col]]) %>%
               mutate(rn = row_number()) %>%
               filter(rn <= input$ventana_movil_micro) %>%
               ungroup()
@@ -3023,73 +3010,102 @@ server <- function(input, output, session) {
               group_by(Jugador) %>%
               summarise(partido = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
             
-            # Advertencia si faltan partidos
-            conteo_partidos <- partidos_raw %>%
-              group_by(Jugador = tolower(trimws(.data[[input$player_col]]))) %>%
+            # Acumulado de entrenamientos
+            entreno_resumen <- entrenos %>%
+              group_by(Jugador = .data[[input$player_col]]) %>%
+              summarise(entreno = sum(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+            
+            # Verificación de jugadores con pocos partidos
+            conteo_partidos <- partidos_filtrados %>%
+              group_by(Jugador) %>%
               summarise(n = n(), .groups = "drop") %>%
               filter(n < input$ventana_movil_micro)
             
             if (nrow(conteo_partidos) > 0) {
               showNotification(
                 paste0("⚠️ Jugadores con menos de ", input$ventana_movil_micro, " partidos: ",
-                       paste(unique(conteo_partidos$Jugador), collapse = ", ")),
+                       paste(conteo_partidos$Jugador, collapse = ", ")),
                 type = "warning",
-                duration = 8
+                duration = 10
               )
             }
             
-            entreno_resumen <- entrenos %>%
-              group_by(Jugador = tolower(trimws(.data[[input$player_col]]))) %>%
-              summarise(entreno = sum(.data[[metrica]], na.rm = TRUE), .groups = "drop")
-            
-            # Join
+            # Calcular ratio
             df <- inner_join(partidos_resumen, entreno_resumen, by = "Jugador") %>%
               filter(!is.na(partido), !is.na(entreno), entreno > 0) %>%
               mutate(
                 metrica = metrica,
                 ratio = partido / entreno,
                 color = case_when(
-                  ratio > 1.2 ~ "#fd002b",
-                  ratio < 0.8 ~ "#00e676",
-                  TRUE ~ "#c8c8c8"
+                  ratio > 1.5 ~ "#fd002b",   # rojo
+                  ratio < 0.8 ~ "#00e676",   # verde
+                  TRUE ~ "#c8c8c8"           # gris
+                ),
+                color_label = case_when(
+                  ratio > 1.2 ~ "Alto (>1.5)",
+                  ratio < 0.8 ~ "Bajo (<0.8)",
+                  TRUE ~ "Normal"
                 )
               )
-            
             return(df)
           })
           
           df <- bind_rows(resultados)
-          
           if (nrow(df) == 0) {
-            showNotification("❌ No hay datos para graficar. Revisá filtros o fechas.", type = "error", duration = 8)
+            showNotification("❌ No hay datos para graficar. Ajustá los filtros o seleccioná otras fechas o métricas.", type = "error", duration = 8)
             return(NULL)
           }
           
-          # Render
-          p <- ggplot(df, aes(x = Jugador, y = ratio, fill = color,
-                              text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2)))) +
+          # 📊 GRAFICO
+          p <- ggplot(df, aes(
+            x = Jugador,
+            y = ratio,
+            fill = color_label,
+            text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2))
+          )) +
             geom_col(width = 0.8) +
             facet_wrap(~metrica, scales = "free_y") +
             geom_hline(yintercept = 1, linetype = "dashed", color = "#ffffff") +
-            scale_fill_identity() +
-            labs(title = "Ratio Partido vs Semana", x = "Jugador", y = "Ratio (Partido / Entreno)") +
+            scale_fill_manual(
+              values = c(
+                "Alto (>1.5)" = "#fd002b",
+                "Bajo (<0.8)" = "#00e676",
+                "Normal" = "#c8c8c8"
+              ),
+              name = "Ratio"
+            ) +
+            labs(title = "⚖️ Ratio Partido vs Semana", x = "Jugador", y = "Ratio (Partido / Entreno)") +
             theme_minimal(base_size = 14) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
               panel.background = element_rect(fill = "transparent", color = NA),
               panel.grid.major = element_line(color = "#2c2c2c"),
               panel.grid.minor = element_line(color = "#2c2c2c"),
+              axis.text.x = element_text(angle = 45, hjust = 1, color = "#ffffff"),
               axis.text = element_text(color = "#ffffff"),
               axis.title = element_text(color = "#ffffff", face = "bold"),
               strip.text = element_text(color = "#ffffff", face = "bold"),
-              plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5)
+              plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5),
+              legend.title = element_text(color = "#ffffff", family = "Space Grotesk", size = 16), # Este color es para la leyenda solo en ggplot
+              legend.text = element_text(color = "#ffffff", family = "Inter", size = 14)
             )
           
           ggplotly(p, tooltip = "text") %>%
             layout(
               plot_bgcolor = "rgba(0,0,0,0)",
               paper_bgcolor = "rgba(0,0,0,0)",
-              font = list(color = "#ffffff")
+              font = list(
+                color = "#ffffff",
+                size = 15
+              ),
+              legend = list(
+                font = list(
+                  color = "#ffffff",
+                  size = 16
+                ),
+                bgcolor = "rgba(0,0,0,0)",
+                title = list(text = "<span style='color:#ffffff'>Ratio</span>") # Asegura que Plotly mantenga el color blanco en el título de la leyenda
+              )
             )
         })
       })
@@ -3099,7 +3115,6 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
 
 
 
