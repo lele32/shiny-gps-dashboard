@@ -37,10 +37,30 @@ Este dashboard en **R Shiny** permite visualizar, filtrar y analizar datos GPS d
   - Rango de valores por métrica
 
 - **Interfaz visual optimizada**:
-  - Estética minimalista y funcional (paleta LIFT: rojo, gris, negro).
-  - Tipografías personalizadas (Righteous, Inter).
-  - Tabs con íconos estilo Visual Studio Code.
-  - `selectInput` y `selectizeInput` totalmente estilizados.
+  - Estética oscura y minimalista, inspirada en Visual Studio Code y glassmorphism.
+	-	Paleta LIFT personalizada:
+ 	  -	Fondo: negro profundo (#0E1117)
+	  -	Texto: blanco (#ffffff)
+	  -	Primario: azul eléctrico (#00FFFF)
+	  -	Secundario: violeta (#7F00FF)
+	  -	Detalles en rojo (#fd002b) y verde menta
+	  -	Glass boxes: fondos semitranslúcidos con desenfoque y bordes suaves.
+	-	Tipografías:
+	  -	Heading: Space Grotesk (Google Fonts)
+	  -	Body: Inter (Google Fonts)
+	  -	Títulos especiales: Righteous (en headers principales)
+	-	Tabs con íconos:
+	  -	Navegación con iconografía SVG (Bootstrap Icons, FontAwesome) y títulos grandes.
+	-	Filtros y selectores modernos:
+	  -	Inputs, sliders y selects estilizados a medida, con labels coloridos, bordes y backgrounds adaptados.
+	  -	Efecto glass en paneles laterales y cajas de filtro.
+	-	Gráficos y visuales:
+	  -	Gráficos plotly en modo oscuro, sin bordes, títulos llamativos y leyenda custom.
+	  -	Facet grids limpios, con separación clara por métrica y nombres destacados.
+	-	UX refinada:
+	  -	Feedback visual para estados vacíos, advertencias y tooltips informativos.
+	  -	Responsive para diferentes resoluciones.
+	  -	Animaciones y transiciones suaves en la interacción..
 
 ---
 
@@ -95,6 +115,17 @@ El archivo cargado debe contener al menos algunas de las siguientes columnas:
      - 🔴 ACWR > 1.5
      - 🟢 0.8 ≤ ACWR ≤ 1.5
      - 🔴 ACWR < 0.8
+     
+8. **⚖️ Análisis de Microciclo: Ratio Partido vs Semana**  
+     - 	Calcula el ratio de carga entre partidos y entrenamientos acumulados, para cada jugador y cada métrica seleccionada.
+	   - 	Permite seleccionar la métrica, la ventana móvil de partidos (rolling), los días de entrenamiento a comparar, y todos los filtros habituales (jugador, puesto, tarea, duración, etc.).
+	   - 	Umbrales de ratio personalizables por métrica: podés ajustar desde el propio gráfico los valores de corte para definir si el ratio es bajo, normal o alto en cada métrica, de forma totalmente independiente.
+	   - 	Los colores se adaptan en tiempo real según estos umbrales:
+	      -	🔴 Alto (ej: Ratio > 1.5)
+	      -	🟢 Bajo (ej: Ratio < 0.8)
+	      -	⚪ Normal (entre umbrales)
+	   - 	Visualización interactiva tipo facet grid por métrica, con estética oscura minimalista y sin leyenda visible para máxima limpieza visual.
+	   - 	Use case: identificar rápidamente quiénes tuvieron cargas inusuales comparando su partido más reciente (o promedio de partidos recientes) vs el acumulado de días seleccionados de entrenamiento.
 
 ---
 
@@ -102,9 +133,6 @@ El archivo cargado debe contener al menos algunas de las siguientes columnas:
 
 - 🧾 **Exportación de reportes PDF**
   - Por jugador, sesión o período
-
-- 📈 **Reporte Match vs Semana**
-  - Ratio entre cargas de partido y media semanal
 
 - 💡 **Panel de KPIs**
   - Indicadores clave por sesión o jugador (Player Load, HSR, etc.)
