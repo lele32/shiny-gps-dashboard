@@ -2936,16 +2936,16 @@ server <- function(input, output, session) {
           req(read_data())
           data <- read_data()
           
-          # Seleccionar solo columnas numéricas que sean distintas a las columnas clave (por seguridad)
           columnas_clave <- c(input$player_col, input$task_col, input$position_col, input$matchday_col,
                               input$date_col, input$duration_col, input$start_col, input$end_col)
+          
           posibles_metricas <- setdiff(names(data)[sapply(data, is.numeric)], columnas_clave)
           
           updateSelectInput(
             session,
             "metricas_microciclo",
-            choices = input$metricas,
-            selected = head(input$metricas, 1)
+            choices = posibles_metricas,
+            selected = posibles_metricas[1]
           )
         })
         
@@ -2955,22 +2955,18 @@ server <- function(input, output, session) {
           plotlyOutput("plot_microciclo_ratio", height = "600px")
         })
         
-        # 📊 Gráfico de Ratio Partido vs Semana
+        # 📊 Render del gráfico
         output$plot_microciclo_ratio <- renderPlotly({
           req(read_data(), input$ventana_movil_micro)
           
           data <- read_data()
           
-          # Si no se seleccionaron métricas en el input local, usar las del panel lateral
-          metricas_usar <- input$metricas_microciclo
-          if (is.null(metricas_usar) || length(metricas_usar) == 0) {
-            metricas_usar <- input$metricas
-          }
-          req(metricas_usar)
-          
           # Parsear fechas
           data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy"))
           data <- data[!is.na(data[[input$date_col]]), ]
+          
+          # Homogeneizar Jugador
+          data[[input$player_col]] <- tolower(trimws(as.character(data[[input$player_col]])))
           
           # Filtrar por duración
           if (!is.null(input$duration_col) && input$duration_col != "None") {
@@ -2987,12 +2983,15 @@ server <- function(input, output, session) {
             data <- data[!is.na(duracion) & duracion >= input$filtro_duracion_micro[1] & duracion <= input$filtro_duracion_micro[2], ]
           }
           
-          # Filtrar por jugador y tarea
+          # Filtrar por jugador, tarea y puesto
           if (!is.null(input$filtro_jugador_micro)) {
-            data <- data[data[[input$player_col]] %in% input$filtro_jugador_micro, ]
+            data <- data[data[[input$player_col]] %in% tolower(trimws(input$filtro_jugador_micro)), ]
           }
           if (!is.null(input$filtro_tarea_micro)) {
             data <- data[data[[input$task_col]] %in% input$filtro_tarea_micro, ]
+          }
+          if (!is.null(input$filtro_puesto_micro)) {
+            data <- data[data[[input$position_col]] %in% input$filtro_puesto_micro, ]
           }
           
           # Clasificar como partido o entreno
@@ -3002,70 +3001,71 @@ server <- function(input, output, session) {
             "entreno"
           )
           
-          # Filtrar entrenamientos por fechas seleccionadas
-          entrenos <- data %>%
-            filter(tipo == "entreno", .data[[input$date_col]] %in% as.Date(input$fechas_entreno_micro))
+          partidos_raw <- data %>% filter(tipo == "partido")
+          entrenos <- data %>% filter(tipo == "entreno", .data[[input$date_col]] %in% as.Date(input$fechas_entreno_micro))
           
-          # Filtrar solo partidos
-          partidos_raw <- data %>%
-            filter(tipo == "partido")
+          # Validar métrica seleccionada
+          metricas_usar <- input$metricas_microciclo
+          if (is.null(metricas_usar) || length(metricas_usar) == 0) return(NULL)
           
-          # Verificar si hay suficientes partidos por jugador
-          conteo_partidos <- partidos_raw %>%
-            group_by(Jugador = .data[[input$player_col]]) %>%
-            summarise(n = n(), .groups = "drop")
-          
-          jugadores_insuficientes <- conteo_partidos %>%
-            filter(n < input$ventana_movil_micro)
-          
-          # Mensaje si hay jugadores con pocos partidos
-          if (nrow(jugadores_insuficientes) > 0) {
-            showNotification(
-              paste0("⚠️ Jugadores con menos de ", input$ventana_movil_micro, " partidos: ",
-                     paste(jugadores_insuficientes$Jugador, collapse = ", ")),
-              type = "warning",
-              duration = 10
-            )
-          }
-          
-          # Aplicar ventana móvil (o tomar todos los partidos si son menos)
-          partidos <- partidos_raw %>%
-            filter(tipo == "partido") %>%
-            arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
-            group_by(.data[[input$player_col]]) %>%
-            mutate(fila = row_number()) %>%
-            filter(fila <= !!input$ventana_movil_micro) %>%
-            ungroup()
-          
-          # Calcular ratios por métrica
           resultados <- lapply(metricas_usar, function(metrica) {
             if (!metrica %in% names(data)) return(NULL)
             
-            entreno_sum <- entrenos %>%
-              group_by(Jugador = .data[[input$player_col]]) %>%
-              summarise(entreno = sum(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+            # Calcular últimos partidos por jugador
+            partidos_filtrados <- partidos_raw %>%
+              arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
+              group_by(Jugador = tolower(trimws(.data[[input$player_col]]))) %>%
+              mutate(rn = row_number()) %>%
+              filter(rn <= input$ventana_movil_micro) %>%
+              ungroup()
             
-            partido_avg <- partidos %>%
-              group_by(Jugador = .data[[input$player_col]]) %>%
+            partidos_resumen <- partidos_filtrados %>%
+              group_by(Jugador) %>%
               summarise(partido = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
             
-            left_join(partido_avg, entreno_sum, by = "Jugador") %>%
+            # Advertencia si faltan partidos
+            conteo_partidos <- partidos_raw %>%
+              group_by(Jugador = tolower(trimws(.data[[input$player_col]]))) %>%
+              summarise(n = n(), .groups = "drop") %>%
+              filter(n < input$ventana_movil_micro)
+            
+            if (nrow(conteo_partidos) > 0) {
+              showNotification(
+                paste0("⚠️ Jugadores con menos de ", input$ventana_movil_micro, " partidos: ",
+                       paste(unique(conteo_partidos$Jugador), collapse = ", ")),
+                type = "warning",
+                duration = 8
+              )
+            }
+            
+            entreno_resumen <- entrenos %>%
+              group_by(Jugador = tolower(trimws(.data[[input$player_col]]))) %>%
+              summarise(entreno = sum(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+            
+            # Join
+            df <- inner_join(partidos_resumen, entreno_resumen, by = "Jugador") %>%
+              filter(!is.na(partido), !is.na(entreno), entreno > 0) %>%
               mutate(
                 metrica = metrica,
                 ratio = partido / entreno,
                 color = case_when(
-                  is.na(ratio) ~ "#c8c8c8",
                   ratio > 1.2 ~ "#fd002b",
                   ratio < 0.8 ~ "#00e676",
                   TRUE ~ "#c8c8c8"
                 )
               )
+            
+            return(df)
           })
           
           df <- bind_rows(resultados)
-          if (nrow(df) == 0) return(NULL)
           
-          # Gráfico con estética LIFT
+          if (nrow(df) == 0) {
+            showNotification("❌ No hay datos para graficar. Revisá filtros o fechas.", type = "error", duration = 8)
+            return(NULL)
+          }
+          
+          # Render
           p <- ggplot(df, aes(x = Jugador, y = ratio, fill = color,
                               text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2)))) +
             geom_col(width = 0.8) +
