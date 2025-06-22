@@ -291,6 +291,10 @@ ui <- fluidPage(
             DTOutput("table")
           ),
           
+          #-------------------------------
+          # 🟦 TAB PANEL: Metrica en el tiempo
+          #-------------------------------
+          
           tabPanel(
             title = tagList(tags$i(class = "bi bi-graph-up"), "Métrica en el tiempo"),
             fluidRow(
@@ -309,6 +313,10 @@ ui <- fluidPage(
               )
             )
           ),
+          
+          #-------------------------------
+          # 🟦 TAB PANEL: Boxplot MD
+          #-------------------------------
           
           tabPanel(
             title = tagList(tags$i(class = "bi bi-box"), "Boxplot por Match Day"),
@@ -329,6 +337,11 @@ ui <- fluidPage(
             )
           ),
           
+          #-------------------------------
+          # 🟦 TAB PANEL: Boxplot TAREA
+          #-------------------------------
+          
+          
           tabPanel(
             title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot por Tarea"),
             fluidRow(
@@ -348,6 +361,11 @@ ui <- fluidPage(
             )
           ),
           
+          #-------------------------------
+          # 🟦 TAB PANEL: Z score
+          #-------------------------------
+          
+          
           tabPanel(
             title = tagList(tags$i(class = "bi bi-activity"), "Z-score por Fecha"),
             fluidRow(
@@ -366,6 +384,10 @@ ui <- fluidPage(
               )
             )
           ),
+          
+          #-------------------------------
+          # 🟦 TAB PANEL: Análisis de sesión
+          #-------------------------------
           
           tabPanel(
             title = tagList(tags$i(class = "bi bi-activity"), "Análisis de sesión"),
@@ -387,6 +409,10 @@ ui <- fluidPage(
               )
             )
           ),
+          
+          #-------------------------------
+          # 🟦 TAB PANEL: Análisis Competitivo
+          #-------------------------------
           
           tabPanel(
             title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
@@ -411,6 +437,10 @@ ui <- fluidPage(
               )
             )
           ),
+          
+          #-------------------------------
+          # 🟦 TAB PANEL: ACWR
+          #-------------------------------
           
           tabPanel(
             title = tagList(tags$i(class = "bi bi-lightning-charge"), "ACWR"),
@@ -444,6 +474,10 @@ ui <- fluidPage(
             )
           ),
           
+          #-------------------------------
+          # 🟦 TAB PANEL: Gráfico de Análisis Microciclo
+          #-------------------------------
+          
           tabPanel(
             title = tagList(tags$i(class = "bi bi-bar-chart-line"), "Análisis de Microciclo"),
             fluidRow(
@@ -476,6 +510,56 @@ ui <- fluidPage(
                   uiOutput("umbral_ratio_microciclo_ui")  # Acá van los sliders por métrica
                 ),
                 uiOutput("microciclo_ratio_plot_ui")
+              )
+            )
+          ),
+          #-------------------------------
+          # 🟦 TAB PANEL: Gráfico de Cuadrante (UI)
+          #-------------------------------
+          
+          tabPanel(
+            title = tagList(tags$i(class = "bi bi-grid-3x3-gap-fill"), "Gráfico de Cuadrante"),
+            fluidRow(
+              # Filtros (columna izquierda)
+              column(
+                width = 4,
+                class = "glass-box",
+                # Filtro por Jugador
+                tags$div(class = "filter-column", uiOutput("filtro_jugador_cuad")),
+                # Filtro por Puesto
+                tags$div(class = "filter-column", uiOutput("filtro_puesto_cuad")),
+                # Filtro por MD
+                tags$div(class = "filter-column", uiOutput("filtro_matchday_cuad")), 
+                # Filtro por Tarea
+                tags$div(class = "filter-column", uiOutput("filtro_tarea_cuad")),
+                # Filtro por Duración
+                tags$div(class = "filter-column", uiOutput("filtro_duracion_cuad")),
+                # Filtro por Match Day / Sesión
+                tags$div(class = "filter-column", uiOutput("filtro_sesion_cuad")),
+                tags$div(
+                  class = "filter-column",
+                  selectInput(
+                    inputId = "metricas_cuad",          # ESTE nombre debe coincidir en UI y observer
+                    label = tags$span("Select Metrics:"),
+                    choices = NULL,                          # Choices se cargan por observer
+                    selected = NULL,
+                    multiple = TRUE,
+                  ),
+                  uiOutput("warning_metricas_cuad")
+                )
+              ),
+              #Panel de gráfico (columna derecha) con estética glass y sliders métricas
+              column(
+                width = 8,
+                class = "glass-box",
+                style = "border-radius: 24px; padding: 22px 16px 14px 16px;",
+                tags$div(
+                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; background: rgba(30,30,30,0.85); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
+                  tags$p("Ajustá el rango de valores para cada métrica seleccionada:", 
+                         style = "color: #ffffff; font-size: 1.12em; text-align: center; margin-bottom: 0.2em; letter-spacing: 0.5px;"),
+                  uiOutput("sliders_metricas_cuad")  # Los sliders dinámicos por métrica
+                ),
+                uiOutput("cuadrante_plot_ui")    # El output Plotly va aquí
               )
             )
           )
@@ -909,7 +993,7 @@ server <- function(input, output, session) {
     output$filtro_jugador_box   <- create_filter_ui("filtro_jugador_box", "player_col", "Filter by Player:")
     output$filtro_jugador_task  <- create_filter_ui("filtro_jugador_task", "player_col", "Filter by Player:")
     output$filtro_jugador_z     <- create_filter_ui("filtro_jugador_z", "player_col", "Filter by Player:")
-    output$filtro_jugador_sesion <- create_filter_ui("filtro_jugador_sesion", "player_col", "Filtrar por Jugador")
+    output$filtro_jugador_sesion <- create_filter_ui("filtro_jugador_sesion", "player_col", "Filter by Player")
     output$filtro_jugador_z_comp <- create_filter_ui("filtro_jugador_z_comp", "player_col", "Filter by Player:")
     
     
@@ -917,7 +1001,7 @@ server <- function(input, output, session) {
     output$filtro_puesto_box   <- create_filter_ui("filtro_puesto_box", "position_col", "Filter by Position:")
     output$filtro_puesto_task  <- create_filter_ui("filtro_puesto_task", "position_col", "Filter by Position:")
     output$filtro_puesto_z     <- create_filter_ui("filtro_puesto_z", "position_col", "Filter by Position:")
-    output$filtro_puesto_sesion  <- create_filter_ui("filtro_puesto_sesion", "position_col", "Filtrar por Puesto")
+    output$filtro_puesto_sesion  <- create_filter_ui("filtro_puesto_sesion", "position_col", "Filter by Position")
     output$filtro_puesto_z_comp  <- create_filter_ui("filtro_puesto_z_comp", "position_col", "Filter by Position:")
     
     
@@ -925,14 +1009,14 @@ server <- function(input, output, session) {
     output$filtro_matchday_box   <- create_filter_ui("filtro_matchday_box", "matchday_col", "Filter by Match Day:")
     output$filtro_matchday_task  <- create_filter_ui("filtro_matchday_task", "matchday_col", "Filter by Match Day:")
     output$filtro_matchday_z     <- create_filter_ui("filtro_matchday_z", "matchday_col", "Filter by Match Day:")
-    output$filtro_matchday_sesion <- create_filter_ui("filtro_matchday_sesion", "matchday_col", "Filtrar por Match Day")
+    output$filtro_matchday_sesion <- create_filter_ui("filtro_matchday_sesion", "matchday_col", "Filter by Match Day")
     
     
     output$filtro_tarea       <- create_filter_ui("filtro_tarea", "task_col", "Filter by Task:")
     output$filtro_tarea_box   <- create_filter_ui("filtro_tarea_box", "task_col", "Filter by Task:")
     output$filtro_tarea_task  <- create_filter_ui("filtro_tarea_task", "task_col", "Filter by Task:")
     output$filtro_tarea_z     <- create_filter_ui("filtro_tarea_z", "task_col", "Filter by Task:")
-    output$filtro_tarea_sesion <- create_filter_ui("filtro_tarea_sesion", "task_col", "Filtrar por Tarea")
+    output$filtro_tarea_sesion <- create_filter_ui("filtro_tarea_sesion", "task_col", "Filter by Task")
     output$filtro_tarea_z_comp   <- create_filter_ui("filtro_tarea_z_comp", "task_col", "Filter by Task:")
     
     output$filtro_fecha       <- create_date_filter("filtro_fecha", "date_col")
@@ -1052,7 +1136,7 @@ server <- function(input, output, session) {
     
     pickerInput(
       inputId = "filtro_sesion_selector",
-      label = "Seleccionar sesiones específicas",
+      label = "Select Sessions",
       choices = sort(unique(as.character(fechas))),
       multiple = TRUE,
       options = list(`actions-box` = TRUE, `live-search` = TRUE)
@@ -1082,7 +1166,7 @@ server <- function(input, output, session) {
     
     pickerInput(
       inputId = "filtro_sesion_selector_comp",
-      label = "Seleccionar sesión (fecha de partido)",
+      label = "Select MD",
       choices = sort(unique(as.character(fechas))),
       multiple = FALSE,
       options = list(`live-search` = TRUE)
@@ -1120,7 +1204,7 @@ server <- function(input, output, session) {
     
     selectInput(
       "filtro_jugador_acwr", 
-      "Jugador:", 
+      "Filter by Player:", 
       choices = jugadores_unicos, 
       selected = default_selected,
       multiple = TRUE
@@ -1135,7 +1219,7 @@ server <- function(input, output, session) {
     
     if (input$player_col %in% names(data)) {
       jugadores <- unique(data[[input$player_col]])
-      selectInput("filtro_jugador_micro", "Jugador:", choices = jugadores, multiple = TRUE)
+      selectInput("filtro_jugador_micro", "Filter by Player:", choices = jugadores, multiple = TRUE)
     } else {
       return(NULL)
     }
@@ -1147,7 +1231,7 @@ server <- function(input, output, session) {
     
     if (input$position_col %in% names(data)) {
       puestos <- unique(data[[input$position_col]])
-      selectInput("filtro_puesto_micro", "Puesto:", choices = puestos, multiple = TRUE)
+      selectInput("filtro_puesto_micro", "Filter by Position:", choices = puestos, multiple = TRUE)
     } else {
       return(NULL)
     }
@@ -1159,7 +1243,7 @@ server <- function(input, output, session) {
     
     if (input$task_col %in% names(data)) {
       tareas <- unique(data[[input$task_col]])
-      selectInput("filtro_tarea_micro", "Tarea:", choices = tareas, multiple = TRUE)
+      selectInput("filtro_tarea_micro", "Filter by Task:", choices = tareas, multiple = TRUE)
     } else {
       return(NULL)
     }
@@ -1192,7 +1276,7 @@ server <- function(input, output, session) {
       
       sliderInput(
         inputId = "filtro_duracion_micro",
-        label = "Duración (min):",
+        label = "Duration (min):",
         min = floor(min(dur)),
         max = ceiling(max(dur)),
         value = c(floor(min(dur)), ceiling(max(dur))),
@@ -1218,7 +1302,7 @@ server <- function(input, output, session) {
       
       shinyWidgets::pickerInput(
         inputId = "fechas_entreno_micro",
-        label = "Fechas entrenamiento a comparar:",
+        label = "Cumulative Sessions",
         choices = fechas_unicas,
         selected = tail(fechas_unicas, 3),
         multiple = TRUE,
@@ -2082,6 +2166,163 @@ server <- function(input, output, session) {
     )
   })
   
+  # 🧠 UI dinámico: Cuadrante
+  
+  #-------------------------------------------
+# FILTROS PARA EL CUADRANTE
+#-------------------------------------------
+
+# Filtro de Jugador
+output$filtro_jugador_cuad <- renderUI({
+  req(read_data(), input$player_col)
+  data <- read_data()
+  if (input$player_col %in% names(data)) {
+    jugadores <- unique(data[[input$player_col]])
+    selectInput("filtro_jugador_cuad", "Filter by Player:", choices = jugadores, multiple = TRUE)
+  } else {
+    return(NULL)
+  }
+})
+
+# Filtro de Puesto
+output$filtro_puesto_cuad <- renderUI({
+  req(read_data(), input$position_col)
+  data <- read_data()
+  if (input$position_col %in% names(data)) {
+    puestos <- unique(data[[input$position_col]])
+    selectInput("filtro_puesto_cuad", "Filter by Position:", choices = puestos, multiple = TRUE)
+  } else {
+    return(NULL)
+  }
+})
+
+# Filtro de MD
+output$filtro_matchday_cuad <- renderUI({
+  req(read_data(), input$matchday_col)
+  data <- read_data()
+  if (input$matchday_col %in% names(data)) {
+    matchdays <- unique(data[[input$matchday_col]])
+    selectInput("filtro_matchday_cuad", "Filter by Match Day:", choices = matchdays, multiple = TRUE)
+  } else {
+    return(NULL)
+  }
+})
+
+# Filtro de Tarea
+output$filtro_tarea_cuad <- renderUI({
+  req(read_data(), input$task_col)
+  data <- read_data()
+  if (input$task_col %in% names(data)) {
+    tareas <- unique(data[[input$task_col]])
+    selectInput("filtro_tarea_cuad", "Filter by Task:", choices = tareas, multiple = TRUE)
+  } else {
+    return(NULL)
+  }
+})
+
+# Filtro de Duración
+output$filtro_duracion_cuad <- renderUI({
+  req(read_data())
+  data <- read_data()
+  dur <- NULL
+
+  if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
+    dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+  } else if (!is.null(input$start_col) && input$start_col != "None" &&
+             !is.null(input$end_col) && input$end_col != "None" &&
+             input$start_col %in% names(data) && input$end_col %in% names(data)) {
+    hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+    hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+    dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+  }
+
+  if (!is.null(dur)) {
+    dur <- dur[!is.na(dur) & is.finite(dur) & dur > 0]
+    if (length(dur) == 0) return(NULL)
+    sliderInput(
+      inputId = "filtro_duracion_cuad",
+      label = "Duration (min):",
+      min = floor(min(dur)),
+      max = ceiling(max(dur)),
+      value = c(floor(min(dur)), ceiling(max(dur))),
+      step = 1
+    )
+  } else {
+    return(NULL)
+  }
+})
+
+# Filtro de Sesión (selector de fecha para el cuadrante)
+output$filtro_sesion_cuad <- renderUI({
+  req(read_data(), input$date_col)
+  data <- read_data()
+  # Aplica filtro de Match Day ANTES de obtener las fechas
+  if (!is.null(input$matchday_col) && !is.null(input$filtro_matchday_cuad)) {
+    if (input$matchday_col %in% names(data)) {
+      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_cuad, ]
+    }
+  }
+  
+  # Parseo seguro de fechas
+  fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
+  fechas_unicas <- sort(unique(as.Date(fechas[!is.na(fechas)])))
+  if (length(fechas_unicas) == 0) return(NULL)
+  
+  # Permitir selección múltiple
+  shinyWidgets::pickerInput(
+    inputId = "sesion_cuad",
+    label = "Select Session/s:",
+    choices = fechas_unicas,
+    selected = tail(fechas_unicas, 1),
+    multiple = TRUE,  # <---- AHORA PERMITE MULTIPLE
+    options = list(
+      `actions-box` = TRUE,
+      `live-search` = TRUE,
+      `style` = "background-color: #1e1e1e; color: #ffffff;"
+    )
+  )
+})
+
+# Sliders para filtrar valores de cada métrica del cuadrante, alineados en una sola fila con estilo glass
+output$sliders_metricas_cuad <- renderUI({
+  req(input$metricas_cuad, length(input$metricas_cuad) == 2, read_data())
+  data <- read_data()
+  metricas <- input$metricas_cuad
+  
+  fluidRow(
+    lapply(1:2, function(i) {
+      metrica <- metricas[i]
+      valores <- suppressWarnings(as.numeric(data[[metrica]]))
+      if (all(is.na(valores))) return(NULL)
+      min_val <- floor(min(valores, na.rm = TRUE))
+      max_val <- ceiling(max(valores, na.rm = TRUE))
+      column(
+        width = 6, style = "padding-left: 8px; padding-right: 8px; margin-bottom: 6px;",
+        tags$div(
+          style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 10px 10px 8px 12px; box-shadow: 0 2px 8px #10101040; min-width:210px;",
+          tags$div(
+            style = "color:#00FFFF; font-weight:600; font-size:1.1em; margin-bottom:6px;",
+            metrica
+          ),
+          sliderInput(
+            inputId = paste0("filtro_valor_", metrica),
+            label = tags$span(
+              paste0("Filter ", metrica, ":"),
+              style = "color:#ffffff; font-size:0.98em;"
+            ),
+            min = min_val,
+            max = max_val,
+            value = c(min_val, max_val),
+            step = ifelse(max_val - min_val > 10, 1, 0.01),
+            width = "100%"
+          )
+        )
+      )
+    })
+  )
+})
+
+
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
   #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
@@ -3099,7 +3340,6 @@ server <- function(input, output, session) {
                 duration = 3
               )
             }
-            
             # Calcular ratio con umbrales personalizados
             df <- inner_join(partidos_resumen, entreno_resumen, by = "Jugador") %>%
               filter(!is.na(partido), !is.na(entreno), entreno > 0) %>%
@@ -3110,6 +3350,13 @@ server <- function(input, output, session) {
                   ratio > umbral_alto ~ "Alto",
                   ratio < umbral_bajo ~ "Bajo",
                   TRUE ~ "Normal"
+                ),
+                # 🔴 Tooltip detallado
+                tooltip = paste0(
+                  "Jugador: ", Jugador,
+                  "<br>Acumulado: ", round(entreno, 1),
+                  "<br>Partido: ", round(partido, 1),
+                  "<br>Ratio: ", round(ratio, 2)
                 )
               )
             return(df)
@@ -3129,7 +3376,7 @@ server <- function(input, output, session) {
             x = Jugador,
             y = ratio,
             fill = color_label,
-            text = paste0("Jugador: ", Jugador, "<br>Ratio: ", round(ratio, 2))
+            text = tooltip           # 👈 Tooltip detallado
           )) +
             geom_col(width = 0.8) +
             facet_wrap(~metrica, scales = "free_y") +
@@ -3164,6 +3411,166 @@ server <- function(input, output, session) {
         })
       })
     }
+  })
+  
+  #' 🟦 Output: Gráfico de Cuadrante
+  #'
+  #' Visualiza a cada jugador en un plano de dos métricas seleccionadas para una sesión específica.
+  #'
+  #' - Cada punto representa un jugador y su valor para Métrica X (eje X) y Métrica Y (eje Y).
+  #' - El cuadrante está delimitado por la **mediana** de cada métrica:
+  #'   - "Alto-Alto": ambos valores por encima de la mediana.
+  #'   - "Bajo-Bajo": ambos por debajo de la mediana.
+  #'   - "Alto-Bajo" y "Bajo-Alto": uno por arriba y otro por debajo.
+  #' - Los cuadrantes se identifican con colores (paleta LIFT): rojo, verde, cyan, violeta.
+  #' - Permite filtrar por jugador, puesto, tarea, duración y sesión.
+  #' - Sólo permite elegir **2 métricas** a la vez.
+  #' - Tooltip con: nombre, valor X, valor Y, cuadrante.
+  #' - El gráfico se renderiza con ggplot2 + plotly, respetando modo oscuro y estilo personalizado.
+  # UI: Output dinámico para el gráfico (ubicado en la columna derecha del tab)
+  
+  #-------------------------------------------
+  # OBSERVER PARA SELECTOR DE MÉTRICAS CUADRANTE
+  #-------------------------------------------
+  
+  observe({
+    req(input$metric_col)
+    updateSelectInput(
+      session,
+      inputId = "metricas_cuad",
+      choices = input$metric_col,
+      selected = input$metric_col[1:2]
+    )
+  })
+  
+  # UI Output para el plot
+  output$cuadrante_plot_ui <- renderUI({
+    req(input$metricas_cuad)
+    if (length(input$metricas_cuad) != 2) {
+      return(tags$p("Seleccioná exactamente 2 métricas para visualizar el cuadrante.", style = "color:#fd002b; font-size:1.1em; font-weight:600; text-align:center; margin-top:2em;"))
+    }
+    plotlyOutput("plot_cuadrante", height = "600px")
+  })
+  
+  # Render plotly
+  output$plot_cuadrante <- renderPlotly({
+    req(read_data(), input$metricas_cuad)
+    if (length(input$metricas_cuad) != 2) return(NULL)
+    
+    data <- read_data()
+    data$fecha_parsed <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
+    
+    
+    # Filtros por sesión
+    if (!is.null(input$sesion_cuad) && length(input$sesion_cuad) > 0) {
+      data <- data[as.Date(data$fecha_parsed) %in% as.Date(input$sesion_cuad), ]
+    }
+    # Filtros adicionales
+    if (!is.null(input$filtro_jugador_cuad)) {
+      data <- data[data[[input$player_col]] %in% input$filtro_jugador_cuad, ]
+    }
+    if (!is.null(input$filtro_puesto_cuad)) {
+      data <- data[data[[input$position_col]] %in% input$filtro_puesto_cuad, ]
+    }
+    if (!is.null(input$filtro_tarea_cuad)) {
+      data <- data[data[[input$task_col]] %in% input$filtro_tarea_cuad, ]
+    }
+    if (!is.null(input$filtro_duracion_cuad)) {
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None") {
+        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && !is.null(input$end_col)) {
+        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        data <- data[!is.na(dur) & dur >= input$filtro_duracion_cuad[1] & dur <= input$filtro_duracion_cuad[2], ]
+      }
+    }
+    
+    # Validar columnas
+    met_x <- input$metricas_cuad[1]
+    met_y <- input$metricas_cuad[2]
+    req(met_x %in% names(data), met_y %in% names(data))
+    
+    for (metrica in input$metricas_cuad) {
+      slider_id <- paste0("filtro_valor_", metrica)
+      if (!is.null(input[[slider_id]])) {
+        rango <- input[[slider_id]]
+        data <- data[data[[metrica]] >= rango[1] & data[[metrica]] <= rango[2], ]
+      }
+    }
+    
+    # 2. Calcular mediana de cada métrica
+    x_med <- median(data[[met_x]], na.rm = TRUE)
+    y_med <- median(data[[met_y]], na.rm = TRUE)
+    
+    # 3. Crear variable de cuadrante para colores y labels
+    data$cuadrante <- dplyr::case_when(
+      data[[met_x]] >= x_med & data[[met_y]] >= y_med ~ "Alto-Alto",
+      data[[met_x]] <  x_med & data[[met_y]] >= y_med ~ "Bajo-Alto",
+      data[[met_x]] <  x_med & data[[met_y]] <  y_med ~ "Bajo-Bajo",
+      data[[met_x]] >= x_med & data[[met_y]] <  y_med ~ "Alto-Bajo"
+    )
+    data$cuadrante <- factor(data$cuadrante, levels = c("Alto-Alto", "Bajo-Alto", "Bajo-Bajo", "Alto-Bajo"))
+    
+    # 4. Paleta de colores cuadrantes (LIFT)
+    colores_cuadrante <- c(
+      "Alto-Alto" = "#fd002b",  # Rojo
+      "Bajo-Alto" = "#7F00FF",  # Violeta
+      "Bajo-Bajo" = "#00e676",  # Verde
+      "Alto-Bajo" = "#00FFFF"   # Cyan
+    )
+    
+    # 5. Armar plot
+    p <- ggplot(data, aes(
+      x = .data[[met_x]],
+      y = .data[[met_y]],
+      color = cuadrante,
+      label = .data[[input$player_col]],
+      text = paste0(
+        "Jugador: ", .data[[input$player_col]], "<br>",
+        met_x, ": ", round(.data[[met_x]], 2), "<br>",
+        met_y, ": ", round(.data[[met_y]], 2), "<br>",
+        "Cuadrante: ", cuadrante
+      )
+    )) +
+      geom_point(size = 5, alpha = 0.95) +
+      scale_color_manual(values = colores_cuadrante, name = "Cuadrante") +
+      geom_vline(xintercept = x_med, linetype = "dashed", color = "#c8c8c8") +
+      geom_hline(yintercept = y_med, linetype = "dashed", color = "#c8c8c8") +
+      labs(
+        title = paste0("Gráfico de Cuadrante: ", met_x, " vs ", met_y),
+        x = met_x, y = met_y
+      ) +
+      theme_minimal(base_size = 15) +
+      theme(
+        plot.background = element_rect(fill = "transparent", color = NA),
+        panel.background = element_rect(fill = "transparent", color = NA),
+        panel.grid.major = element_line(color = "#1e1e1e"),
+        panel.grid.minor = element_line(color = "#2c2c2c"),
+        axis.text = element_text(color = "#ffffff"),
+        axis.title = element_text(color = "#ffffff", face = "bold"),
+        plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5),
+        legend.title = element_text(color = "#ffffff",  size = 15),
+        legend.text = element_text(color = "#ffffff",  size = 13)
+      )
+    
+    # 6. Render con plotly
+    ggplotly(p, tooltip = "text") %>%
+      layout(
+        plot_bgcolor = "rgba(0,0,0,0)",
+        paper_bgcolor = "rgba(0,0,0,0)",
+        font = list(
+          color = "#ffffff",
+          size = 14
+        ),
+        legend = list(
+          font = list(color = "#ffffff"),
+          bgcolor = "rgba(0,0,0,0)"
+        )
+      )
   })
 }
 
