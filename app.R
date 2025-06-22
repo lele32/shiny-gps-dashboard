@@ -445,6 +445,7 @@ ui <- fluidPage(
           tabPanel(
             title = tagList(tags$i(class = "bi bi-lightning-charge"), "ACWR"),
             fluidRow(
+              # Panel izquierdo: Filtros
               column(
                 width = 4,
                 class = "glass-box",
@@ -454,21 +455,48 @@ ui <- fluidPage(
                 tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
                 tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
                 tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
-                tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput(
-                  inputId = "acwr_agudo_dias",
-                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
-                  min = 3, max = 14, value = 7, step = 1
-                )),
-                tags$div(class = "filter-column", sliderInput(
-                  inputId = "acwr_cronico_dias",
-                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
-                  min = 14, max = 42, value = 28, step = 1
-                ))
+                tags$div(
+                  class = "filter-column",
+                  selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)
+                )
               ),
+              # Panel derecho: Sliders + gráfico
               column(
                 width = 8,
                 class = "glass-box",
+                # ⬇️ Centrado horizontal y glass
+                tags$div(
+                  style = "display: flex; justify-content: center; align-items: flex-end; background: rgba(30,30,30,0.92); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 16px; gap: 1.2em;",
+                  # Slider Agudo
+                  tags$div(
+                    style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 12px 14px 10px 16px; box-shadow: 0 2px 8px #10101040; min-width:220px; max-width:260px;",
+                    tags$div(
+                      style = "color:#00FFFF; font-weight:600; font-size:1.08em; margin-bottom:6px;",
+                      tags$i(class = "bi bi-lightning-charge", style = "margin-right:6px; color:#fd002b; font-size:1.1em;"),
+                      "Acute"
+                    ),
+                    sliderInput(
+                      inputId = "acwr_agudo_dias",
+                      label = tags$span("Acute (n Days)", style = "font-size:0.99em;"),
+                      min = 3, max = 14, value = 7, step = 1, width = "100%"
+                    )
+                  ),
+                  # Slider Crónico
+                  tags$div(
+                    style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 12px 14px 10px 16px; box-shadow: 0 2px 8px #10101040; min-width:220px; max-width:260px;",
+                    tags$div(
+                      style = "color:#00FFFF; font-weight:600; font-size:1.08em; margin-bottom:6px;",
+                      tags$i(class = "bi bi-lightning", style = "margin-right:6px; color:#fd002b; font-size:1.1em;"),
+                      "Chronic"
+                    ),
+                    sliderInput(
+                      inputId = "acwr_cronico_dias",
+                      label = tags$span("Chronic (n Days)", style = "font-size:0.99em;"),
+                      min = 14, max = 42, value = 28, step = 1, width = "100%"
+                    )
+                  )
+                ),
+                # 👇 Output dinámico para los gráficos
                 uiOutput("acwr_plot_ui")
               )
             )
