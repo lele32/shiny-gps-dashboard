@@ -2343,6 +2343,26 @@ server <- function(input, output, session) {
           req(filtro_data(), input[[filtro_id]])
           data <- filtro_data()
           
+          # 💡 FILTRO DE DURACIÓN
+          if (!is.null(input$filtro_duracion)) {
+            dur <- NULL
+            # Si hay columna directa de duración
+            if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
+              dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+              # Si hay hora inicio y hora fin
+            } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                       !is.null(input$end_col) && input$end_col != "None" &&
+                       input$start_col %in% names(data) && input$end_col %in% names(data)) {
+              hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+              hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+              dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+            }
+            if (!is.null(dur)) {
+              keep <- !is.na(dur) & dur >= input$filtro_duracion[1] & dur <= input$filtro_duracion[2]
+              data <- data[keep, ]
+            }
+          }
+          
           # Limpieza de datos
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
           data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
@@ -2384,8 +2404,7 @@ server <- function(input, output, session) {
               axis.text.y = element_text(color = "#ffffff"),
               axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
-                family = "Geist"
+                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF"
               ),
               legend.position = "none"
             )
