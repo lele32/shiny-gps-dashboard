@@ -296,7 +296,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-graph-up"), "Métrica en el tiempo"),
+            title = tagList(tags$i(class = "bi bi-graph-up"), "Time Series"),
             fluidRow(
               column(
                 width = 4,
@@ -319,7 +319,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-box"), "Boxplot por Match Day"),
+            title = tagList(tags$i(class = "bi bi-box"), "Boxplot by Match Day"),
             fluidRow(
               column(
                 width = 4,
@@ -343,7 +343,7 @@ ui <- fluidPage(
           
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot por Tarea"),
+            title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot by Task"),
             fluidRow(
               column(
                 width = 4,
@@ -367,7 +367,7 @@ ui <- fluidPage(
           
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-activity"), "Z-score por Fecha"),
+            title = tagList(tags$i(class = "bi bi-activity"), "Z-score Over Time"),
             fluidRow(
               column(
                 width = 4,
@@ -390,7 +390,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-activity"), "Análisis de sesión"),
+            title = tagList(tags$i(class = "bi bi-activity"), "Session Analysis"),
             fluidRow(
               column(
                 width = 4,
@@ -426,7 +426,7 @@ ui <- fluidPage(
                 tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
                 tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
                 tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
+                tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "MD Movile Window:", min = 3, max = 5, value = 3, step = 1))
               ),
               column(
                 width = 8,
@@ -445,6 +445,7 @@ ui <- fluidPage(
           tabPanel(
             title = tagList(tags$i(class = "bi bi-lightning-charge"), "ACWR"),
             fluidRow(
+              # Panel izquierdo: Filtros
               column(
                 width = 4,
                 class = "glass-box",
@@ -454,21 +455,48 @@ ui <- fluidPage(
                 tags$div(class = "filter-column", uiOutput("filtro_tarea_acwr")),
                 tags$div(class = "filter-column", uiOutput("filtro_fecha_acwr")),
                 tags$div(class = "filter-column", uiOutput("filtro_duracion_acwr")),
-                tags$div(class = "filter-column", selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput(
-                  inputId = "acwr_agudo_dias",
-                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Agudo (ACWR)"),
-                  min = 3, max = 14, value = 7, step = 1
-                )),
-                tags$div(class = "filter-column", sliderInput(
-                  inputId = "acwr_cronico_dias",
-                  label = tags$span(style = "color:#fd002b; font-weight:bold;", "Días Crónico (ACWR)"),
-                  min = 14, max = 42, value = 28, step = 1
-                ))
+                tags$div(
+                  class = "filter-column",
+                  selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)
+                )
               ),
+              # Panel derecho: Sliders + gráfico
               column(
                 width = 8,
                 class = "glass-box",
+                # ⬇️ Centrado horizontal y glass
+                tags$div(
+                  style = "display: flex; justify-content: center; align-items: flex-end; background: rgba(30,30,30,0.92); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 16px; gap: 1.2em;",
+                  # Slider Agudo
+                  tags$div(
+                    style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 12px 14px 10px 16px; box-shadow: 0 2px 8px #10101040; min-width:220px; max-width:260px;",
+                    tags$div(
+                      style = "color:#00FFFF; font-weight:600; font-size:1.08em; margin-bottom:6px;",
+                      tags$i(class = "bi bi-lightning-charge", style = "margin-right:6px; color:#fd002b; font-size:1.1em;"),
+                      "Acute"
+                    ),
+                    sliderInput(
+                      inputId = "acwr_agudo_dias",
+                      label = tags$span("Acute (n Days)", style = "font-size:0.99em;"),
+                      min = 3, max = 14, value = 7, step = 1, width = "100%"
+                    )
+                  ),
+                  # Slider Crónico
+                  tags$div(
+                    style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 12px 14px 10px 16px; box-shadow: 0 2px 8px #10101040; min-width:220px; max-width:260px;",
+                    tags$div(
+                      style = "color:#00FFFF; font-weight:600; font-size:1.08em; margin-bottom:6px;",
+                      tags$i(class = "bi bi-lightning", style = "margin-right:6px; color:#fd002b; font-size:1.1em;"),
+                      "Chronic"
+                    ),
+                    sliderInput(
+                      inputId = "acwr_cronico_dias",
+                      label = tags$span("Chronic (n Days)", style = "font-size:0.99em;"),
+                      min = 14, max = 42, value = 28, step = 1, width = "100%"
+                    )
+                  )
+                ),
+                # 👇 Output dinámico para los gráficos
                 uiOutput("acwr_plot_ui")
               )
             )
@@ -479,7 +507,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-bar-chart-line"), "Análisis de Microciclo"),
+            title = tagList(tags$i(class = "bi bi-bar-chart-line"), "Microcycle Analysis"),
             fluidRow(
               column(
                 width = 4,
@@ -494,7 +522,7 @@ ui <- fluidPage(
                 tags$div(class = "filter-column", 
                          sliderInput(
                            inputId = "ventana_movil_micro",
-                           label = tags$span(style = "color:#fd002b; font-weight:bold;", "Rolling partidos anteriores"),
+                           label = tags$span(style = "color:#fd002b; font-weight:bold;", "MD Rolling Avg"),
                            min = 3, max = 10, value = 5, step = 1
                          )
                 ),
@@ -518,7 +546,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-grid-3x3-gap-fill"), "Gráfico de Cuadrante"),
+            title = tagList(tags$i(class = "bi bi-grid-3x3-gap-fill"), "Quadrant"),
             fluidRow(
               # Filtros (columna izquierda)
               column(
@@ -609,8 +637,8 @@ server <- function(input, output, session) {
         
         # 🔹 Toast SOLO si cargó bien
         shinyalert(
-          title = "✅ Google Sheet Cargado",
-          text = "Datos de Google Sheets cargados exitosamente.",
+          title = "✅ Google Sheet Loaded",
+          text = "Google Sheets data loaded successfully.",
           type = "success",
           timer = 2500,
           showConfirmButton = FALSE
@@ -618,8 +646,8 @@ server <- function(input, output, session) {
         
       }, error = function(e) {
         showModal(modalDialog(
-          title = "Error al leer Google Sheets",
-          paste("Ocurrió un error:", e$message),
+          title = "Error reading Google Sheets",
+          paste("An error occurred:", e$message),
           easyClose = TRUE,
           footer = NULL
         ))
@@ -649,7 +677,7 @@ server <- function(input, output, session) {
                  },
                  "xlsx" = readxl::read_excel(file_path),
                  "json" = jsonlite::fromJSON(file_path, flatten = TRUE),
-                 stop("Tipo de archivo no soportado.")
+                 stop("Unsupported file type.")
           )
         })
         
@@ -657,8 +685,8 @@ server <- function(input, output, session) {
         
         # 🔹 Toast de carga exitosa de archivos (después de bind_rows)
         shinyalert(
-          title = "✅ Archivo(s) Cargado(s)",
-          text = paste0("Se cargaron ", nrow(file_input), " archivo(s) correctamente."),
+          title = "✅ File(s) Uploaded",
+          text = paste0(nrow(file_input), " file(s) uploaded successfully."),
           type = "success",
           timer = 2500,
           showConfirmButton = FALSE
@@ -666,8 +694,8 @@ server <- function(input, output, session) {
         
       }, error = function(e) {
         showModal(modalDialog(
-          title = "Error al leer archivo(s)",
-          paste("Ocurrió un error:", e$message),
+          title = "Error reading file(s)",
+          paste("An error occurred:", e$message),
           easyClose = TRUE,
           footer = NULL
         ))
@@ -678,7 +706,7 @@ server <- function(input, output, session) {
     req(data_new)
     
     if (!is.data.frame(data_new)) {
-      stop("El archivo no contiene un formato válido de tabla.")
+      stop("The file does not contain a valid table format.")
     }
     
     colnames(data_new) <- make.names(colnames(data_new))
@@ -701,7 +729,7 @@ server <- function(input, output, session) {
     } else {
       showModal(modalDialog(
         title = "Error",
-        "Los datos cargados no tienen formato de tabla válido.",
+        "The file does not contain a valid table format.",
         easyClose = TRUE,
         footer = NULL
       ))
@@ -743,7 +771,7 @@ server <- function(input, output, session) {
     # Si hay URL de Google Sheet pegada
     if (nzchar(input$google_sheet_url)) {
       tags$p(
-        tags$b("Archivo cargado:"), "Google Sheets",
+        tags$b("File uploaded:"), "Google Sheets",
         tags$br(),
         tags$b("Link:"), a(input$google_sheet_url, href = input$google_sheet_url, target = "_blank")
       )
@@ -755,18 +783,18 @@ server <- function(input, output, session) {
       total_size <- sum(file_sizes, na.rm = TRUE)
       
       tagList(
-        tags$p(tags$b("Archivos cargados:")),
+        tags$p(tags$b("File uploaded:")),
         tags$ul(
           lapply(seq_along(file_names), function(i) {
             tags$li(paste0(file_names[i], " - ", round(file_sizes[i], 2), " KB"))
           })
         ),
-        tags$p(tags$b("Tamaño total:"), paste0(round(total_size, 2), " KB"))
+        tags$p(tags$b("File Size:"), paste0(round(total_size, 2), " KB"))
       )
       
     } else {
       # No hay archivo cargado
-      tags$p("No hay archivos cargados.")
+      tags$p("No files uploaded.")
     }
   })
   
@@ -802,11 +830,11 @@ server <- function(input, output, session) {
   
   observeEvent(input$reset_base, {
     showModal(modalDialog(
-      title = "Confirmar Reset",
-      "¿Estás seguro que deseas vaciar toda la base de datos y limpiar la carga de archivos?",
+      title = "Confirm Reset",
+      "Are you sure you want to clear the entire database and remove all uploaded files?",
       footer = tagList(
-        modalButton("Cancelar"),
-        actionButton("confirm_reset", "Resetear", class = "btn btn-danger")
+        modalButton("Cancel"),
+        actionButton("confirm_reset", "Reset", class = "btn btn-danger")
       ),
       easyClose = TRUE
     ))
@@ -818,7 +846,6 @@ server <- function(input, output, session) {
     
     # 🔹 Limpiar inputs de carga
     updateTextInput(session, "google_sheet_url", value = "")
-    updateFileInput(session, "file", label = "Upload New Files", multiple = TRUE)
     
     # 🔹 Limpiar mapeos
     updateSelectInput(session, "player_col", choices = character(0), selected = NULL)
@@ -836,10 +863,10 @@ server <- function(input, output, session) {
     
     # 🔥 Toast de éxito
     shinyalert(
-      title = "✅ Base de Datos Reseteada",
-      text = "Puedes comenzar a cargar nuevos archivos.",
+      title = "✅ Database Reset",
+      text = "You can start uploading new files.",
       type = "success",
-      timer = 2500,  # milisegundos
+      timer = 2500,  # milliseconds
       showConfirmButton = FALSE
     )
   })
@@ -851,9 +878,9 @@ server <- function(input, output, session) {
     data <- base_datos_global()
     
     if (is.null(data) || nrow(data) == 0) {
-      tags$p("🗑️ Base vacía. No hay datos cargados.", style = "color: #fd002b; font-weight: bold;")
+      tags$p("🗑️ Empty database. No data loaded.", style = "color: #fd002b; font-weight: bold;")
     } else {
-      tags$p(paste0("✅ Base actualizada: ", nrow(data), " registros"),
+      tags$p(paste0("✅ Database updated: ", nrow(data), " records"),
              style = "color: #00e676; font-weight: bold;")
     }
   })
@@ -2169,160 +2196,160 @@ server <- function(input, output, session) {
   # 🧠 UI dinámico: Cuadrante
   
   #-------------------------------------------
-# FILTROS PARA EL CUADRANTE
-#-------------------------------------------
-
-# Filtro de Jugador
-output$filtro_jugador_cuad <- renderUI({
-  req(read_data(), input$player_col)
-  data <- read_data()
-  if (input$player_col %in% names(data)) {
-    jugadores <- unique(data[[input$player_col]])
-    selectInput("filtro_jugador_cuad", "Filter by Player:", choices = jugadores, multiple = TRUE)
-  } else {
-    return(NULL)
-  }
-})
-
-# Filtro de Puesto
-output$filtro_puesto_cuad <- renderUI({
-  req(read_data(), input$position_col)
-  data <- read_data()
-  if (input$position_col %in% names(data)) {
-    puestos <- unique(data[[input$position_col]])
-    selectInput("filtro_puesto_cuad", "Filter by Position:", choices = puestos, multiple = TRUE)
-  } else {
-    return(NULL)
-  }
-})
-
-# Filtro de MD
-output$filtro_matchday_cuad <- renderUI({
-  req(read_data(), input$matchday_col)
-  data <- read_data()
-  if (input$matchday_col %in% names(data)) {
-    matchdays <- unique(data[[input$matchday_col]])
-    selectInput("filtro_matchday_cuad", "Filter by Match Day:", choices = matchdays, multiple = TRUE)
-  } else {
-    return(NULL)
-  }
-})
-
-# Filtro de Tarea
-output$filtro_tarea_cuad <- renderUI({
-  req(read_data(), input$task_col)
-  data <- read_data()
-  if (input$task_col %in% names(data)) {
-    tareas <- unique(data[[input$task_col]])
-    selectInput("filtro_tarea_cuad", "Filter by Task:", choices = tareas, multiple = TRUE)
-  } else {
-    return(NULL)
-  }
-})
-
-# Filtro de Duración
-output$filtro_duracion_cuad <- renderUI({
-  req(read_data())
-  data <- read_data()
-  dur <- NULL
-
-  if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
-    dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
-  } else if (!is.null(input$start_col) && input$start_col != "None" &&
-             !is.null(input$end_col) && input$end_col != "None" &&
-             input$start_col %in% names(data) && input$end_col %in% names(data)) {
-    hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-    hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-    dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
-  }
-
-  if (!is.null(dur)) {
-    dur <- dur[!is.na(dur) & is.finite(dur) & dur > 0]
-    if (length(dur) == 0) return(NULL)
-    sliderInput(
-      inputId = "filtro_duracion_cuad",
-      label = "Duration (min):",
-      min = floor(min(dur)),
-      max = ceiling(max(dur)),
-      value = c(floor(min(dur)), ceiling(max(dur))),
-      step = 1
-    )
-  } else {
-    return(NULL)
-  }
-})
-
-# Filtro de Sesión (selector de fecha para el cuadrante)
-output$filtro_sesion_cuad <- renderUI({
-  req(read_data(), input$date_col)
-  data <- read_data()
-  # Aplica filtro de Match Day ANTES de obtener las fechas
-  if (!is.null(input$matchday_col) && !is.null(input$filtro_matchday_cuad)) {
-    if (input$matchday_col %in% names(data)) {
-      data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_cuad, ]
+  # FILTROS PARA EL CUADRANTE
+  #-------------------------------------------
+  
+  # Filtro de Jugador
+  output$filtro_jugador_cuad <- renderUI({
+    req(read_data(), input$player_col)
+    data <- read_data()
+    if (input$player_col %in% names(data)) {
+      jugadores <- unique(data[[input$player_col]])
+      selectInput("filtro_jugador_cuad", "Filter by Player:", choices = jugadores, multiple = TRUE)
+    } else {
+      return(NULL)
     }
-  }
+  })
   
-  # Parseo seguro de fechas
-  fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
-  fechas_unicas <- sort(unique(as.Date(fechas[!is.na(fechas)])))
-  if (length(fechas_unicas) == 0) return(NULL)
+  # Filtro de Puesto
+  output$filtro_puesto_cuad <- renderUI({
+    req(read_data(), input$position_col)
+    data <- read_data()
+    if (input$position_col %in% names(data)) {
+      puestos <- unique(data[[input$position_col]])
+      selectInput("filtro_puesto_cuad", "Filter by Position:", choices = puestos, multiple = TRUE)
+    } else {
+      return(NULL)
+    }
+  })
   
-  # Permitir selección múltiple
-  shinyWidgets::pickerInput(
-    inputId = "sesion_cuad",
-    label = "Select Session/s:",
-    choices = fechas_unicas,
-    selected = tail(fechas_unicas, 1),
-    multiple = TRUE,  # <---- AHORA PERMITE MULTIPLE
-    options = list(
-      `actions-box` = TRUE,
-      `live-search` = TRUE,
-      `style` = "background-color: #1e1e1e; color: #ffffff;"
+  # Filtro de MD
+  output$filtro_matchday_cuad <- renderUI({
+    req(read_data(), input$matchday_col)
+    data <- read_data()
+    if (input$matchday_col %in% names(data)) {
+      matchdays <- unique(data[[input$matchday_col]])
+      selectInput("filtro_matchday_cuad", "Filter by Match Day:", choices = matchdays, multiple = TRUE)
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # Filtro de Tarea
+  output$filtro_tarea_cuad <- renderUI({
+    req(read_data(), input$task_col)
+    data <- read_data()
+    if (input$task_col %in% names(data)) {
+      tareas <- unique(data[[input$task_col]])
+      selectInput("filtro_tarea_cuad", "Filter by Task:", choices = tareas, multiple = TRUE)
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # Filtro de Duración
+  output$filtro_duracion_cuad <- renderUI({
+    req(read_data())
+    data <- read_data()
+    dur <- NULL
+    
+    if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
+      dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+    } else if (!is.null(input$start_col) && input$start_col != "None" &&
+               !is.null(input$end_col) && input$end_col != "None" &&
+               input$start_col %in% names(data) && input$end_col %in% names(data)) {
+      hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+      hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+      dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+    }
+    
+    if (!is.null(dur)) {
+      dur <- dur[!is.na(dur) & is.finite(dur) & dur > 0]
+      if (length(dur) == 0) return(NULL)
+      sliderInput(
+        inputId = "filtro_duracion_cuad",
+        label = "Duration (min):",
+        min = floor(min(dur)),
+        max = ceiling(max(dur)),
+        value = c(floor(min(dur)), ceiling(max(dur))),
+        step = 1
+      )
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # Filtro de Sesión (selector de fecha para el cuadrante)
+  output$filtro_sesion_cuad <- renderUI({
+    req(read_data(), input$date_col)
+    data <- read_data()
+    # Aplica filtro de Match Day ANTES de obtener las fechas
+    if (!is.null(input$matchday_col) && !is.null(input$filtro_matchday_cuad)) {
+      if (input$matchday_col %in% names(data)) {
+        data <- data[data[[input$matchday_col]] %in% input$filtro_matchday_cuad, ]
+      }
+    }
+    
+    # Parseo seguro de fechas
+    fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
+    fechas_unicas <- sort(unique(as.Date(fechas[!is.na(fechas)])))
+    if (length(fechas_unicas) == 0) return(NULL)
+    
+    # Permitir selección múltiple
+    shinyWidgets::pickerInput(
+      inputId = "sesion_cuad",
+      label = "Select Session/s:",
+      choices = fechas_unicas,
+      selected = tail(fechas_unicas, 1),
+      multiple = TRUE,  # <---- AHORA PERMITE MULTIPLE
+      options = list(
+        `actions-box` = TRUE,
+        `live-search` = TRUE,
+        `style` = "background-color: #1e1e1e; color: #ffffff;"
+      )
     )
-  )
-})
-
-# Sliders para filtrar valores de cada métrica del cuadrante, alineados en una sola fila con estilo glass
-output$sliders_metricas_cuad <- renderUI({
-  req(input$metricas_cuad, length(input$metricas_cuad) == 2, read_data())
-  data <- read_data()
-  metricas <- input$metricas_cuad
+  })
   
-  fluidRow(
-    lapply(1:2, function(i) {
-      metrica <- metricas[i]
-      valores <- suppressWarnings(as.numeric(data[[metrica]]))
-      if (all(is.na(valores))) return(NULL)
-      min_val <- floor(min(valores, na.rm = TRUE))
-      max_val <- ceiling(max(valores, na.rm = TRUE))
-      column(
-        width = 6, style = "padding-left: 8px; padding-right: 8px; margin-bottom: 6px;",
-        tags$div(
-          style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 10px 10px 8px 12px; box-shadow: 0 2px 8px #10101040; min-width:210px;",
+  # Sliders para filtrar valores de cada métrica del cuadrante, alineados en una sola fila con estilo glass
+  output$sliders_metricas_cuad <- renderUI({
+    req(input$metricas_cuad, length(input$metricas_cuad) == 2, read_data())
+    data <- read_data()
+    metricas <- input$metricas_cuad
+    
+    fluidRow(
+      lapply(1:2, function(i) {
+        metrica <- metricas[i]
+        valores <- suppressWarnings(as.numeric(data[[metrica]]))
+        if (all(is.na(valores))) return(NULL)
+        min_val <- floor(min(valores, na.rm = TRUE))
+        max_val <- ceiling(max(valores, na.rm = TRUE))
+        column(
+          width = 6, style = "padding-left: 8px; padding-right: 8px; margin-bottom: 6px;",
           tags$div(
-            style = "color:#00FFFF; font-weight:600; font-size:1.1em; margin-bottom:6px;",
-            metrica
-          ),
-          sliderInput(
-            inputId = paste0("filtro_valor_", metrica),
-            label = tags$span(
-              paste0("Filter ", metrica, ":"),
-              style = "color:#ffffff; font-size:0.98em;"
+            style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 10px 10px 8px 12px; box-shadow: 0 2px 8px #10101040; min-width:210px;",
+            tags$div(
+              style = "color:#00FFFF; font-weight:600; font-size:1.1em; margin-bottom:6px;",
+              metrica
             ),
-            min = min_val,
-            max = max_val,
-            value = c(min_val, max_val),
-            step = ifelse(max_val - min_val > 10, 1, 0.01),
-            width = "100%"
+            sliderInput(
+              inputId = paste0("filtro_valor_", metrica),
+              label = tags$span(
+                paste0("Filter ", metrica, ":"),
+                style = "color:#ffffff; font-size:0.98em;"
+              ),
+              min = min_val,
+              max = max_val,
+              value = c(min_val, max_val),
+              step = ifelse(max_val - min_val > 10, 1, 0.01),
+              width = "100%"
+            )
           )
         )
-      )
-    })
-  )
-})
-
-
+      })
+    )
+  })
+  
+  
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
   #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
@@ -2342,6 +2369,26 @@ output$sliders_metricas_cuad <- renderUI({
         output[[plot_id]] <- renderPlotly({
           req(filtro_data(), input[[filtro_id]])
           data <- filtro_data()
+          
+          # 💡 FILTRO DE DURACIÓN
+          if (!is.null(input$filtro_duracion)) {
+            dur <- NULL
+            # Si hay columna directa de duración
+            if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
+              dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+              # Si hay hora inicio y hora fin
+            } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                       !is.null(input$end_col) && input$end_col != "None" &&
+                       input$start_col %in% names(data) && input$end_col %in% names(data)) {
+              hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
+              hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
+              dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+            }
+            if (!is.null(dur)) {
+              keep <- !is.na(dur) & dur >= input$filtro_duracion[1] & dur <= input$filtro_duracion[2]
+              data <- data[keep, ]
+            }
+          }
           
           # Limpieza de datos
           data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
@@ -2384,8 +2431,7 @@ output$sliders_metricas_cuad <- renderUI({
               axis.text.y = element_text(color = "#ffffff"),
               axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
-                family = "Geist"
+                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF"
               ),
               legend.position = "none"
             )
@@ -3576,7 +3622,5 @@ output$sliders_metricas_cuad <- renderUI({
 
 
 shinyApp(ui, server)
-
-
 
 

@@ -296,7 +296,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-graph-up"), "Métrica en el tiempo"),
+            title = tagList(tags$i(class = "bi bi-graph-up"), "Time Series"),
             fluidRow(
               column(
                 width = 4,
@@ -319,7 +319,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-box"), "Boxplot por Match Day"),
+            title = tagList(tags$i(class = "bi bi-box"), "Boxplot by Match Day"),
             fluidRow(
               column(
                 width = 4,
@@ -343,7 +343,7 @@ ui <- fluidPage(
           
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot por Tarea"),
+            title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot by Task"),
             fluidRow(
               column(
                 width = 4,
@@ -367,7 +367,7 @@ ui <- fluidPage(
           
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-activity"), "Z-score por Fecha"),
+            title = tagList(tags$i(class = "bi bi-activity"), "Z-score Over Time"),
             fluidRow(
               column(
                 width = 4,
@@ -390,7 +390,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-activity"), "Análisis de sesión"),
+            title = tagList(tags$i(class = "bi bi-activity"), "Session Analysis"),
             fluidRow(
               column(
                 width = 4,
@@ -426,7 +426,7 @@ ui <- fluidPage(
                 tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
                 tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
                 tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "Tamaño ventana móvil (partidos anteriores):", min = 3, max = 5, value = 3, step = 1))
+                tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "MD Movile Window:", min = 3, max = 5, value = 3, step = 1))
               ),
               column(
                 width = 8,
@@ -507,7 +507,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-bar-chart-line"), "Análisis de Microciclo"),
+            title = tagList(tags$i(class = "bi bi-bar-chart-line"), "Microcycle Analysis"),
             fluidRow(
               column(
                 width = 4,
@@ -522,7 +522,7 @@ ui <- fluidPage(
                 tags$div(class = "filter-column", 
                          sliderInput(
                            inputId = "ventana_movil_micro",
-                           label = tags$span(style = "color:#fd002b; font-weight:bold;", "Rolling partidos anteriores"),
+                           label = tags$span(style = "color:#fd002b; font-weight:bold;", "MD Rolling Avg"),
                            min = 3, max = 10, value = 5, step = 1
                          )
                 ),
@@ -546,7 +546,7 @@ ui <- fluidPage(
           #-------------------------------
           
           tabPanel(
-            title = tagList(tags$i(class = "bi bi-grid-3x3-gap-fill"), "Gráfico de Cuadrante"),
+            title = tagList(tags$i(class = "bi bi-grid-3x3-gap-fill"), "Quadrant"),
             fluidRow(
               # Filtros (columna izquierda)
               column(
@@ -637,8 +637,8 @@ server <- function(input, output, session) {
         
         # 🔹 Toast SOLO si cargó bien
         shinyalert(
-          title = "✅ Google Sheet Cargado",
-          text = "Datos de Google Sheets cargados exitosamente.",
+          title = "✅ Google Sheet Loaded",
+          text = "Google Sheets data loaded successfully.",
           type = "success",
           timer = 2500,
           showConfirmButton = FALSE
@@ -646,8 +646,8 @@ server <- function(input, output, session) {
         
       }, error = function(e) {
         showModal(modalDialog(
-          title = "Error al leer Google Sheets",
-          paste("Ocurrió un error:", e$message),
+          title = "Error reading Google Sheets",
+          paste("An error occurred:", e$message),
           easyClose = TRUE,
           footer = NULL
         ))
@@ -677,7 +677,7 @@ server <- function(input, output, session) {
                  },
                  "xlsx" = readxl::read_excel(file_path),
                  "json" = jsonlite::fromJSON(file_path, flatten = TRUE),
-                 stop("Tipo de archivo no soportado.")
+                 stop("Unsupported file type.")
           )
         })
         
@@ -685,8 +685,8 @@ server <- function(input, output, session) {
         
         # 🔹 Toast de carga exitosa de archivos (después de bind_rows)
         shinyalert(
-          title = "✅ Archivo(s) Cargado(s)",
-          text = paste0("Se cargaron ", nrow(file_input), " archivo(s) correctamente."),
+          title = "✅ File(s) Uploaded",
+          text = paste0(nrow(file_input), " file(s) uploaded successfully."),
           type = "success",
           timer = 2500,
           showConfirmButton = FALSE
@@ -694,8 +694,8 @@ server <- function(input, output, session) {
         
       }, error = function(e) {
         showModal(modalDialog(
-          title = "Error al leer archivo(s)",
-          paste("Ocurrió un error:", e$message),
+          title = "Error reading file(s)",
+          paste("An error occurred:", e$message),
           easyClose = TRUE,
           footer = NULL
         ))
@@ -706,7 +706,7 @@ server <- function(input, output, session) {
     req(data_new)
     
     if (!is.data.frame(data_new)) {
-      stop("El archivo no contiene un formato válido de tabla.")
+      stop("The file does not contain a valid table format.")
     }
     
     colnames(data_new) <- make.names(colnames(data_new))
@@ -729,7 +729,7 @@ server <- function(input, output, session) {
     } else {
       showModal(modalDialog(
         title = "Error",
-        "Los datos cargados no tienen formato de tabla válido.",
+        "The file does not contain a valid table format.",
         easyClose = TRUE,
         footer = NULL
       ))
@@ -771,7 +771,7 @@ server <- function(input, output, session) {
     # Si hay URL de Google Sheet pegada
     if (nzchar(input$google_sheet_url)) {
       tags$p(
-        tags$b("Archivo cargado:"), "Google Sheets",
+        tags$b("File uploaded:"), "Google Sheets",
         tags$br(),
         tags$b("Link:"), a(input$google_sheet_url, href = input$google_sheet_url, target = "_blank")
       )
@@ -783,18 +783,18 @@ server <- function(input, output, session) {
       total_size <- sum(file_sizes, na.rm = TRUE)
       
       tagList(
-        tags$p(tags$b("Archivos cargados:")),
+        tags$p(tags$b("File uploaded:")),
         tags$ul(
           lapply(seq_along(file_names), function(i) {
             tags$li(paste0(file_names[i], " - ", round(file_sizes[i], 2), " KB"))
           })
         ),
-        tags$p(tags$b("Tamaño total:"), paste0(round(total_size, 2), " KB"))
+        tags$p(tags$b("File Size:"), paste0(round(total_size, 2), " KB"))
       )
       
     } else {
       # No hay archivo cargado
-      tags$p("No hay archivos cargados.")
+      tags$p("No files uploaded.")
     }
   })
   
@@ -830,11 +830,11 @@ server <- function(input, output, session) {
   
   observeEvent(input$reset_base, {
     showModal(modalDialog(
-      title = "Confirmar Reset",
-      "¿Estás seguro que deseas vaciar toda la base de datos y limpiar la carga de archivos?",
+      title = "Confirm Reset",
+      "Are you sure you want to clear the entire database and remove all uploaded files?",
       footer = tagList(
-        modalButton("Cancelar"),
-        actionButton("confirm_reset", "Resetear", class = "btn btn-danger")
+        modalButton("Cancel"),
+        actionButton("confirm_reset", "Reset", class = "btn btn-danger")
       ),
       easyClose = TRUE
     ))
@@ -846,8 +846,7 @@ server <- function(input, output, session) {
     
     # 🔹 Limpiar inputs de carga
     updateTextInput(session, "google_sheet_url", value = "")
-    updateFileInput(session, "file", label = "Upload New Files", multiple = TRUE)
-    
+  
     # 🔹 Limpiar mapeos
     updateSelectInput(session, "player_col", choices = character(0), selected = NULL)
     updateSelectInput(session, "position_col", choices = character(0), selected = NULL)
@@ -864,10 +863,10 @@ server <- function(input, output, session) {
     
     # 🔥 Toast de éxito
     shinyalert(
-      title = "✅ Base de Datos Reseteada",
-      text = "Puedes comenzar a cargar nuevos archivos.",
+      title = "✅ Database Reset",
+      text = "You can start uploading new files.",
       type = "success",
-      timer = 2500,  # milisegundos
+      timer = 2500,  # milliseconds
       showConfirmButton = FALSE
     )
   })
@@ -879,9 +878,9 @@ server <- function(input, output, session) {
     data <- base_datos_global()
     
     if (is.null(data) || nrow(data) == 0) {
-      tags$p("🗑️ Base vacía. No hay datos cargados.", style = "color: #fd002b; font-weight: bold;")
+      tags$p("🗑️ Empty database. No data loaded.", style = "color: #fd002b; font-weight: bold;")
     } else {
-      tags$p(paste0("✅ Base actualizada: ", nrow(data), " registros"),
+      tags$p(paste0("✅ Database updated: ", nrow(data), " records"),
              style = "color: #00e676; font-weight: bold;")
     }
   })
