@@ -347,24 +347,34 @@ ui <- fluidPage(
           ),
           
           #-------------------------------
-          # 🟦 TAB PANEL: Boxplot TAREA
+          # 🟦 TAB PANEL: Boxplot by Task + KPIs
           #-------------------------------
-          
           
           tabPanel(
             title = tagList(tags$i(class = "bi bi-box-seam"), "Boxplot by Task"),
             fluidRow(
+              # Panel izquierdo: filtros y selector de métricas
               column(
                 width = 4,
                 class = "glass-box",
-                lapply(c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"), function(id) {
-                  tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
-                }),
-                tags$div(class = "filter-column", selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE))
+                lapply(
+                  c("jugador_task", "puesto_task", "matchday_task", "tarea_task", "fecha_task", "duracion_task"),
+                  function(id) {
+                    tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
+                  }
+                ),
+                tags$div(class = "filter-column",
+                         selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE)
+                )
               ),
+              # Panel derecho: KPIs + gráfico
               column(
                 width = 8,
                 class = "glass-box",
+                fluidRow(
+                  style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
+                  uiOutput("kpi_row_boxplot_task")
+                ),
                 uiOutput("boxplot_task_ui")
               )
             )
@@ -2478,6 +2488,80 @@ server <- function(input, output, session) {
               tags$span("Min", style = "font-size:0.92em; color:#c8c8c8;")
             ),
             # IQR de la métrica
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center;",
+              tags$span(icon("sliders-h"), style = "font-size:1.32em; color:#00FFFF; margin-bottom:2px;"),
+              tags$span(iqr_val, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
+              tags$span("IQR", style = "font-size:0.92em; color:#c8c8c8;")
+            )
+          )
+        )
+      })
+    )
+  })
+  
+  # 🔷 KPIs arriba del boxplot TASK
+  
+  output$kpi_row_boxplot_task <- renderUI({
+    req(input$metric_task, length(input$metric_task) > 0, read_data())
+    met_list <- input$metric_task
+    
+    tags$div(
+      style = "
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 8px;
+      margin-top: 0px;
+    ",
+      lapply(met_list, function(metrica) {
+        # Identifica el filtro de rango de valores de la métrica
+        filtro_id <- paste0("filtro_metrica_valor_task_", make.names(metrica))
+        val_range <- input[[filtro_id]]
+        # Si el filtro aún no existe, lo saltea
+        if (is.null(val_range) || length(val_range) != 2) return(NULL)
+        data <- filtro_data_task(metrica, val_range)
+        if (is.null(data) || nrow(data) == 0) return(NULL)
+        valores <- suppressWarnings(as.numeric(data[[metrica]]))
+        # KPIs para el boxplot por tarea
+        n_players <- length(unique(data[[input$player_col]]))
+        if (length(valores) == 0 || all(is.na(valores))) {
+          task_max <- NA
+          task_min <- NA
+          iqr_val <- NA
+        } else {
+          task_max <- as.character(data[[input$task_col]][which.max(valores)][1])
+          task_min <- as.character(data[[input$task_col]][which.min(valores)][1])
+          iqr_val <- round(IQR(valores, na.rm = TRUE), 2)
+        }
+        tags$div(
+          style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 12px 14px 9px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
+          tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
+          tags$div(
+            style = "display:flex; flex-direction:row; gap:16px; justify-content:center; align-items:center;",
+            # N jugadores
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              tags$span(icon("users"), style = "font-size:1.32em; color:#fd002b; margin-bottom:2px;"),
+              tags$span(n_players, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
+              tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+            ),
+            # Tarea con valor máximo
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              tags$span(icon("arrow-up"), style = "font-size:1.32em; color:#00e676; margin-bottom:2px;"),
+              tags$span(task_max, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
+              tags$span("Max Task", style = "font-size:0.92em; color:#c8c8c8;")
+            ),
+            # Tarea con valor mínimo
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              tags$span(icon("arrow-down"), style = "font-size:1.32em; color:#7F00FF; margin-bottom:2px;"),
+              tags$span(task_min, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
+              tags$span("Min Task", style = "font-size:0.92em; color:#c8c8c8;")
+            ),
+            # IQR
             tags$div(
               style = "display:flex; flex-direction:column; align-items:center;",
               tags$span(icon("sliders-h"), style = "font-size:1.32em; color:#00FFFF; margin-bottom:2px;"),
