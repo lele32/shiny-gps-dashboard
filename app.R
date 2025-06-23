@@ -14,6 +14,7 @@ library(hms)             # Time handling
 library(bslib)           # Bootstrap theming
 library(shinythemes)     # Built-in themes
 library(rlang)
+library(bs4Dash)
 library(rsconnect)       # Deployment
 library(slider)          # Rolling window stats
 library(shinyWidgets)    # Custom inputs
@@ -21,7 +22,6 @@ library(tidyr)           # Data reshaping
 library(fontawesome)     # íconos modernos
 library(TTR)             # Para usar TTR::EMA
 library(shinyalert)      # Para alertas tipo toast
-
 
 # =======================================================
 # ⚙️ OPTIONS
@@ -292,7 +292,7 @@ ui <- fluidPage(
           ),
           
           #-------------------------------
-          # 🟦 TAB PANEL: Metrica en el tiempo
+          # 🟦 TAB PANEL: Time Series + KPIs
           #-------------------------------
           
           tabPanel(
@@ -309,6 +309,11 @@ ui <- fluidPage(
               column(
                 width = 8,
                 class = "glass-box",
+                # 🔹 KPIs arriba del gráfico
+                fluidRow(
+                  style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
+                  uiOutput("kpi_row_time")
+                ),
                 uiOutput("barras_fecha_ui")
               )
             )
@@ -846,7 +851,7 @@ server <- function(input, output, session) {
     
     # 🔹 Limpiar inputs de carga
     updateTextInput(session, "google_sheet_url", value = "")
-  
+    
     # 🔹 Limpiar mapeos
     updateSelectInput(session, "player_col", choices = character(0), selected = NULL)
     updateSelectInput(session, "position_col", choices = character(0), selected = NULL)
@@ -2349,6 +2354,59 @@ server <- function(input, output, session) {
     )
   })
   
+  #-------------------------------
+  # VALUE BOX METRI OVER TIME 
+  #-------------------------------
+  
+  # 🔷 KPIs glassmorphism arriba del gráfico Time Series
+  output$kpi_row_time <- renderUI({
+    req(filtro_data(), input$metric, length(input$metric) > 0)
+    met_list <- input$metric
+    fluidRow(
+      style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
+      lapply(met_list, function(metrica) {
+        datos <- filtro_data()[[metrica]]
+        n_sessions <- length(unique(filtro_data()[[input$date_col]]))
+        mean_val <- round(mean(suppressWarnings(as.numeric(datos)), na.rm = TRUE), 2)
+        max_val <- round(max(suppressWarnings(as.numeric(datos)), na.rm = TRUE), 2)
+        column(
+          width = 4,
+          style = "padding: 0 7px;",
+          tags$div(
+            style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 12px 14px 9px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
+            tags$div(
+              style = "font-size:1.2em;font-weight:600; margin-bottom:3px;",
+              metrica
+            ),
+            tags$div(
+              style = "display:flex; flex-direction:row; gap:16px; justify-content:center; align-items:center;",
+              # n sesiones
+              tags$div(
+                style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+                tags$span(icon("calendar-check"), style = "font-size:1.4em; color:#fd002b; margin-bottom:2px;"),
+                tags$span(n_sessions, style = "font-size:1.05em; color:#ffffff; font-family:'Inter',sans-serif; font-weight:600;"),
+                tags$span("Sessions", style = "font-size:0.92em; color:#c8c8c8;")
+              ),
+              # Media
+              tags$div(
+                style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+                tags$span(icon("chart-line"), style = "font-size:1.4em; color:#00e676; margin-bottom:2px;"),
+                tags$span(mean_val, style = "font-size:1.05em; color:#ffffff; font-family:'Inter',sans-serif; font-weight:600;"),
+                tags$span("Mean", style = "font-size:0.92em; color:#c8c8c8;")
+              ),
+              # Máximo
+              tags$div(
+                style = "display:flex; flex-direction:column; align-items:center;",
+                tags$span(icon("trophy"), style = "font-size:1.4em; color:#7F00FF; margin-bottom:2px;"),
+                tags$span(max_val, style = "font-size:1.05em; color:#ffffff; font-family:'Inter',sans-serif; font-weight:600;"),
+                tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
+              )
+            )
+          )
+        )
+      })
+    )
+  })
   
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
@@ -3622,9 +3680,5 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
-
-
-
 
 
