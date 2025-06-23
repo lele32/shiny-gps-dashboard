@@ -1,154 +1,167 @@
 # 📊 GPS Data Dashboard
 
-Este dashboard en **R Shiny** permite visualizar, filtrar y analizar datos GPS deportivos de forma interactiva. Fue diseñado para facilitar el análisis de sesiones individuales o acumuladas por jugador, posición, match day y tipo de tarea, con múltiples gráficos personalizables y estética inspirada en Visual Studio Code.
+This R Shiny dashboard allows for interactive visualization, filtering, and analysis of sports GPS data. It is designed to facilitate the analysis of individual or accumulated sessions by player, position, match day, and task type, with multiple customizable plots and a modern dark aesthetic inspired by Visual Studio Code.
 
 ---
 
-## ⚙️ Funcionalidades actuales
+## ⚙️ Current Features
 
-- **Carga acumulativa de datos**:
-  - Carga múltiples archivos `.csv`, `.xlsx`, `.json` de forma progresiva.
-  - Soporte para pegar links de **Google Sheets** como fuente directa.
-  - Detección automática del delimitador y encabezado.
+- **Cumulative data upload**:
+  - Upload multiple`.csv`, `.xlsx`, `.json` files progressively.
+  - Support for pasting **Google Sheets** links as a direct data source.
+  - Automatic detection of delimiter and header..
 
-- **Base de datos persistente en memoria**:
-  - Se acumulan las sesiones cargadas sin sobrescribir datos anteriores.
-  - Prevención automática de duplicados por `Jugador + Fecha`.
+- **Persistent in-memory database:**:
+  -	Uploaded sessions are accumulated without overwriting previous data.
+  - Automatic duplicate prevention using  `Jugador + Fecha`.
 
-- **Botón de reset**:
-  - Limpia la base de datos y resetea todos los inputs de carga.
+- **Reset button**:
+  - Clears the database and resets all data upload inputs.
 
-- **Mapeo flexible de columnas**: podés seleccionar qué columnas corresponden a:
-  - Jugador
-  - Puesto
-  - Fecha
-  - Match Day
-  - Tarea
-  - Duración (columna directa o calculada desde hora de inicio y fin)
-  - Métricas (permite múltiples métricas numéricas)
+- **Flexible column mapping**: you can select which columns correspond to:
+  •	Player
+	•	Position
+	•	Date
+	•	Match Day
+	•	Task
+	•	Duration (direct column or calculated from start and end time)
+	•	Metrics (multiple numeric metrics allowed)
 
-- **Filtros dinámicos por gráfico**:
-  - Jugador
-  - Puesto
-  - Match Day
-  - Tarea
-  - Fecha (rango)
-  - Duración de sesión (rango)
-  - Rango de valores por métrica
+- **Dynamic per-plot filters**:
+  •	Player
+	•	Position
+	•	Match Day
+	•	Task
+	•	Date (range)
+	•	Session duration (range)
+	•	Value range per metric
 
-- **Interfaz visual optimizada**:
-  - Estética oscura y minimalista, inspirada en Visual Studio Code y glassmorphism.
-	-	Paleta LIFT personalizada:
- 	  -	Fondo: negro profundo (#0E1117)
-	  -	Texto: blanco (#ffffff)
-	  -	Primario: azul eléctrico (#00FFFF)
-	  -	Secundario: violeta (#7F00FF)
-	  -	Detalles en rojo (#fd002b) y verde menta
-	  -	Glass boxes: fondos semitranslúcidos con desenfoque y bordes suaves.
-	-	Tipografías:
-	  -	Heading: Space Grotesk (Google Fonts)
-	  -	Body: Inter (Google Fonts)
-	  -	Títulos especiales: Righteous (en headers principales)
-	-	Tabs con íconos:
-	  -	Navegación con iconografía SVG (Bootstrap Icons, FontAwesome) y títulos grandes.
-	-	Filtros y selectores modernos:
-	  -	Inputs, sliders y selects estilizados a medida, con labels coloridos, bordes y backgrounds adaptados.
-	  -	Efecto glass en paneles laterales y cajas de filtro.
-	-	Gráficos y visuales:
-	  -	Gráficos plotly en modo oscuro, sin bordes, títulos llamativos y leyenda custom.
-	  -	Facet grids limpios, con separación clara por métrica y nombres destacados.
-	-	UX refinada:
-	  -	Feedback visual para estados vacíos, advertencias y tooltips informativos.
-	  -	Responsive para diferentes resoluciones.
-	  -	Animaciones y transiciones suaves en la interacción..
+- **Optimized visual interface:**:
+  	•	Dark, minimalist aesthetic inspired by Visual Studio Code and glassmorphism.
+	•	Custom LIFT color palette:
+	•	Background: deep black (#0E1117)
+	•	Text: white (#ffffff)
+	•	Primary: electric blue (#00FFFF)
+	•	Secondary: violet (#7F00FF)
+	•	Accents in red (#fd002b) and mint green
+	•	Glass boxes: semi-transparent backgrounds with blur and soft borders
+	•	Typography:
+	•	Heading: Space Grotesk (Google Fonts)
+	•	Body: Inter (Google Fonts)
+	•	Special headers: Righteous (for main titles)
+	•	Tabs with icons:
+	•	Navigation using SVG iconography (Bootstrap Icons, FontAwesome) and large titles.
+	•	Modern filters and selectors:
+	•	Inputs, sliders, and selects with custom styling, colorful labels, borders, and adapted backgrounds.
+	•	Glass effect in side panels and filter boxes.
+	•	Charts and visuals:
+	•	Plotly plots in dark mode, no borders, bold titles, and custom legend.
+	•	Clean facet grids, with clear separation per metric and prominent names.
+	•	Refined UX:
+	•	Visual feedback for empty states, warnings, and informative tooltips.
+	•	Responsive for different resolutions.
+	•	Smooth animations and transitions during interaction.
+	
+---
+
+## 📁  Expected data file structure
+
+The uploaded file should contain at least some of the following columns:
+
+- **Player** (required): Player name or ID
+- **Date** (required): Session date (flexible format)
+- **Metric columns**: Numeric columns with metrics (HSR, total distance, etc.)
+- **Optional**:
+  - `Position`: Player position
+  - `Match Day`: Relative day to the match (MD-1, MD+1, etc.)
+  - `Task`: Task or drill type
+  - `Duration`: Direct duration (in minutes)
+  - `Start time / End time`: If no direct duration is provided
+
+> ⚠️ **IMPORTANTE:** To maximize all features, it is recommended to include: player, date, duration (direct or derived), and several numeric metrics..
 
 ---
 
-## 📁 Estructura esperada del archivo de datos
+## 📊 Available visualizations
 
-El archivo cargado debe contener al menos algunas de las siguientes columnas:
+1. **📅 Metric over Time**
+  •	Mean by player and date
+	•	Bar chart (plotly)
+	•	One independent chart per selected metric
 
-- **Player** (obligatorio): Nombre o ID del jugador
-- **Date** (obligatorio): Fecha de la sesión (formato flexible)
-- **Metric columns**: Columnas numéricas con métricas (HSR, total distance, etc.)
-- **Opcional**:
-  - `Position`: Puesto del jugador
-  - `Match Day`: Día relativo al partido (MD-1, MD+1, etc.)
-  - `Task`: Tipo de tarea o drill
-  - `Duration`: Duración directa (en minutos)
-  - `Start time / End time`: Si no hay duración directa
+2. **📦Distribution by Match Day**
+   •	Boxplots by MD for each metric
+	 •	Compare variability among players, position and task
 
-> ⚠️ **IMPORTANTE:** Para aprovechar al máximo las funcionalidades, se recomienda incluir: jugador, fecha, duración (directa o derivada), y varias métricas numéricas.
+3. **🧪 Distribution by Task**
+	 •	Boxplots by task or drill type
 
----
+4. **📈 Z-score by Date**
+   •	Z-score calculation with rolling window per player (excluding the current value)
+	 •	Smoothed lines, automatic scaling, internal comparisons
 
-## 📊 Visualizaciones disponibles
-
-1. **📅 Métrica en el tiempo**
-   - Promedio por jugador y fecha
-   - Gráfico de barras (`plotly`)
-   - Un gráfico independiente por métrica seleccionada
-
-2. **📦 Distribución por Match Day**
-   - Boxplots por MD para cada métrica
-   - Compara variabilidad entre jugadores
-
-3. **🧪 Distribución por Tarea**
-   - Boxplots por tipo de tarea o drill
-
-4. **📈 Z-score por Fecha**
-   - Cálculo de Z-score con ventana móvil por jugador (sin incluir el valor actual)
-   - Líneas suavizadas, escalado automático, comparaciones internas
-
-5. **🧪 Análisis de sesión puntual**
-   - Selección de sesión por fecha, jugador, tarea o MD
-   - Gráfico ordenado por jugador con media ±1/±2 SD
+5. **🧪  Single Session Analysis**
+   •	Select session by date, player, task, or MD
+	 •	Sorted bar chart by player with mean ±1/±2 SD
 
 6. **📊 Competitive Analysis**
-   - Z-score por jugador en partido actual vs 3–5 partidos anteriores
-   - Tabla resumen con media histórica, valor actual y Z-score
+   •	Z-score by player in current match vs 3–5 previous matches
+   •	Summary table with historical mean, current value, and Z-score
 
 7. **📉 ACWR (Acute-Chronic Work Ratio)**
-   - Cálculo exponencial con parámetros ajustables (agudo y crónico)
-   - Visualización con zonas de riesgo y líneas suavizadas
-   - Código de colores automático:
-     - 🔴 ACWR > 1.5
-     - 🟢 0.8 ≤ ACWR ≤ 1.5
-     - 🔴 ACWR < 0.8
+  •	Exponential calculation with adjustable parameters (acute and chronic)
+	•	Visualization with risk zones and smoothed lines
+	•	Automatic color code:
+	  •	🔴 ACWR > 1.5
+	  •	🟢 0.8 ≤ ACWR ≤ 1.5
+	  •	🔴 ACWR < 0.8
      
-8. **⚖️ Análisis de Microciclo: Ratio Partido vs Semana**  
-     - 	Calcula el ratio de carga entre partidos y entrenamientos acumulados, para cada jugador y cada métrica seleccionada.
-	   - 	Permite seleccionar la métrica, la ventana móvil de partidos (rolling), los días de entrenamiento a comparar, y todos los filtros habituales (jugador, puesto, tarea, duración, etc.).
-	   - 	Umbrales de ratio personalizables por métrica: podés ajustar desde el propio gráfico los valores de corte para definir si el ratio es bajo, normal o alto en cada métrica, de forma totalmente independiente.
-	   - 	Los colores se adaptan en tiempo real según estos umbrales:
-	      -	🔴 Alto (ej: Ratio > 1.5)
-	      -	🟢 Bajo (ej: Ratio < 0.8)
-	      -	⚪ Normal (entre umbrales)
-	   - 	Visualización interactiva tipo facet grid por métrica, con estética oscura minimalista y sin leyenda visible para máxima limpieza visual.
-	   - 	Use case: identificar rápidamente quiénes tuvieron cargas inusuales comparando su partido más reciente (o promedio de partidos recientes) vs el acumulado de días seleccionados de entrenamiento.
+8. **⚖️ Microcycle Analysis: Match vs Week Ratio**  
+  •	Calculates the load ratio between matches and accumulated training for each player and selected metric.
+	•	Allows selection of metric, match rolling window, training days to compare, and all usual filters (player, position, task, duration, etc.).
+	•	Customizable ratio thresholds per metric: adjust threshold values directly on the plot to define if the ratio is low, normal, or high for each metric, independently.
+	•	Colors adapt in real time according to these thresholds:
+	  •	🔴 High (e.g., Ratio > 1.5)
+	  •	🟢 Low (e.g., Ratio < 0.8)
+	  •	⚪ Normal (between thresholds)
+	•	Interactive facet grid visualization per metric, with minimalist dark aesthetic and no visible legend for maximum visual cleanliness.
+	•	Use case: quickly identify who had unusual loads comparing their most recent match (or average of recent matches) vs the sum of selected training days.
+
+8. **🟦 Quadrant Plot**  
+  •	Visualizes each player in a 2D plane defined by two selected metrics (X/Y).
+	•	The chart is divided into quadrants according to the median of each metric:
+	  •	High-High: both metrics above median
+	  •	Low-Low: both metrics below median
+	  •	High-Low and Low-High: mixed cases
+	•	Each quadrant has a specific color (red, violet, green, cyan).
+	•	Interactive tooltip with player name, X value, Y value, quadrant, and all relevant details.
+	•	Filters for player, position, task, duration, match day, and multiple session selection.
+	•	Sliders to filter value ranges for each metric.
+	•	Glassmorphism dark aesthetic, with animation and custom tooltips.
+	•	Useful to visualize the load or performance profile of each player according to different metrics.
 
 ---
 
-## 🔜 Próximas funcionalidades (en desarrollo)
+## 🔜 Upcoming features (in development)
 
-- 🧾 **Exportación de reportes PDF**
-  - Por jugador, sesión o período
+- 🧾 **PDF Report Export**
+	•	By player, session, or period
 
-- 💡 **Panel de KPIs**
-  - Indicadores clave por sesión o jugador (Player Load, HSR, etc.)
+- 💡 **KPIs Panels**
+  	•	Key indicators by session or player (Player Load, HSR, etc.) using Principal Component Analysis
 
-- 🎯 **Tarjetas informativas por tab**
-  - Uso de `valueBox` para mostrar indicadores clave al ingresar a cada visualización
+- 🎯 **nfo cards per tab**
+  - Use  `valueBox` to display key indicators on each visualization tab
 
-- 🧩 **Exploración de nuevos widgets**
-  - Alternativas como `echarts4r`, `highcharter`, `shinyWidgets`, etc.
+- 🧩 **Exploration of new widgets**
+  - Alternatives like `echarts4r`, `highcharter`, `shinyWidgets`, etc.
 
 ---
 
-## 🧠 Requisitos
+## 🧠 Requirements
 
-- **Lenguaje**: R (versión reciente)
-- **Paquetes requeridos**:
+- **Lenguage**: R (Latest Version)
+- **Required Packages**:
 
 r
 install.packages(c("shiny", "readr", "readxl", "jsonlite", "DT", "ggplot2", 
@@ -157,32 +170,32 @@ install.packages(c("shiny", "readr", "readxl", "jsonlite", "DT", "ggplot2",
 
 ---
 
-## ▶️ Cómo ejecutar la app
+## ▶️ How to run the app
 
-1. Cloná el repositorio:
+1. Clone the repository:
 `bash`
 git clone https://github.com/tu_usuario/gps-dashboard.gi
 
-2.	Instalá los paquetes requeridos en R:
+2.	Install the required R packages:
 
      install.packages(c("shiny", "readr", "readxl", "jsonlite", "DT", "ggplot2", 
                    "plotly", "dplyr", "lubridate", "hms", "bslib", 
                    "shinythemes", "rsconnect", "slider", "shinyWidgets", "tidyr"))
        
-3.	Ejecutá la app localmente desde app.R o desde consola: 
+3.	Run the app locally from app.R or from console: 
 
     shiny::runApp()
     
-4.	Para desplegar en shinyapps.io:
+4.	To deploy on shinyapps.io:
 
     rsconnect::deployApp()
 
-👨‍💻 Autor
+👨‍💻 Author
 
 Leandro Carbone – @licleandrocarbone
 Performance Specialist - Sports Scientist
 ⸻
 
-📎 Licencia
+📎 License
 
-MIT License. Usalo libremente y adaptalo a tus necesidades ⚙️
+MIT License. Use and adapt freely for your needs ⚙️
