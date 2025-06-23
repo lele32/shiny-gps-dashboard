@@ -2362,45 +2362,41 @@ server <- function(input, output, session) {
   output$kpi_row_time <- renderUI({
     req(filtro_data(), input$metric, length(input$metric) > 0)
     met_list <- input$metric
-    fluidRow(
-      style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
+    div(
+      style = "display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-bottom: 8px; margin-top: 0px;",
       lapply(met_list, function(metrica) {
         datos <- filtro_data()[[metrica]]
         n_sessions <- length(unique(filtro_data()[[input$date_col]]))
         mean_val <- round(mean(suppressWarnings(as.numeric(datos)), na.rm = TRUE), 2)
         max_val <- round(max(suppressWarnings(as.numeric(datos)), na.rm = TRUE), 2)
-        column(
-          width = 4,
-          style = "padding: 0 7px;",
+        div(
+          style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width: 240px; max-width: 340px; min-height: 110px; padding: 13px 16px 11px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 7px;",
           tags$div(
-            style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 12px 14px 9px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
+            style = "color:#00FFFF; font-size:1.17em; font-weight:600; margin-bottom:4px; letter-spacing:0.5px;",
+            metrica
+          ),
+          tags$div(
+            style = "display:flex; flex-direction:row; gap:18px; justify-content:center; align-items:center;",
+            # n sesiones
             tags$div(
-              style = "font-size:1.2em;font-weight:600; margin-bottom:3px;",
-              metrica
+              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              tags$span(icon("calendar-check"), style = "font-size:1.38em; color:#fd002b; margin-bottom:2px;"),
+              tags$span(n_sessions, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
+              tags$span("Sessions", style = "font-size:0.92em; color:#c8c8c8;")
             ),
+            # Media
             tags$div(
-              style = "display:flex; flex-direction:row; gap:16px; justify-content:center; align-items:center;",
-              # n sesiones
-              tags$div(
-                style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-                tags$span(icon("calendar-check"), style = "font-size:1.4em; color:#fd002b; margin-bottom:2px;"),
-                tags$span(n_sessions, style = "font-size:1.05em; color:#ffffff; font-family:'Inter',sans-serif; font-weight:600;"),
-                tags$span("Sessions", style = "font-size:0.92em; color:#c8c8c8;")
-              ),
-              # Media
-              tags$div(
-                style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-                tags$span(icon("chart-line"), style = "font-size:1.4em; color:#00e676; margin-bottom:2px;"),
-                tags$span(mean_val, style = "font-size:1.05em; color:#ffffff; font-family:'Inter',sans-serif; font-weight:600;"),
-                tags$span("Mean", style = "font-size:0.92em; color:#c8c8c8;")
-              ),
-              # Máximo
-              tags$div(
-                style = "display:flex; flex-direction:column; align-items:center;",
-                tags$span(icon("trophy"), style = "font-size:1.4em; color:#7F00FF; margin-bottom:2px;"),
-                tags$span(max_val, style = "font-size:1.05em; color:#ffffff; font-family:'Inter',sans-serif; font-weight:600;"),
-                tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
-              )
+              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              tags$span(icon("chart-line"), style = "font-size:1.38em; color:#00e676; margin-bottom:2px;"),
+              tags$span(mean_val, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
+              tags$span("Mean", style = "font-size:0.92em; color:#c8c8c8;")
+            ),
+            # Máximo
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center;",
+              tags$span(icon("trophy"), style = "font-size:1.38em; color:#7F00FF; margin-bottom:2px;"),
+              tags$span(max_val, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
+              tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
             )
           )
         )
