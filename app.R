@@ -320,7 +320,7 @@ ui <- fluidPage(
           ),
           
           #-------------------------------
-          # 🟦 TAB PANEL: Boxplot MD
+          # 🟦 TAB PANEL: Match Day Distribution + KPIs
           #-------------------------------
           
           tabPanel(
@@ -337,6 +337,10 @@ ui <- fluidPage(
               column(
                 width = 8,
                 class = "glass-box",
+                fluidRow(
+                  style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
+                  uiOutput("kpi_row_boxplot_md")
+                ),
                 uiOutput("boxplot_matchday_ui")
               )
             )
@@ -1946,7 +1950,7 @@ server <- function(input, output, session) {
         tags$h4(paste("Gráfico y Filtro:", metrica)),
         sliderInput(
           inputId = paste0("filtro_metrica_valor_", metrica_clean),
-          label = paste("Filtro de valores para", metrica),
+          label = paste("Filter Values For", metrica),
           min = floor(min(values)),
           max = ceiling(max(values)),
           value = c(floor(min(values)), ceiling(max(values)))
@@ -1973,7 +1977,7 @@ server <- function(input, output, session) {
         tags$h4(paste("Boxplot:", metrica)),
         sliderInput(
           inputId = paste0("filtro_metrica_valor_box_", metrica_clean),
-          label = paste("Filtro de valores para", metrica),
+          label = paste("Filter Values For", metrica),
           min = floor(min(values)),
           max = ceiling(max(values)),
           value = c(floor(min(values)), ceiling(max(values)))
@@ -1997,7 +2001,7 @@ server <- function(input, output, session) {
         tags$h4(paste("Boxplot:", metrica)),
         sliderInput(
           inputId = paste0("filtro_metrica_valor_task_", metrica_clean),
-          label = paste("Filtro de valores para", metrica),
+          label = paste("Filter Values For", metrica),
           min = floor(min(values)),
           max = ceiling(max(values)),
           value = c(floor(min(values)), ceiling(max(values)))
@@ -2021,7 +2025,7 @@ server <- function(input, output, session) {
         tags$h4(paste("Z-score:", metrica)),
         sliderInput(
           inputId = paste0("filtro_metrica_valor_z_", metrica_clean),
-          label = paste("Filtro de valores para", metrica),
+          label = paste("Filter Values For", metrica),
           min = floor(min(values)),
           max = ceiling(max(values)),
           value = c(floor(min(values)), ceiling(max(values)))
@@ -2045,7 +2049,7 @@ server <- function(input, output, session) {
         tags$h4(paste("Z-score competitivo:", metrica)),
         sliderInput(
           inputId = paste0("filtro_metrica_valor_z_comp_", metrica_clean),
-          label = paste("Filtro de valores para", metrica),
+          label = paste("Filter Values For", metrica),
           min = floor(min(values)),
           max = ceiling(max(values)),
           value = c(floor(min(values)), ceiling(max(values)))
@@ -2070,7 +2074,7 @@ server <- function(input, output, session) {
         tags$h4(paste("ACWR:", metrica)),
         sliderInput(
           inputId = paste0("filtro_metrica_valor_acwr_", metrica_clean),
-          label = paste("Filtro de valores para", metrica),
+          label = paste("Filter Values For", metrica),
           min = floor(min(values)),
           max = ceiling(max(values)),
           value = c(floor(min(values)), ceiling(max(values)))
@@ -2092,7 +2096,7 @@ server <- function(input, output, session) {
       distinct(fecha = .data[[input$date_col]]) %>%
       arrange(desc(fecha))
     
-    checkboxGroupInput("fechas_micro", "Seleccionar Fechas para comparación:",
+    checkboxGroupInput("fechas_micro", "Select Session Dates:",
                        choices = fechas_validas$fecha,
                        selected = head(fechas_validas$fecha, 3))
   })
@@ -2177,7 +2181,7 @@ server <- function(input, output, session) {
                     width = 6, style = "padding-right:6px;",
                     sliderInput(
                       inputId = paste0("umbral_bajo_", metrica),
-                      label = tags$span("Bajo", style = "color:#00e676; font-size:0.95em;"),
+                      label = tags$span("Low", style = "color:#00e676; font-size:0.95em;"),
                       min = 0, max = 2, value = 0.8, step = 0.01, width = "100%"
                     )
                   ),
@@ -2185,7 +2189,7 @@ server <- function(input, output, session) {
                     width = 6, style = "padding-left:6px;",
                     sliderInput(
                       inputId = paste0("umbral_alto_", metrica),
-                      label = tags$span("Alto", style = "color:#fd002b; font-size:0.95em;"),
+                      label = tags$span("High", style = "color:#fd002b; font-size:0.95em;"),
                       min = 0.8, max = 3, value = 1.5, step = 0.01, width = "100%"
                     )
                   )
@@ -2355,7 +2359,7 @@ server <- function(input, output, session) {
   })
   
   #-------------------------------
-  # VALUE BOX METRI OVER TIME 
+  # VALUE BOX UI
   #-------------------------------
   
   # 🔷 KPIs glassmorphism arriba del gráfico Time Series
@@ -2397,6 +2401,88 @@ server <- function(input, output, session) {
               tags$span(icon("trophy"), style = "font-size:1.38em; color:#7F00FF; margin-bottom:2px;"),
               tags$span(max_val, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
               tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
+            )
+          )
+        )
+      })
+    )
+  })
+  
+  # 🔷 KPIs arriba del boxplot Match Day
+  output$kpi_row_boxplot_md <- renderUI({
+    req(input$metric_box, length(input$metric_box) > 0, read_data())
+    met_list <- input$metric_box
+    
+    tags$div(
+      style = "
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+      margin-bottom: 8px;
+      margin-top: 0px;
+    ",
+      lapply(met_list, function(metrica) {
+        # Identificar el filtro de rango de valores de la métrica
+        filtro_id <- paste0("filtro_metrica_valor_box_", make.names(metrica))
+        val_range <- input[[filtro_id]]
+        
+        # Si el filtro no existe o no tiene dos valores, no muestra nada
+        if (is.null(val_range) || length(val_range) != 2) return(NULL)
+        
+        # Filtrar datos según los inputs (usando tu filtro reactivo robusto)
+        data <- filtro_data_box(metrica, val_range)
+        if (is.null(data) || nrow(data) == 0) return(NULL)
+        
+        valores <- suppressWarnings(as.numeric(data[[metrica]]))
+        n_players <- length(unique(data[[input$player_col]]))
+        
+        # Default a NA si está vacío
+        if (length(valores) == 0 || all(is.na(valores))) {
+          matchday_max <- NA
+          matchday_min <- NA
+          iqr_val <- NA
+        } else {
+          matchday_max <- as.character(data[[input$matchday_col]][which.max(valores)][1])
+          matchday_min <- as.character(data[[input$matchday_col]][which.min(valores)][1])
+          iqr_val <- round(IQR(valores, na.rm = TRUE), 2)
+        }
+        
+        tags$div(
+          style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 12px 14px 9px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
+          tags$div(
+            style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;",
+            metrica
+          ),
+          tags$div(
+            style = "display:flex; flex-direction:row; gap:16px; justify-content:center; align-items:center;",
+            # Número de jugadores
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              tags$span(icon("users"), style = "font-size:1.32em; color:#fd002b; margin-bottom:2px;"),
+              tags$span(n_players, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
+              tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+            ),
+            # Matchday con valor máximo
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              tags$span(icon("arrow-up"), style = "font-size:1.32em; color:#00e676; margin-bottom:2px;"),
+              tags$span(matchday_max, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
+              tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
+            ),
+            # Matchday con valor mínimo
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              tags$span(icon("arrow-down"), style = "font-size:1.32em; color:#7F00FF; margin-bottom:2px;"),
+              tags$span(matchday_min, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
+              tags$span("Min", style = "font-size:0.92em; color:#c8c8c8;")
+            ),
+            # IQR de la métrica
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center;",
+              tags$span(icon("sliders-h"), style = "font-size:1.32em; color:#00FFFF; margin-bottom:2px;"),
+              tags$span(iqr_val, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
+              tags$span("IQR", style = "font-size:0.92em; color:#c8c8c8;")
             )
           )
         )
@@ -3676,4 +3762,3 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
