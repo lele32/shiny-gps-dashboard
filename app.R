@@ -2,7 +2,7 @@
 # 📦 LIBRARIES
 # =======================================================
 library(shiny)           # Web application framework
-library(readr)           # CSV reading
+library(readr).           # CSV reading
 library(readxl)          # XLSX reading
 library(jsonlite)        # JSON reading
 library(DT)              # DataTables output
@@ -381,9 +381,8 @@ ui <- fluidPage(
           ),
           
           #-------------------------------
-          # 🟦 TAB PANEL: Z score
+          # 🟦 TAB PANEL: Z-score Over Time + KPIs
           #-------------------------------
-          
           
           tabPanel(
             title = tagList(tags$i(class = "bi bi-activity"), "Z-score Over Time"),
@@ -394,11 +393,16 @@ ui <- fluidPage(
                 lapply(c("jugador_z", "puesto_z", "matchday_z", "tarea_z", "fecha_z", "duracion_z"), function(id) {
                   tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
                 }),
-                tags$div(class = "filter-column", selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE))
+                tags$div(class = "filter-column", 
+                         selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE)
+                )
               ),
               column(
                 width = 8,
                 class = "glass-box",
+                # ⬇️ KPIs glassmorphism arriba de los gráficos
+                uiOutput("kpi_row_zscore_time"),
+                # ⬇️ Panel dinámico para los gráficos Z-score
                 uiOutput("zscore_plot_ui")
               )
             )
@@ -1386,7 +1390,6 @@ server <- function(input, output, session) {
         columns = names(read_data()),
         backgroundColor = '#1e1e1e',
         color = '#ffffff',
-        fontFamily = 'Open Sans',
         fontSize = '14px'
       )
   })
@@ -2573,6 +2576,180 @@ server <- function(input, output, session) {
       })
     )
   })
+  
+  ## ============================
+  # KPIs Glassmorphism para Z-score Over Time (chips + modals robustos)
+  # ============================
+  
+  output$kpi_row_zscore_time <- renderUI({
+    req(input$metric_z, length(input$metric_z) > 0, read_data())
+    met_list <- input$metric_z
+    # Agrupa de a 3 métricas para filas visualmente prolijas
+    groups <- split(met_list, ceiling(seq_along(met_list) / 3))
+    
+    tagList(
+      lapply(groups, function(group) {
+        fluidRow(
+          style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
+          lapply(group, function(metrica) {
+            filtro_id <- paste0("filtro_metrica_valor_z_", make.names(metrica))
+            val_range <- input[[filtro_id]]
+            if (is.null(val_range) || length(val_range) != 2) return(NULL)
+            data <- filtro_data_z(metrica, val_range)
+            if (is.null(data) || nrow(data) == 0) return(NULL)
+            player_col <- input$player_col
+            tabla_z <- data %>%
+              group_by(Jugador = .data[[player_col]]) %>%
+              summarise(
+                ultima_fecha = max(.data[[input$date_col]], na.rm = TRUE),
+                z_ultimo = {
+                  vals <- suppressWarnings(as.numeric(.data[[metrica]]))
+                  (tail(vals, 1) - mean(vals, na.rm = TRUE)) / sd(vals, na.rm = TRUE)
+                },
+                .groups = "drop"
+              ) %>%
+              filter(is.finite(z_ultimo)) %>%
+              arrange(desc(z_ultimo))
+            high_z <- tabla_z %>% filter(z_ultimo > 1.5)
+            low_z  <- tabla_z %>% filter(z_ultimo < -1.5)
+            metrica_id <- make.names(metrica)
+            # Chips: llevan como valor la métrica
+            column(
+              width = 4,
+              style = "padding: 0 7px;",
+              tags$div(
+                style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 14px 18px 10px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
+                tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
+                tags$div(
+                  style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
+                  # CHIP ROJO
+                  tags$div(
+                    style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
+                    if (nrow(high_z) > 0) tags$div(
+                      id = paste0("chip_high_z_", metrica_id),
+                      `data-metric` = metrica,
+                      onclick = sprintf("Shiny.setInputValue('show_players_gt15', '%s', {priority: 'event'})", metrica),
+                      style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                      tags$span(nrow(high_z), style = "font-size:1.25em; font-weight:600;"),
+                      tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                    )
+                  ),
+                  # CHIP VERDE
+                  tags$div(
+                    style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
+                    if (nrow(low_z) > 0) tags$div(
+                      id = paste0("chip_low_z_", metrica_id),
+                      `data-metric` = metrica,
+                      onclick = sprintf("Shiny.setInputValue('show_players_lt15', '%s', {priority: 'event'})", metrica),
+                      style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                      tags$span(nrow(low_z), style = "font-size:1.25em; font-weight:600;"),
+                      tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                    )
+                  ),
+                  # Total Players
+                  tags$span(
+                    icon("users"),
+                    style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
+                  ),
+                  tags$span(nrow(tabla_z), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
+                  tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+                )
+              )
+            )
+          })
+        )
+      }))
+  })
+  
+  # =======================
+  # OBSERVERS MODALES ÚNICOS POR CHIP (uno solo por evento, detecta la métrica por valor)
+  # =======================
+  
+  # High Z: Players with Z > 1.5
+  observeEvent(input$show_players_gt15, {
+    req(input$show_players_gt15, read_data())
+    metrica <- input$show_players_gt15
+    metrica_id <- make.names(metrica)
+    filtro_id <- paste0("filtro_metrica_valor_z_", metrica_id)
+    val_range <- input[[filtro_id]]
+    if (is.null(val_range) || length(val_range) != 2) return(NULL)
+    data <- filtro_data_z(metrica, val_range)
+    if (is.null(data) || nrow(data) == 0) return(NULL)
+    player_col <- input$player_col
+    tabla_z <- data %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(
+        ultima_fecha = max(.data[[input$date_col]], na.rm = TRUE),
+        z_ultimo = {
+          vals <- suppressWarnings(as.numeric(.data[[metrica]]))
+          (tail(vals, 1) - mean(vals, na.rm = TRUE)) / sd(vals, na.rm = TRUE)
+        },
+        .groups = "drop"
+      ) %>%
+      filter(is.finite(z_ultimo)) %>%
+      arrange(desc(z_ultimo))
+    high_z <- tabla_z %>% filter(z_ultimo > 1.5)
+    showModal(
+      modalDialog(
+        title = paste("Players with Z > 1.5 in", metrica),
+        if (nrow(high_z) == 0) tags$p("No players found.", style = "color:#fd002b; font-weight:600;") else
+          tags$ul(
+            lapply(seq_len(nrow(high_z)), function(i) {
+              tags$li(
+                tags$span(high_z$Jugador[i], style = "font-weight:600; color:#fd002b;"),
+                tags$span(sprintf(" (Z = %.2f)", high_z$z_ultimo[i]),
+                          style = "color:#fd002b; margin-left:3px; font-size:0.97em;")
+              )
+            })
+          ),
+        easyClose = TRUE,
+        size = "m"
+      )
+    )
+  }, ignoreInit = TRUE)
+  
+  # Low Z: Players with Z < -1.5
+  observeEvent(input$show_players_lt15, {
+    req(input$show_players_lt15, read_data())
+    metrica <- input$show_players_lt15
+    metrica_id <- make.names(metrica)
+    filtro_id <- paste0("filtro_metrica_valor_z_", metrica_id)
+    val_range <- input[[filtro_id]]
+    if (is.null(val_range) || length(val_range) != 2) return(NULL)
+    data <- filtro_data_z(metrica, val_range)
+    if (is.null(data) || nrow(data) == 0) return(NULL)
+    player_col <- input$player_col
+    tabla_z <- data %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(
+        ultima_fecha = max(.data[[input$date_col]], na.rm = TRUE),
+        z_ultimo = {
+          vals <- suppressWarnings(as.numeric(.data[[metrica]]))
+          (tail(vals, 1) - mean(vals, na.rm = TRUE)) / sd(vals, na.rm = TRUE)
+        },
+        .groups = "drop"
+      ) %>%
+      filter(is.finite(z_ultimo)) %>%
+      arrange(desc(z_ultimo))
+    low_z <- tabla_z %>% filter(z_ultimo < -1.5)
+    showModal(
+      modalDialog(
+        title = paste("Players with Z < -1.5 in", metrica),
+        if (nrow(low_z) == 0) tags$p("No players found.", style = "color:#25b659; font-weight:600;") else
+          tags$ul(
+            lapply(seq_len(nrow(low_z)), function(i) {
+              tags$li(
+                tags$span(low_z$Jugador[i], style = "font-weight:600; color:#25b659;"),
+                tags$span(sprintf(" (Z = %.2f)", low_z$z_ultimo[i]),
+                          style = "color:#25b659; margin-left:3px; font-size:0.97em;")
+              )
+            })
+          ),
+        easyClose = TRUE,
+        size = "m"
+      )
+    )
+  }, ignoreInit = TRUE)
   
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
@@ -3846,5 +4023,6 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
+
 
 
