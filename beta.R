@@ -2,7 +2,7 @@
 # 📦 LIBRARIES
 # =======================================================
 library(shiny)           # Web application framework
-library(readr).           # CSV reading
+library(readr)           # CSV reading
 library(readxl)          # XLSX reading
 library(jsonlite)        # JSON reading
 library(DT)              # DataTables output
@@ -430,34 +430,6 @@ ui <- fluidPage(
                 class = "glass-box",
                 uiOutput("kpi_row_sesion"),  
                 uiOutput("graficos_metricas_sesion")
-              )
-            )
-          ),
-          
-          #-------------------------------
-          # 🟦 TAB PANEL: Análisis Competitivo
-          #-------------------------------
-          
-          tabPanel(
-            title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
-            fluidRow(
-              column(
-                width = 4,
-                class = "glass-box",
-                tags$div(class = "filter-column", uiOutput("filtro_jugador_z_comp")),
-                tags$div(class = "filter-column", uiOutput("filtro_puesto_z_comp")),
-                tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
-                tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
-                tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
-                tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "MD Movile Window:", min = 3, max = 5, value = 3, step = 1))
-              ),
-              column(
-                width = 8,
-                class = "glass-box",
-                uiOutput("zscore_comp_plot_ui"),
-                tags$hr(),
-                DTOutput("tabla_resumen_comp")
               )
             )
           ),
@@ -1419,6 +1391,7 @@ server <- function(input, output, session) {
         columns = names(read_data()),
         backgroundColor = '#1e1e1e',
         color = '#ffffff',
+        fontFamily = 'Open Sans',
         fontSize = '14px'
       )
   })
@@ -2515,7 +2488,7 @@ server <- function(input, output, session) {
             # Matchday con valor mínimo
             tags$div(
               style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("arrow-down"), style = "font-size:1.32em; color:#fd002bcolor:#7F00FF; margin-bottom:2px;"),
+              tags$span(icon("arrow-down"), style = "font-size:1.32em;color:#fd002b; margin-bottom:2px;"),
               tags$span(matchday_min, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("Min", style = "font-size:0.92em; color:#c8c8c8;")
             ),
@@ -2958,10 +2931,6 @@ server <- function(input, output, session) {
     )
   })
   
-  # ############################################################################
-  # ############################  `GRAFICOS` ############################
-  # ############################################################################
-  # 
   
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
@@ -4235,5 +4204,3 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
-
