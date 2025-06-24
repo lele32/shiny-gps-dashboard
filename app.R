@@ -409,7 +409,7 @@ ui <- fluidPage(
           ),
           
           # -------------------------------
-          # 🟦 TAB PANEL: Análisis de sesión (CON KPIs)
+          # 🟦 TAB PANEL: Análisis de sesión + KPIs
           # -------------------------------
           
           tabPanel(
@@ -435,12 +435,13 @@ ui <- fluidPage(
           ),
           
           #-------------------------------
-          # 🟦 TAB PANEL: Análisis Competitivo
+          # 🟦 TAB PANEL: Análisis Competitivo + KPIs
           #-------------------------------
           
           tabPanel(
             title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
             fluidRow(
+              # ==== Columna de filtros (izquierda) ====
               column(
                 width = 4,
                 class = "glass-box",
@@ -449,14 +450,23 @@ ui <- fluidPage(
                 tags$div(class = "filter-column", uiOutput("filtro_tarea_z_comp")),
                 tags$div(class = "filter-column", uiOutput("filtro_sesion_selector_comp")),
                 tags$div(class = "filter-column", uiOutput("filtro_duracion_z_comp")),
-                tags$div(class = "filter-column", selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)),
-                tags$div(class = "filter-column", sliderInput("ventana_movil_z_comp", "MD Movile Window:", min = 3, max = 5, value = 3, step = 1))
+                tags$div(class = "filter-column", 
+                         selectInput("metric_z_comp", "Select Metrics:", choices = NULL, multiple = TRUE)
+                ),
+                tags$div(class = "filter-column", 
+                         sliderInput("ventana_movil_z_comp", "MD Mobile Window:", min = 3, max = 5, value = 3, step = 1)
+                )
               ),
               column(
                 width = 8,
                 class = "glass-box",
+                # Value box de KPIs rolling Z-score (arriba del gráfico)
+                uiOutput("kpi_row_competitive"),    
+                tags$hr(style="margin-top:10px;margin-bottom:16px;"),
+                # Gráfico principal (uno por métrica)
                 uiOutput("zscore_comp_plot_ui"),
                 tags$hr(),
+                # Tabla resumen de la sesión competitiva
                 DTOutput("tabla_resumen_comp")
               )
             )
@@ -2931,6 +2941,323 @@ server <- function(input, output, session) {
     )
   })
   
+  # =======================================
+  #  🔷 KPIs Glassmorphism para Competitive Analysis
+  # =======================================
+  # ========================
+  # 🔷 FUNCION AUXILIAR Z-score COMPETITIVO
+  # ========================
+  
+  tabla_z_comp <- function(metrica, val_range) {
+    req(read_data(), input$player_col, input$date_col, input$filtro_sesion_selector_comp, input$ventana_movil_z_comp)
+    data_full <- read_data()
+    player_col <- input$player_col
+    date_col <- input$date_col
+    window_size <- input$ventana_movil_z_comp
+    
+    # Parsear fechas
+    data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data_full <- data_full[!is.na(data_full[[date_col]]), ]
+    if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
+      data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
+      data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
+    }
+    # Filtros categóricos
+    if (!is.null(input$filtro_jugador_z_comp) && input$player_col %in% names(data_full)) {
+      data_full <- data_full[data_full[[input$player_col]] %in% input$filtro_jugador_z_comp, ]
+    }
+    if (!is.null(input$filtro_puesto_z_comp) && !is.null(input$position_col) && input$position_col %in% names(data_full)) {
+      data_full <- data_full[data_full[[input$position_col]] %in% input$filtro_puesto_z_comp, ]
+    }
+    if (!is.null(input$filtro_tarea_z_comp) && !is.null(input$task_col) && input$task_col %in% names(data_full)) {
+      data_full <- data_full[data_full[[input$task_col]] %in% input$filtro_tarea_z_comp, ]
+    }
+    # Filtro duración
+    if (!is.null(input$filtro_duracion_input_z_comp)) {
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
+        dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
+                 input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
+        hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
+        data_full <- data_full[keep, ]
+      }
+    }
+    # Filtro valor métrica
+    if (!is.null(val_range) && metrica %in% names(data_full)) {
+      vals <- suppressWarnings(as.numeric(data_full[[metrica]]))
+      keep <- !is.na(vals) & vals >= val_range[1] & vals <= val_range[2]
+      data_full <- data_full[keep, ]
+    }
+    # --- Calcular rolling Z-score ---
+    fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    stats_movil <- data_full %>%
+      filter(.data[[date_col]] < fecha_partido) %>%
+      arrange(.data[[player_col]], .data[[date_col]]) %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(
+        media_movil = if (n() >= window_size) mean(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
+        sd_movil = if (n() >= window_size) sd(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
+        .groups = "drop"
+      )
+    data_sesion <- data_full %>%
+      filter(as.character(.data[[date_col]]) == input$filtro_sesion_selector_comp) %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+    data_final <- left_join(data_sesion, stats_movil, by = "Jugador") %>%
+      mutate(z = (Valor - media_movil) / sd_movil) %>%
+      filter(!is.na(z) & is.finite(z))
+    return(data_final)
+  }
+  
+  output$kpi_row_competitive <- renderUI({
+    req(input$metric_z_comp, length(input$metric_z_comp) > 0, read_data(), input$filtro_sesion_selector_comp)
+    met_list <- input$metric_z_comp
+    if (length(met_list) == 0) return(tags$div("No metrics selected.", style="color:#c8c8c8;"))
+    groups <- split(met_list, ceiling(seq_along(met_list) / 3))
+    tagList(
+      lapply(groups, function(group) {
+        fluidRow(
+          style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
+          lapply(group, function(metrica) {
+            filtro_id <- paste0("filtro_metrica_valor_z_comp_", make.names(metrica))
+            val_range <- input[[filtro_id]]
+            if (is.null(val_range) || length(val_range) != 2) {
+              print(paste("val_range nulo para", metrica)); 
+              return(NULL)
+            }
+            tabla <- tabla_z_comp(metrica, val_range)
+            if (is.null(tabla) || nrow(tabla) == 0) {
+              return(NULL)
+            }
+            high_z <- tabla %>% filter(z >= 1.5)
+            low_z  <- tabla %>% filter(z <= -1.5)
+            metrica_id <- make.names(metrica)
+            column(
+              width = 4,
+              style = "padding: 0 7px;",
+              tags$div(
+                style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 14px 18px 10px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
+                tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
+                tags$div(
+                  style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
+                  # CHIP ROJO
+                  tags$div(
+                    style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
+                    if (nrow(high_z) > 0) tags$div(
+                      id = paste0("chip_high_z_comp_", metrica_id),
+                      `data-metric` = metrica,
+                      onclick = sprintf("Shiny.setInputValue('show_players_gt15_comp', '%s', {priority: 'event'})", metrica),
+                      style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                      tags$span(nrow(high_z), style = "font-size:1.25em; font-weight:600;"),
+                      tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                    )
+                  ),
+                  # CHIP VERDE
+                  tags$div(
+                    style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
+                    if (nrow(low_z) > 0) tags$div(
+                      id = paste0("chip_low_z_comp_", metrica_id),
+                      `data-metric` = metrica,
+                      onclick = sprintf("Shiny.setInputValue('show_players_lt15_comp', '%s', {priority: 'event'})", metrica),
+                      style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                      tags$span(nrow(low_z), style = "font-size:1.25em; font-weight:600;"),
+                      tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                    )
+                  ),
+                  # Total Players
+                  tags$span(
+                    icon("users"),
+                    style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
+                  ),
+                  tags$span(nrow(tabla), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
+                  tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+                )
+              )
+            )
+          })
+        )
+      })
+    )
+  })
+  
+  # =======================
+  # OBSERVERS competiive analisis CHIPS
+  # =======================
+  # High Z-score (>= 1.5)
+  observeEvent(input$show_players_gt15_comp, {
+    req(input$show_players_gt15_comp, read_data(), input$filtro_sesion_selector_comp)
+    metrica <- input$show_players_gt15_comp
+    filtro_id <- paste0("filtro_metrica_valor_z_comp_", make.names(metrica))
+    val_range <- input[[filtro_id]]
+    if (is.null(val_range) || length(val_range) != 2) return(NULL)
+    window_size <- input$ventana_movil_z_comp
+    player_col <- input$player_col
+    date_col <- input$date_col
+    data_full <- read_data()
+    data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data_full <- data_full[!is.na(data_full[[date_col]]), ]
+    # Replicar exactamente el filtrado del gráfico y value box
+    if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
+      data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
+      data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
+    }
+    data_full <- data_full %>%
+      filter(
+        is.finite(.data[[metrica]]),
+        if (!is.null(input$filtro_jugador_z_comp)) .data[[player_col]] %in% input$filtro_jugador_z_comp else TRUE,
+        if (!is.null(input$filtro_puesto_z_comp) && input$position_col %in% names(.)) .data[[input$position_col]] %in% input$filtro_puesto_z_comp else TRUE,
+        if (!is.null(input$filtro_tarea_z_comp) && input$task_col %in% names(.)) .data[[input$task_col]] %in% input$filtro_tarea_z_comp else TRUE
+      )
+    # Duración
+    if (!is.null(input$filtro_duracion_input_z_comp)) {
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
+        dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
+                 input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
+        hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
+        data_full <- data_full[keep, ]
+      }
+    }
+    if (!is.null(val_range) && metrica %in% names(data_full)) {
+      vals <- suppressWarnings(as.numeric(data_full[[metrica]]))
+      keep <- !is.na(vals) & vals >= val_range[1] & vals <= val_range[2]
+      data_full <- data_full[keep, ]
+    }
+    fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    stats_movil <- data_full %>%
+      filter(.data[[date_col]] < fecha_partido) %>%
+      arrange(.data[[player_col]], .data[[date_col]]) %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(
+        media_movil = if (n() >= window_size) mean(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
+        sd_movil = if (n() >= window_size) sd(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
+        .groups = "drop"
+      )
+    data_sesion <- data_full %>%
+      filter(as.character(.data[[date_col]]) == input$filtro_sesion_selector_comp) %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+    data_final <- left_join(data_sesion, stats_movil, by = "Jugador") %>%
+      mutate(z = (Valor - media_movil) / sd_movil) %>%
+      filter(!is.na(z) & is.finite(z) & z >= 1.5)
+    showModal(
+      modalDialog(
+        title = paste("Players with Z ≥ 1.5 in", metrica),
+        if (nrow(data_final) == 0) tags$p("No players found.", style = "color:#fd002b; font-weight:600;") else
+          tags$ul(
+            lapply(seq_len(nrow(data_final)), function(i) {
+              tags$li(
+                tags$span(data_final$Jugador[i], style = "font-weight:600; color:#fd002b;"),
+                tags$span(sprintf(" (Z = %.2f)", data_final$z[i]),
+                          style = "color:#fd002b; margin-left:3px; font-size:0.97em;")
+              )
+            })
+          ),
+        easyClose = TRUE,
+        size = "m"
+      )
+    )
+  }, ignoreInit = TRUE)
+  
+  # Low Z-score (≤ -1.5)
+  observeEvent(input$show_players_lt15_comp, {
+    req(input$show_players_lt15_comp, read_data(), input$filtro_sesion_selector_comp)
+    metrica <- input$show_players_lt15_comp
+    filtro_id <- paste0("filtro_metrica_valor_z_comp_", make.names(metrica))
+    val_range <- input[[filtro_id]]
+    if (is.null(val_range) || length(val_range) != 2) return(NULL)
+    window_size <- input$ventana_movil_z_comp
+    player_col <- input$player_col
+    date_col <- input$date_col
+    data_full <- read_data()
+    data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data_full <- data_full[!is.na(data_full[[date_col]]), ]
+    
+    # Aplicar los mismos filtros que el gráfico y value box
+    if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
+      data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
+      data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
+    }
+    data_full <- data_full %>%
+      filter(
+        is.finite(.data[[metrica]]),
+        if (!is.null(input$filtro_jugador_z_comp)) .data[[player_col]] %in% input$filtro_jugador_z_comp else TRUE,
+        if (!is.null(input$filtro_puesto_z_comp) && input$position_col %in% names(.)) .data[[input$position_col]] %in% input$filtro_puesto_z_comp else TRUE,
+        if (!is.null(input$filtro_tarea_z_comp) && input$task_col %in% names(.)) .data[[input$task_col]] %in% input$filtro_tarea_z_comp else TRUE
+      )
+    # Filtro duración
+    if (!is.null(input$filtro_duracion_input_z_comp)) {
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
+        dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
+                 input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
+        hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
+        data_full <- data_full[keep, ]
+      }
+    }
+    # Filtro valor de métrica
+    if (!is.null(val_range) && metrica %in% names(data_full)) {
+      vals <- suppressWarnings(as.numeric(data_full[[metrica]]))
+      keep <- !is.na(vals) & vals >= val_range[1] & vals <= val_range[2]
+      data_full <- data_full[keep, ]
+    }
+    
+    # Calcular rolling Z-score
+    fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    stats_movil <- data_full %>%
+      filter(.data[[date_col]] < fecha_partido) %>%
+      arrange(.data[[player_col]], .data[[date_col]]) %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(
+        media_movil = if (n() >= window_size) mean(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
+        sd_movil = if (n() >= window_size) sd(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
+        .groups = "drop"
+      )
+    data_sesion <- data_full %>%
+      filter(as.character(.data[[date_col]]) == input$filtro_sesion_selector_comp) %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+    data_final <- left_join(data_sesion, stats_movil, by = "Jugador") %>%
+      mutate(z = (Valor - media_movil) / sd_movil) %>%
+      filter(!is.na(z) & is.finite(z) & z <= -1.5)
+    
+    showModal(
+      modalDialog(
+        title = paste("Players with Z ≤ -1.5 in", metrica),
+        if (nrow(data_final) == 0) tags$p("No players found.", style = "color:#25b659; font-weight:600;") else
+          tags$ul(
+            lapply(seq_len(nrow(data_final)), function(i) {
+              tags$li(
+                tags$span(data_final$Jugador[i], style = "font-weight:600; color:#25b659;"),
+                tags$span(sprintf(" (Z = %.2f)", data_final$z[i]),
+                          style = "color:#25b659; margin-left:3px; font-size:0.97em;")
+              )
+            })
+          ),
+        easyClose = TRUE,
+        size = "m"
+      )
+    )
+  }, ignoreInit = TRUE)
+  
   
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
@@ -3556,6 +3883,7 @@ server <- function(input, output, session) {
       })
     }
   })
+  
   #' Output: Tabla resumen competitivo
   #'
   #' Muestra los valores del último partido por jugador, junto con la media y SD móvil
@@ -3686,7 +4014,6 @@ server <- function(input, output, session) {
         columns = names(resumen_final),
         backgroundColor = '#1e1e1e',
         color = '#ffffff',
-        fontFamily = 'Open Sans',
         fontSize = '14px'
       ) %>%
       # 🎯 Estilo de Z-score (condicional por tramos)
