@@ -2501,7 +2501,7 @@ server <- function(input, output, session) {
             # Número de jugadores
             tags$div(
               style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("users"), style = "font-size:1.32em; color:#fd002b; margin-bottom:2px;"),
+              tags$span(icon("users"), style = "font-size:1.32em; color:#7F00FF; margin-bottom:2px;"),
               tags$span(n_players, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
             ),
@@ -2515,7 +2515,7 @@ server <- function(input, output, session) {
             # Matchday con valor mínimo
             tags$div(
               style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("arrow-down"), style = "font-size:1.32em; color:#7F00FF; margin-bottom:2px;"),
+              tags$span(icon("arrow-down"), style = "font-size:1.32em; color:#fd002bcolor:#7F00FF; margin-bottom:2px;"),
               tags$span(matchday_min, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("Min", style = "font-size:0.92em; color:#c8c8c8;")
             ),
@@ -2575,7 +2575,7 @@ server <- function(input, output, session) {
             # N jugadores
             tags$div(
               style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("users"), style = "font-size:1.32em; color:#fd002b; margin-bottom:2px;"),
+              tags$span(icon("users"), style = "font-size:1.32em; color:#7F00FF; margin-bottom:2px;"),
               tags$span(n_players, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
             ),
@@ -2584,14 +2584,14 @@ server <- function(input, output, session) {
               style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
               tags$span(icon("arrow-up"), style = "font-size:1.32em; color:#00e676; margin-bottom:2px;"),
               tags$span(task_max, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
-              tags$span("Max Task", style = "font-size:0.92em; color:#c8c8c8;")
+              tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
             ),
             # Tarea con valor mínimo
             tags$div(
               style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("arrow-down"), style = "font-size:1.32em; color:#7F00FF; margin-bottom:2px;"),
+              tags$span(icon("arrow-down"), style = "font-size:1.32em; color:#fd002b; margin-bottom:2px;"),
               tags$span(task_min, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
-              tags$span("Min Task", style = "font-size:0.92em; color:#c8c8c8;")
+              tags$span("Min", style = "font-size:0.92em; color:#c8c8c8;")
             ),
             # IQR
             tags$div(
