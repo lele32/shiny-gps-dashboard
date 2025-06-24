@@ -408,9 +408,9 @@ ui <- fluidPage(
             )
           ),
           
-          #-------------------------------
-          # 🟦 TAB PANEL: Análisis de sesión
-          #-------------------------------
+          # -------------------------------
+          # 🟦 TAB PANEL: Análisis de sesión (CON KPIs)
+          # -------------------------------
           
           tabPanel(
             title = tagList(tags$i(class = "bi bi-activity"), "Session Analysis"),
@@ -428,6 +428,7 @@ ui <- fluidPage(
               column(
                 width = 8,
                 class = "glass-box",
+                uiOutput("kpi_row_sesion"),  
                 uiOutput("graficos_metricas_sesion")
               )
             )
@@ -2751,6 +2752,188 @@ server <- function(input, output, session) {
     )
   }, ignoreInit = TRUE)
   
+  # =======================================
+  #  🔷 KPIs Glassmorphism para Session Analysis (% cambio robusto)
+  # =======================================
+  output$kpi_row_sesion <- renderUI({
+    req(input$metricas_sesion_plot, length(input$metricas_sesion_plot) > 0, filtro_data_sesion())
+    met_list <- input$metricas_sesion_plot
+    selected_dates <- sort(as.Date(input$filtro_sesion_selector))
+    groups <- split(met_list, ceiling(seq_along(met_list) / 3))
+    
+    # Filtros igual que antes...
+    data_all <- read_data()
+    if (!is.null(input$player_col) && input$player_col %in% names(data_all) && !is.null(input$filtro_jugador_sesion)) {
+      data_all <- data_all[data_all[[input$player_col]] %in% input$filtro_jugador_sesion, ]
+    }
+    if (!is.null(input$position_col) && input$position_col %in% names(data_all) && !is.null(input$filtro_puesto_sesion)) {
+      data_all <- data_all[data_all[[input$position_col]] %in% input$filtro_puesto_sesion, ]
+    }
+    if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_all) && !is.null(input$filtro_matchday_sesion)) {
+      data_all <- data_all[data_all[[input$matchday_col]] %in% input$filtro_matchday_sesion, ]
+    }
+    if (!is.null(input$task_col) && input$task_col %in% names(data_all) && !is.null(input$filtro_tarea_sesion)) {
+      data_all <- data_all[data_all[[input$task_col]] %in% input$filtro_tarea_sesion, ]
+    }
+    if (!is.null(input$filtro_duracion_input_sesion)) {
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_all)) {
+        dur <- suppressWarnings(as.numeric(data_all[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                 !is.null(input$end_col) && input$end_col != "None" &&
+                 input$start_col %in% names(data_all) && input$end_col %in% names(data_all)) {
+        hora_inicio <- suppressWarnings(parse_time(data_all[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data_all[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_sesion[1] & dur <= input$filtro_duracion_input_sesion[2]
+        data_all <- data_all[keep, ]
+      }
+    }
+    
+    tagList(
+      lapply(groups, function(group) {
+        fluidRow(
+          style = "display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 8px; margin-top: 0px;",
+          lapply(group, function(metrica) {
+            player_col <- input$player_col
+            date_col <- input$date_col
+            data_all[[date_col]] <- as.Date(parse_date_time(data_all[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+            
+            data_selected <- filtro_data_sesion()
+            data_selected[[date_col]] <- as.Date(parse_date_time(data_selected[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+            resumen_actual <- data_selected %>%
+              group_by(Jugador = .data[[player_col]]) %>%
+              summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop") %>%
+              arrange(desc(Valor))
+            prom_actual <- mean(resumen_actual$Valor, na.rm = TRUE)
+            best_row <- resumen_actual[which.max(resumen_actual$Valor), ]
+            worst_row <- resumen_actual[which.min(resumen_actual$Valor), ]
+            n_players <- nrow(resumen_actual)
+            
+            fechas_unicas <- sort(unique(data_all[[date_col]]))
+            fecha_ref <- if (length(selected_dates) > 0) min(selected_dates) else NA
+            posibles_previas <- fechas_unicas[fechas_unicas < fecha_ref]
+            fecha_previa <- if (length(posibles_previas) > 0) max(posibles_previas) else NA
+            
+            pct_change <- NA
+            fecha_prev_label <- NULL
+            if (!is.na(fecha_previa)) {
+              data_prev <- data_all[data_all[[date_col]] == fecha_previa, ]
+              values_prev <- suppressWarnings(as.numeric(data_prev[[metrica]]))
+              data_prev <- data_prev[!is.na(values_prev) & is.finite(values_prev), ]
+              resumen_prev <- data_prev %>%
+                group_by(Jugador = .data[[player_col]]) %>%
+                summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+              prom_prev <- mean(resumen_prev$Valor, na.rm = TRUE)
+              if (!is.na(prom_prev) && nrow(resumen_prev) > 0 && prom_prev != 0) {
+                pct_change <- round(100 * (prom_actual - prom_prev) / abs(prom_prev), 1)
+                fecha_prev_label <- format(fecha_previa, "%d/%m/%Y")
+              }
+            }
+            
+            if (is.na(pct_change)) {
+              pct_icon <- icon("minus", style = "font-size:1.15em; margin-bottom:2px; color:#c8c8c8;")
+              pct_color <- "#c8c8c8"
+              pct_label <- "--"
+            } else if (pct_change > 0) {
+              pct_icon <- icon("arrow-up", style = "font-size:1.15em; margin-bottom:2px; color:#00e676;")
+              pct_color <- "#00e676"
+              pct_label <- paste0("+", pct_change, "%")
+            } else if (pct_change < 0) {
+              pct_icon <- icon("arrow-down", style = "font-size:1.15em; margin-bottom:2px; color:#fd002b;")
+              pct_color <- "#fd002b"
+              pct_label <- paste0(pct_change, "%")
+            } else {
+              pct_icon <- icon("minus", style = "font-size:1.15em; margin-bottom:2px; color:#c8c8c8;")
+              pct_color <- "#c8c8c8"
+              pct_label <- "0%"
+            }
+            
+            vs_block <- if (!is.null(fecha_prev_label)) {
+              tags$span(
+                paste0("VS: ", fecha_prev_label),
+                style = "display:block; text-align:center; font-size:0.99em; color:#c8c8c8; font-weight:700; letter-spacing:0.3px; min-height:1.6em;"
+              )
+            } else {
+              tags$span("", style="display:block; min-height:1.6em;")
+            }
+            
+            # BLOQUE CON GRID DE 4 COLUMNAS, 2 FILAS: iconos arriba, labels/valores abajo
+            column(
+              width = 4,
+              style = "padding: 0 10px; min-width:270px; max-width:370px;",
+              tags$div(
+                style = "background: rgba(30,30,30,0.96); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:270px; min-height:120px; padding: 12px 12px 11px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
+                tags$div(
+                  style = "color:#00FFFF; font-size:1.16em; font-weight:600; margin-bottom:7px; letter-spacing:0.5px; text-align:center;",
+                  metrica
+                ),
+                tags$div(
+                  style = "display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: 28px 28px 22px; gap:1px 6px; align-items:center; width: 100%;",
+                  
+                  # FILA 1: ICONOS
+                  tags$span(icon("users", style="color:#00FFFF; font-size:1.20em;"), style="grid-column:1; grid-row:1; text-align:center;"),
+                  tags$span(icon("trophy", style="color:#7F00FF; font-size:1.20em;"), style="grid-column:2; grid-row:1; text-align:center;"),
+                  tags$span(icon("user-minus", style="color:#fd002b; font-size:1.20em;"), style="grid-column:3; grid-row:1; text-align:center;"),
+                  tags$span(
+                    pct_icon,
+                    style="grid-column:4; grid-row:1; text-align:center;"
+                  ),
+                  
+                  # FILA 2: LABELS/NOMBRES/PORCENTAJE
+                  tags$span("Players", style="font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center; grid-column:1; grid-row:2;"),
+                  tags$span(
+                    paste0(ifelse(!is.na(best_row$Jugador), best_row$Jugador, "--")),
+                    style="font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center; grid-column:2; grid-row:2; min-width:3.7em; white-space:nowrap;"
+                  ),
+                  tags$span(
+                    paste0(ifelse(!is.na(worst_row$Jugador), worst_row$Jugador, "--")),
+                    style="font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center; grid-column:3; grid-row:2; min-width:3.7em; white-space:nowrap;"
+                  ),
+                  tags$span(
+                    pct_label,
+                    style = paste0(
+                      "font-weight:800; font-size:0.99em; color:", pct_color, 
+                      "; text-align:center; grid-column:4; grid-row:2; line-height:1.2; letter-spacing:0.5px;"
+                    )
+                  ),
+                  
+                  # FILA 3: VALORES y FECHA
+                  tags$span(n_players, style = "font-weight:700; color:#ffffff; font-size:1.06em; text-align:center; grid-column:1; grid-row:3;"),
+                  tags$span(
+                    if (!is.na(best_row$Valor)) round(best_row$Valor, 2) else "--",
+                    style = "color:#ffffff; font-size:1.06em; font-weight:700; text-align:center; grid-column:2; grid-row:3;"
+                  ),
+                  tags$span(
+                    if (!is.na(worst_row$Valor)) round(worst_row$Valor, 2) else "--",
+                    style = "color:#ffffff; font-size:1.06em; font-weight:700; text-align:center; grid-column:3; grid-row:3;"
+                  ),
+                  tags$span(
+                    if (!is.null(fecha_prev_label)) {
+                      tags$span(
+                        paste0("VS:", fecha_prev_label),
+                        style="font-size:0.65em; color:#ffffff; font-weight:700; text-align:center; display:block; margin-top:-2px;"
+                      )
+                    } else {
+                      tags$span("", style="font-size:0.65em;")
+                    },
+                    style="grid-column:4; grid-row:3; text-align:center;"
+                  ) 
+                )
+              )
+            )
+          })
+        )
+      })
+    )
+  })
+  
+  ############################################################################
+  ############################  `GRAFICOS` ############################
+  ############################################################################
+  
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
   #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
@@ -4023,6 +4206,5 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
 
 
