@@ -49,24 +49,21 @@ ui <- fluidPage(
   theme = tema_gps,
   
   # ===============================================================
-  # ✨ ESTILOS PERSONALIZADOS (Actualizado para Shiny Selectize)
+  # ✨ ESTILOS PERSONALIZADOS (incluye SCROLL HORIZONTAL VALUE BOX)
   # ===============================================================
-  # Estilos personalizados y fuentes
   tags$head(
     # Bootstrap Icons (para íconos visuales)
     tags$link(rel = "stylesheet", href = "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"),
     
-    # Estilos personalizados
+    # Estilos personalizados (tipos, glass, botones, tablas, etc.)
     tags$style(HTML("
       /* Tipografía base */
       body {
         font-family: 'Satoshi', sans-serif;
       }
-
       h1, h2, h3, h4, h5 {
         font-family: 'Geist', sans-serif;
       }
-
       /* Fondo blur estilo glassmorphism */
       .glass-box {
         background: rgba(255, 255, 255, 0.05);
@@ -76,126 +73,151 @@ ui <- fluidPage(
         padding: 20px;
         box-shadow: 0 0 12px rgba(0,255,255,0.04);
       }
+      /* FILTROS */
+      .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      .filter-column {
+        flex: 1 1 45%;
+      }
+      /* CONTAINERS / INPUTS */
+      .shiny-input-container {
+        font-family: 'Satoshi', sans-serif;
+        color: #ffffff;
+      }
+      select, input, textarea {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(0,255,255,0.2);
+        color: #ffffff;
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        font-family: 'Satoshi', sans-serif;
+        transition: all 0.3s ease;
+      }
+      select:focus, input:focus, textarea:focus {
+        outline: none;
+        border-color: #00FFFF;
+        box-shadow: 0 0 6px rgba(0,255,255,0.5);
+      }
+      /* SELECTIZE STYLE */
+      .selectize-control .selectize-input {
+        background: rgba(255,255,255,0.05) !important;
+        border-radius: 12px !important;
+        border: 1px solid rgba(0,255,255,0.2) !important;
+        color: #ffffff !important;
+        backdrop-filter: blur(10px);
+      }
+      .selectize-dropdown, .selectize-input.full, .selectize-dropdown .option {
+        background: rgba(14,17,23,0.95) !important;
+        color: #ffffff !important;
+      }
+      .selectize-dropdown .option:hover,
+      .selectize-dropdown .option.active {
+        background: #1f2937 !important;
+        color: #00FFFF !important;
+      }
+      /* TABS estilo Baremetrics */
+      .nav-tabs {
+        background: rgba(255,255,255,0.02);
+        border-bottom: 1px solid #00FFFF;
+      }
+      .nav-tabs > li > a {
+        color: #ffffff;
+        font-weight: bold;
+        font-family: 'Satoshi', sans-serif;
+        border: none;
+        transition: all 0.3s ease;
+      }
+      .nav-tabs > li.active > a,
+      .nav-tabs > li > a:hover {
+        color: #00FFFF;
+        border-bottom: 3px solid #00FFFF;
+        background: transparent;
+      }
+      /* BOTONES GLASS + NEÓN */
+      .btn {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(0,255,255,0.3);
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 10px 20px;
+        font-family: 'Satoshi', sans-serif;
+        transition: all 0.3s ease;
+      }
+      .btn:hover {
+        background: rgba(0,255,255,0.1);
+        border-color: #00FFFF;
+        color: #00FFFF;
+        box-shadow: 0 0 10px rgba(0,255,255,0.3);
+      }
+      .btn-danger {
+        background: #FF1744;
+        border-color: #FF1744;
+      }
+      .btn-danger:hover {
+        background: #ff4c68;
+        border-color: #ff4c68;
+        color: #ffffff;
+      }
+      /* DATATABLES HEADERS */
+      table.dataTable thead th {
+        background: #00FFFF !important;
+        color: #0E1117 !important;
+        font-family: 'Satoshi', sans-serif;
+        font-weight: bold;
+        font-size: 14px;
+      }
+      /* DATATABLES BODY */
+      table.dataTable tbody td {
+        background: #0E1117 !important;
+        color: #ffffff !important;
+        font-family: 'Satoshi', sans-serif;
+      }
+      /* FILAS hover */
+      table.dataTable tbody tr:hover {
+        background-color: rgba(0,255,255,0.08) !important;
+      }
 
-    /* FILTROS */
-    .filter-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-    .filter-column {
-      flex: 1 1 45%;
-    }
-
-    /* CONTAINERS / INPUTS */
-    .shiny-input-container {
-      font-family: 'Satoshi', sans-serif;
-      color: #ffffff;
-    }
-    select, input, textarea {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(0,255,255,0.2);
-      color: #ffffff;
-      border-radius: 12px;
-      backdrop-filter: blur(10px);
-      font-family: 'Satoshi', sans-serif;
-      transition: all 0.3s ease;
-    }
-    select:focus, input:focus, textarea:focus {
-      outline: none;
-      border-color: #00FFFF;
-      box-shadow: 0 0 6px rgba(0,255,255,0.5);
-    }
-
-    /* SELECTIZE STYLE */
-    .selectize-control .selectize-input {
-      background: rgba(255,255,255,0.05) !important;
-      border-radius: 12px !important;
-      border: 1px solid rgba(0,255,255,0.2) !important;
-      color: #ffffff !important;
-      backdrop-filter: blur(10px);
-    }
-
-    .selectize-dropdown, .selectize-input.full, .selectize-dropdown .option {
-      background: rgba(14,17,23,0.95) !important;
-      color: #ffffff !important;
-    }
-
-    .selectize-dropdown .option:hover,
-    .selectize-dropdown .option.active {
-      background: #1f2937 !important;
-      color: #00FFFF !important;
-    }
-
-    /* TABS estilo Baremetrics */
-    .nav-tabs {
-      background: rgba(255,255,255,0.02);
-      border-bottom: 1px solid #00FFFF;
-    }
-    .nav-tabs > li > a {
-      color: #ffffff;
-      font-weight: bold;
-      font-family: 'Satoshi', sans-serif;
-      border: none;
-      transition: all 0.3s ease;
-    }
-    .nav-tabs > li.active > a,
-    .nav-tabs > li > a:hover {
-      color: #00FFFF;
-      border-bottom: 3px solid #00FFFF;
-      background: transparent;
-    }
-
-    /* BOTONES GLASS + NEÓN */
-    .btn {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(0,255,255,0.3);
-      color: #ffffff;
-      border-radius: 12px;
-      padding: 10px 20px;
-      font-family: 'Satoshi', sans-serif;
-      transition: all 0.3s ease;
-    }
-    .btn:hover {
-      background: rgba(0,255,255,0.1);
-      border-color: #00FFFF;
-      color: #00FFFF;
-      box-shadow: 0 0 10px rgba(0,255,255,0.3);
-    }
-
-    .btn-danger {
-      background: #FF1744;
-      border-color: #FF1744;
-    }
-    .btn-danger:hover {
-      background: #ff4c68;
-      border-color: #ff4c68;
-      color: #ffffff;
-    }
-
-    /* DATATABLES HEADERS */
-    table.dataTable thead th {
-      background: #00FFFF !important;
-      color: #0E1117 !important;
-      font-family: 'Satoshi', sans-serif;
-      font-weight: bold;
-      font-size: 14px;
-    }
-
-    /* DATATABLES BODY */
-    table.dataTable tbody td {
-      background: #0E1117 !important;
-      color: #ffffff !important;
-      font-family: 'Satoshi', sans-serif;
-    }
-
-    /* FILAS hover */
-    table.dataTable tbody tr:hover {
-      background-color: rgba(0,255,255,0.08) !important;
-    }
-  "))
+      /* ========== SCROLL HORIZONTAL VALUE BOXES ========== */
+      .scroll-fade-container {
+        position: relative;
+        width: 350px;    /* O el valor que definas, ajustá si querés más/menos ancho */
+        margin: 0 auto;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      .scroll-fade-content {
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        padding-bottom: 10px;
+        scrollbar-color: #00FFFF #232323;
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+        display: block;
+      }
+      .fade-left, .fade-right {
+        position: absolute;
+        top: 0; bottom: 0;
+        width: 36px;
+        pointer-events: none;
+        z-index: 2;
+      }
+      .fade-left {
+        left: 0;
+        background: linear-gradient(to right, rgba(30,30,30,0.92) 85%, rgba(30,30,30,0.01) 100%);
+      }
+      .fade-right {
+        right: 0;
+        background: linear-gradient(to left, rgba(30,30,30,0.92) 85%, rgba(30,30,30,0.01) 100%);
+      }
+    "))
   ),
+  
+  # ...El resto de tu UI...
   
   # Encabezado principal estilo Hero minimalista
   tags$div(
@@ -473,7 +495,7 @@ ui <- fluidPage(
           ),
           
           #-------------------------------
-          # 🟦 TAB PANEL: ACWR
+          # 🟦 TAB PANEL: ACWR (pulido visual KPIs y sliders)
           #-------------------------------
           
           tabPanel(
@@ -494,16 +516,56 @@ ui <- fluidPage(
                   selectInput("metric_acwr", "Select Metrics:", choices = NULL, multiple = TRUE)
                 )
               ),
-              # Panel derecho: Sliders + gráfico
+              # Panel derecho: Value boxes + gráfico
               column(
                 width = 8,
                 class = "glass-box",
-                # ⬇️ Centrado horizontal y glass
+                # --- FILA DE KPIs: Chips | Acute | Chronic ---
                 tags$div(
-                  style = "display: flex; justify-content: center; align-items: flex-end; background: rgba(30,30,30,0.92); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 16px; gap: 1.2em;",
-                  # Slider Agudo
+                  style = "
+          display: flex;
+          flex-direction: row;
+          justify-content: center;
+          align-items: stretch;
+          gap: 1.3em;
+          margin-bottom: 15px;
+          flex-wrap: wrap;
+        ",
+                  # --- KPIs/CHIPS ---
                   tags$div(
-                    style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 12px 14px 10px 16px; box-shadow: 0 2px 8px #10101040; min-width:220px; max-width:260px;",
+                    style = "
+    background: rgba(36,40,52,0.81);
+    border-radius: 18px;
+    box-shadow: 0 2px 14px #22222240;
+    min-width: 240px;
+    max-width: 100%;
+    padding: 17px 14px 13px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-height: 115px;
+    gap: 0.7em;
+    scrollbar-width: thin;
+    scrollbar-color: #00FFFF #232323;
+  ",
+                    uiOutput("kpi_row_acwr")
+                  ),
+                  # --- Acute Box ---
+                  tags$div(
+                    style = "
+            background: rgba(36,40,52,0.81);
+            border-radius: 18px;
+            box-shadow: 0 2px 14px #22222240;
+            min-width: 220px;
+            max-width: 270px;
+            padding: 15px 18px 13px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          ",
                     tags$div(
                       style = "color:#00FFFF; font-weight:600; font-size:1.08em; margin-bottom:6px;",
                       tags$i(class = "bi bi-lightning-charge", style = "margin-right:6px; color:#fd002b; font-size:1.1em;"),
@@ -515,9 +577,20 @@ ui <- fluidPage(
                       min = 3, max = 14, value = 7, step = 1, width = "100%"
                     )
                   ),
-                  # Slider Crónico
+                  # --- Chronic Box ---
                   tags$div(
-                    style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 12px 14px 10px 16px; box-shadow: 0 2px 8px #10101040; min-width:220px; max-width:260px;",
+                    style = "
+            background: rgba(36,40,52,0.81);
+            border-radius: 18px;
+            box-shadow: 0 2px 14px #22222240;
+            min-width: 220px;
+            max-width: 270px;
+            padding: 15px 18px 13px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          ",
                     tags$div(
                       style = "color:#00FFFF; font-weight:600; font-size:1.08em; margin-bottom:6px;",
                       tags$i(class = "bi bi-lightning", style = "margin-right:6px; color:#fd002b; font-size:1.1em;"),
@@ -530,8 +603,11 @@ ui <- fluidPage(
                     )
                   )
                 ),
-                # 👇 Output dinámico para los gráficos
-                uiOutput("acwr_plot_ui")
+                # --- Gráficos debajo de los value boxes ---
+                tags$div(
+                  style = "margin-top: 8px; width:100%;",
+                  uiOutput("acwr_plot_ui")
+                )
               )
             )
           ),
@@ -2944,9 +3020,8 @@ server <- function(input, output, session) {
   # =======================================
   #  🔷 KPIs Glassmorphism para Competitive Analysis
   # =======================================
-  # ========================
+  
   # 🔷 FUNCION AUXILIAR Z-score COMPETITIVO
-  # ========================
   
   tabla_z_comp <- function(metrica, val_range) {
     req(read_data(), input$player_col, input$date_col, input$filtro_sesion_selector_comp, input$ventana_movil_z_comp)
@@ -3258,7 +3333,193 @@ observeEvent(input$show_players_lt15_comp, {
   )
 }, ignoreInit = TRUE)
   
+# =======================================
+#  🔷 KPIs Glassmorphism para ACWR
+# =======================================  
+#' 🔷 Tabla auxiliar para KPIs ACWR: obtiene ACWR sólo de la última sesión de cada jugador tras todos los filtros aplicados
+tabla_acwr_ultima_sesion <- function(metrica, val_range) {
+  req(read_data(), input$player_col, input$date_col, input$acwr_agudo_dias, input$acwr_cronico_dias)
+  data <- filtro_data_acwr(metrica, val_range) # Aplica todos los filtros ya definidos
   
+  # Parsear y ordenar fechas
+  data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+  data <- data[!is.na(data[[input$date_col]]), ]
+  data <- data[order(data[[input$player_col]], data[[input$date_col]]), ]
+  
+  # EWMA params
+  dias_agudo <- input$acwr_agudo_dias
+  dias_cronico <- input$acwr_cronico_dias
+  lambda_agudo <- log(2) / dias_agudo
+  lambda_cronico <- log(2) / dias_cronico
+  
+  # EWMA personalizada
+  ewma_custom <- function(x, lambda) {
+    if (length(x) == 0 || all(is.na(x))) return(rep(NA_real_, length(x)))
+    out <- numeric(length(x))
+    out[1] <- x[1]
+    if (length(x) > 1) {
+      for (i in 2:length(x)) {
+        out[i] <- lambda * x[i] + (1 - lambda) * out[i - 1]
+      }
+    }
+    return(out)
+  }
+  
+  # Calcular ACWR por jugador
+  tabla <- data %>%
+    arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
+    group_by(Jugador = .data[[input$player_col]]) %>%
+    mutate(
+      EWMA_agudo = ewma_custom(.data[[metrica]], lambda_agudo),
+      EWMA_cronico = ewma_custom(.data[[metrica]], lambda_cronico),
+      ACWR = EWMA_agudo / EWMA_cronico,
+      Fecha = as.Date(.data[[input$date_col]])
+    ) %>%
+    filter(!is.na(ACWR), is.finite(ACWR)) %>%
+    slice_max(Fecha, n = 1, with_ties = FALSE) %>%   # SOLO ÚLTIMA SESIÓN
+    ungroup()
+  
+  return(tabla)
+}
+
+# ============================
+# Value Box de KPIs ACWR con Scroll Horizontal
+# ============================
+output$kpi_row_acwr <- renderUI({
+  req(input$metric_acwr, length(input$metric_acwr) > 0, read_data())
+  met_list <- input$metric_acwr
+  
+  tags$div(
+    class = "scroll-fade-container",
+    # Fade izquierdo
+    tags$div(class = "fade-left"),
+    # Fade derecho
+    tags$div(class = "fade-right"),
+    # Contenido scrolleable horizontalmente
+    tags$div(
+      class = "scroll-fade-content",
+      lapply(met_list, function(metrica) {
+        filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
+        val_range <- input[[filtro_id]]
+        if (is.null(val_range) || length(val_range) != 2) return(NULL)
+        tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
+        if (is.null(tabla) || nrow(tabla) == 0) return(NULL)
+        high_acwr <- tabla %>% filter(ACWR > 1.5)
+        low_acwr  <- tabla %>% filter(ACWR < 0.8)
+        metrica_id <- make.names(metrica)
+        tags$div(
+          style = "
+            display: inline-block;
+            vertical-align: top;
+            background: rgba(30,30,30,0.92);
+            border-radius: 18px;
+            box-shadow: 0 2px 8px #10101040;
+            min-width: 260px;
+            max-width: 290px;
+            min-height: 110px;
+            margin-right: 18px;
+            margin-bottom: 7px;
+            padding: 14px 18px 10px 16px;
+            overflow: hidden;
+          ",
+          tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
+          tags$div(
+            style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
+            # CHIP ROJO
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
+              if (nrow(high_acwr) > 0) tags$div(
+                id = paste0("chip_high_acwr_", metrica_id),
+                `data-metric` = metrica,
+                onclick = sprintf("Shiny.setInputValue('show_players_gt15_acwr', '%s', {priority: 'event'})", metrica),
+                style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                tags$span(nrow(high_acwr), style = "font-size:1.25em; font-weight:600;"),
+                tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+              )
+            ),
+            # CHIP VERDE
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
+              if (nrow(low_acwr) > 0) tags$div(
+                id = paste0("chip_low_acwr_", metrica_id),
+                `data-metric` = metrica,
+                onclick = sprintf("Shiny.setInputValue('show_players_lt08_acwr', '%s', {priority: 'event'})", metrica),
+                style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                tags$span(nrow(low_acwr), style = "font-size:1.25em; font-weight:600;"),
+                tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+              )
+            ),
+            # Total Players
+            tags$span(
+              icon("users"),
+              style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
+            ),
+            tags$span(nrow(tabla), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
+            tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+          )
+        )
+      })
+    )
+  )
+})
+
+# High ACWR (> 1.5)
+observeEvent(input$show_players_gt15_acwr, {
+  req(input$show_players_gt15_acwr, read_data())
+  metrica <- input$show_players_gt15_acwr
+  filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
+  val_range <- input[[filtro_id]]
+  if (is.null(val_range) || length(val_range) != 2) return(NULL)
+  tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
+  high_acwr <- tabla %>% filter(ACWR > 1.5)
+  showModal(
+    modalDialog(
+      title = paste("Players with ACWR > 1.5 in", metrica),
+      if (nrow(high_acwr) == 0) tags$p("No players found.", style = "color:#fd002b; font-weight:600;") else
+        tags$ul(
+          lapply(seq_len(nrow(high_acwr)), function(i) {
+            tags$li(
+              tags$span(high_acwr$Jugador[i], style = "font-weight:600; color:#fd002b;"),
+              tags$span(sprintf(" (ACWR = %.2f)", high_acwr$ACWR[i]),
+                        style = "color:#fd002b; margin-left:3px; font-size:0.97em;")
+            )
+          })
+        ),
+      easyClose = TRUE,
+      size = "m"
+    )
+  )
+}, ignoreInit = TRUE)
+
+# Low ACWR (< 0.8)
+observeEvent(input$show_players_lt08_acwr, {
+  req(input$show_players_lt08_acwr, read_data())
+  metrica <- input$show_players_lt08_acwr
+  filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
+  val_range <- input[[filtro_id]]
+  if (is.null(val_range) || length(val_range) != 2) return(NULL)
+  tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
+  low_acwr <- tabla %>% filter(ACWR < 0.8)
+  showModal(
+    modalDialog(
+      title = paste("Players with ACWR < 0.8 in", metrica),
+      if (nrow(low_acwr) == 0) tags$p("No players found.", style = "color:#25b659; font-weight:600;") else
+        tags$ul(
+          lapply(seq_len(nrow(low_acwr)), function(i) {
+            tags$li(
+              tags$span(low_acwr$Jugador[i], style = "font-weight:600; color:#25b659;"),
+              tags$span(sprintf(" (ACWR = %.2f)", low_acwr$ACWR[i]),
+                        style = "color:#25b659; margin-left:3px; font-size:0.97em;")
+            )
+          })
+        ),
+      easyClose = TRUE,
+      size = "m"
+    )
+  )
+}, ignoreInit = TRUE)
+
+
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
   #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
@@ -4034,10 +4295,13 @@ observeEvent(input$show_players_lt15_comp, {
     
     # Funcion EWMA personalizada
     ewma_custom <- function(x, lambda) {
+      if (length(x) == 0 || all(is.na(x))) return(rep(NA_real_, length(x)))
       out <- numeric(length(x))
       out[1] <- x[1]
-      for (i in 2:length(x)) {
-        out[i] <- lambda * x[i] + (1 - lambda) * out[i - 1]
+      if (length(x) > 1) {
+        for (i in 2:length(x)) {
+          out[i] <- lambda * x[i] + (1 - lambda) * out[i - 1]
+        }
       }
       return(out)
     }
@@ -4104,6 +4368,7 @@ observeEvent(input$show_players_lt15_comp, {
           acwr_data <- data %>%
             arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
             group_by(Jugador = .data[[input$player_col]]) %>%
+            filter(sum(!is.na(.data[[metrica_local]])) > 0) %>%
             mutate(
               EWMA_agudo = ewma_custom(.data[[metrica_local]], lambda_agudo),
               EWMA_cronico = ewma_custom(.data[[metrica_local]], lambda_cronico),
