@@ -3180,70 +3180,86 @@ server <- function(input, output, session) {
     req(input$metric_z_comp, length(input$metric_z_comp) > 0, read_data(), input$filtro_sesion_selector_comp)
     met_list <- input$metric_z_comp
     if (length(met_list) == 0) return(tags$div("No metrics selected.", style="color:#c8c8c8;"))
-    groups <- split(met_list, ceiling(seq_along(met_list) / 3))
-    tagList(
-      lapply(groups, function(group) {
-        fluidRow(
-          style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
-          lapply(group, function(metrica) {
-            filtro_id <- paste0("filtro_metrica_valor_z_comp_", make.names(metrica))
-            val_range <- input[[filtro_id]]
-            if (is.null(val_range) || length(val_range) != 2) {
-              print(paste("val_range nulo para", metrica)); 
-              return(NULL)
-            }
-            tabla <- tabla_z_comp(metrica, val_range)
-            if (is.null(tabla) || nrow(tabla) == 0) {
-              return(NULL)
-            }
-            high_z <- tabla %>% filter(z >= 1.5)
-            low_z  <- tabla %>% filter(z <= -1.5)
-            metrica_id <- make.names(metrica)
-            column(
-              width = 4,
-              style = "padding: 0 7px;",
+    
+    tags$div(
+      class = "scroll-fade-container",
+      tags$div(class = "fade-left"),
+      tags$div(
+        class = "scroll-fade-content",
+        lapply(met_list, function(metrica) {
+          filtro_id <- paste0("filtro_metrica_valor_z_comp_", make.names(metrica))
+          val_range <- input[[filtro_id]]
+          if (is.null(val_range) || length(val_range) != 2) {
+           return(NULL)
+          }
+          tabla <- tabla_z_comp(metrica, val_range)
+          if (is.null(tabla) || nrow(tabla) == 0) {
+            return(NULL)
+          }
+          high_z <- tabla %>% filter(z >= 1.5)
+          low_z  <- tabla %>% filter(z <= -1.5)
+          metrica_id <- make.names(metrica)
+          tags$div(
+            style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; max-width:320px; min-height:110px; padding: 12px 11px 8px 11px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px; overflow:hidden;width:100%;",
+            tags$div(style = "color:#00FFFF; font-size:1.09em; font-weight:600; margin-bottom:3px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;",
+                     metrica),
+            tags$div(
+              style = "display:flex; flex-direction:row; flex-wrap:nowrap; gap:7px; justify-content:center; align-items:center; margin-bottom:7px; width:100%;",
+              # CHIP ROJO o GRIS
               tags$div(
-                style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 14px 18px 10px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
-                tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
-                tags$div(
-                  style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
-                  # CHIP ROJO
+                style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:4px; min-width:37px;",
+                if (nrow(high_z) > 0) {
                   tags$div(
-                    style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
-                    if (nrow(high_z) > 0) tags$div(
-                      id = paste0("chip_high_z_comp_", metrica_id),
-                      `data-metric` = metrica,
-                      onclick = sprintf("Shiny.setInputValue('show_players_gt15_comp', '%s', {priority: 'event'})", metrica),
-                      style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
-                      tags$span(nrow(high_z), style = "font-size:1.25em; font-weight:600;"),
-                      tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
-                    )
-                  ),
-                  # CHIP VERDE
+                    id = paste0("chip_high_z_comp_", metrica_id),
+                    `data-metric` = metrica,
+                    onclick = sprintf("Shiny.setInputValue('show_players_gt15_comp', '%s', {priority: 'event'})", metrica),
+                    style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.09em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:36px;",
+                    tags$span(nrow(high_z), style = "font-size:1.20em; font-weight:600;"),
+                    tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.11em; margin-top:2px;")
+                  )
+                } else {
                   tags$div(
-                    style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
-                    if (nrow(low_z) > 0) tags$div(
-                      id = paste0("chip_low_z_comp_", metrica_id),
-                      `data-metric` = metrica,
-                      onclick = sprintf("Shiny.setInputValue('show_players_lt15_comp', '%s', {priority: 'event'})", metrica),
-                      style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
-                      tags$span(nrow(low_z), style = "font-size:1.25em; font-weight:600;"),
-                      tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
-                    )
-                  ),
-                  # Total Players
-                  tags$span(
-                    icon("users"),
-                    style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
-                  ),
-                  tags$span(nrow(tabla), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
-                  tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
-                )
-              )
+                    style = "background:#6b6b6b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.09em; font-weight:600; display:flex; flex-direction:column; align-items:center; min-width:36px; opacity:0.85;",
+                    tags$span(0, style = "font-size:1.20em; font-weight:600;"),
+                    tags$i(class = "bi bi-dash-circle-fill", style = "color:white; font-size:1.11em; margin-top:2px;")
+                  )
+                }
+              ),
+              # CHIP VERDE o GRIS
+              tags$div(
+                style = "display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:37px;",
+                if (nrow(low_z) > 0) {
+                  tags$div(
+                    id = paste0("chip_low_z_comp_", metrica_id),
+                    `data-metric` = metrica,
+                    onclick = sprintf("Shiny.setInputValue('show_players_lt15_comp', '%s', {priority: 'event'})", metrica),
+                    style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.09em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:36px;",
+                    tags$span(nrow(low_z), style = "font-size:1.20em; font-weight:600;"),
+                    tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.11em; margin-top:2px;")
+                  )
+                } else {
+                  tags$div(
+                    style = "background:#6b6b6b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.09em; font-weight:600; display:flex; flex-direction:column; align-items:center; min-width:36px; opacity:0.85;",
+                    tags$span(0, style = "font-size:1.20em; font-weight:600;"),
+                    tags$i(class = "bi bi-dash-circle-fill", style = "color:white; font-size:1.11em; margin-top:2px;")
+                  )
+                }
+              ),
+              # Total Players + label
+              tags$span(
+                icon("users"),
+                style = "font-size:1.10em; color:#00FFFF; margin-left:7px; margin-right:2px; min-width:18px;"
+              ),
+              tags$span(
+                nrow(tabla),
+                style = "font-size:0.99em; color:#ffffff; font-weight:600; min-width:21px;"
+              ),
+              tags$span("Players", style = "font-size:0.85em; color:#c8c8c8; min-width:36px; text-align:left;")
             )
-          })
-        )
-      })
+          )
+        })
+      ),
+      tags$div(class = "fade-right")
     )
   })
   
