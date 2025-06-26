@@ -185,7 +185,7 @@ ui <- fluidPage(
      .scroll-fade-container {
   position: relative;
   width: 100%;           /* Mejor usar 100% y ajustar el max-width inline si hace falta */
-  max-width: 350px;      /* O el que te funcione mejor para tu dashboard */
+  max-width: 1100;      /* O el que te funcione mejor para tu dashboard */
   min-width: 260px;
   margin: 0 auto;
   ppadding: 0;
@@ -227,6 +227,30 @@ ui <- fluidPage(
         right: 0;
         background: linear-gradient(to left, rgba(30,30,30,0.92) 60%, rgba(30,30,30,0.01) 100%);
       }
+      
+      /* ========== RESPONSIVE (mobile) ========== */
+@media (max-width: 600px) {
+  .scroll-fade-container {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+  }
+  .scroll-fade-content {
+    min-width: 0;
+    width: 100%;
+    font-size: 0.95em;
+    gap: 0.5em;
+    padding: 0 18px;   /* <-- el padding coincide con el fade de mobile */
+  }
+  .fade-left, .fade-right {
+    width: 18px;      /* Fades más finos en mobile */
+  }
+  .scroll-fade-content > div {
+    min-width: 200px;
+    max-width: 240px;
+    flex: 0 0 200px;
+  }
+}
     "))
   ),
   
@@ -377,10 +401,20 @@ ui <- fluidPage(
               column(
                 width = 8,
                 class = "glass-box",
-                fluidRow(
-                  style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
-                  uiOutput("kpi_row_boxplot_md")
+                # --- KPIs con scroll y fades ---
+                tags$div(
+                  class = "scroll-fade-container",
+                  # Fade izquierdo
+                  tags$div(class = "fade-left"),
+                  # Fade derecho
+                  tags$div(class = "fade-right"),
+                  # KPIs scrolleables horizontalmente
+                  tags$div(
+                    class = "scroll-fade-content",
+                    uiOutput("kpi_row_boxplot_md")
+                  )
                 ),
+                # --- Gráfico ---
                 uiOutput("boxplot_matchday_ui")
               )
             )
@@ -407,13 +441,21 @@ ui <- fluidPage(
                          selectInput("metric_task", "Select Metrics:", choices = NULL, multiple = TRUE)
                 )
               ),
-              # Panel derecho: KPIs + gráfico
+              # Panel derecho: KPIs (con scroll) + gráfico
               column(
                 width = 8,
                 class = "glass-box",
-                fluidRow(
-                  style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
-                  uiOutput("kpi_row_boxplot_task")
+                tags$div(
+                  class = "scroll-fade-container",
+                  # Fade izquierdo
+                  tags$div(class = "fade-left"),
+                  # Fade derecho
+                  tags$div(class = "fade-right"),
+                  # KPIs con scroll horizontal
+                  tags$div(
+                    class = "scroll-fade-content",
+                    uiOutput("kpi_row_boxplot_task")
+                  )
                 ),
                 uiOutput("boxplot_task_ui")
               )
@@ -440,9 +482,17 @@ ui <- fluidPage(
               column(
                 width = 8,
                 class = "glass-box",
-                # ⬇️ KPIs glassmorphism arriba de los gráficos
-                uiOutput("kpi_row_zscore_time"),
-                # ⬇️ Panel dinámico para los gráficos Z-score
+                # KPIs glassmorphism scrolleables con fade arriba del gráfico
+                tags$div(
+                  class = "scroll-fade-container",
+                  tags$div(class = "fade-left"),
+                  tags$div(class = "fade-right"),
+                  tags$div(
+                    class = "scroll-fade-content",
+                    uiOutput("kpi_row_zscore_time")
+                  )
+                ),
+                # Panel de gráficos Z-score
                 uiOutput("zscore_plot_ui")
               )
             )
@@ -546,7 +596,6 @@ ui <- fluidPage(
           justify-content: center;
           align-items: stretch;
           gap: 1.3em;
-          margin-bottom: 15px;
           flex-wrap: wrap;
         ",
                   # --- KPIs/CHIPS ---
@@ -2536,45 +2585,31 @@ server <- function(input, output, session) {
     req(input$metric_box, length(input$metric_box) > 0, read_data())
     met_list <- input$metric_box
     
-    tags$div(
-      style = "
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      justify-content: center;
-      margin-bottom: 8px;
-      margin-top: 0px;
-    ",
+    tagList(
       lapply(met_list, function(metrica) {
-        # Identificar el filtro de rango de valores de la métrica
         filtro_id <- paste0("filtro_metrica_valor_box_", make.names(metrica))
         val_range <- input[[filtro_id]]
-        
-        # Si el filtro no existe o no tiene dos valores, no muestra nada
         if (is.null(val_range) || length(val_range) != 2) return(NULL)
         
-        # Filtrar datos según los inputs (usando tu filtro reactivo robusto)
         data <- filtro_data_box(metrica, val_range)
         if (is.null(data) || nrow(data) == 0) return(NULL)
         
         valores <- suppressWarnings(as.numeric(data[[metrica]]))
         n_players <- length(unique(data[[input$player_col]]))
-        
-        # Default a NA si está vacío
-        if (length(valores) == 0 || all(is.na(valores))) {
-          matchday_max <- NA
-          matchday_min <- NA
-          iqr_val <- NA
-        } else {
+        matchday_max <- NA; matchday_min <- NA; iqr_val <- NA
+        if (length(valores) > 0 && !all(is.na(valores))) {
           matchday_max <- as.character(data[[input$matchday_col]][which.max(valores)][1])
           matchday_min <- as.character(data[[input$matchday_col]][which.min(valores)][1])
           iqr_val <- round(IQR(valores, na.rm = TRUE), 2)
         }
         
         tags$div(
-          style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 12px 14px 9px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
+          style = "
+          min-width: 240px; max-width: 340px; flex: 0 0 240px;
+          background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040;
+          display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom:7px; margin-right: 0.7em;",
           tags$div(
-            style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;",
+            style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px; text-align:center; width:100%;",
             metrica
           ),
           tags$div(
@@ -2619,26 +2654,16 @@ server <- function(input, output, session) {
     req(input$metric_task, length(input$metric_task) > 0, read_data())
     met_list <- input$metric_task
     
-    tags$div(
-      style = "
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      justify-content: center;
-      margin-bottom: 8px;
-      margin-top: 0px;
-    ",
+    tagList(
       lapply(met_list, function(metrica) {
-        # Identifica el filtro de rango de valores de la métrica
         filtro_id <- paste0("filtro_metrica_valor_task_", make.names(metrica))
         val_range <- input[[filtro_id]]
-        # Si el filtro aún no existe, lo saltea
         if (is.null(val_range) || length(val_range) != 2) return(NULL)
         data <- filtro_data_task(metrica, val_range)
         if (is.null(data) || nrow(data) == 0) return(NULL)
         valores <- suppressWarnings(as.numeric(data[[metrica]]))
-        # KPIs para el boxplot por tarea
         n_players <- length(unique(data[[input$player_col]]))
+        
         if (length(valores) == 0 || all(is.na(valores))) {
           task_max <- NA
           task_min <- NA
@@ -2648,38 +2673,50 @@ server <- function(input, output, session) {
           task_min <- as.character(data[[input$task_col]][which.min(valores)][1])
           iqr_val <- round(IQR(valores, na.rm = TRUE), 2)
         }
+        
         tags$div(
-          style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 12px 14px 9px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
-          tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
+          style = "background: rgba(30,30,30,0.92); border-radius: 16px; box-shadow: 0 2px 8px #10101040; min-width: 0; max-width: 246px; min-height: 92px; padding: 9px 8px 8px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 7px; overflow: hidden;",
           tags$div(
-            style = "display:flex; flex-direction:row; gap:16px; justify-content:center; align-items:center;",
+            style = "color: #00FFFF; font-size: 1.07em; font-weight: 600; margin-bottom: 3px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
+            metrica
+          ),
+          tags$div(
+            style = "display: flex; flex-direction: row; gap: 5px; justify-content: center; align-items: center; min-width: 0; width: 100%;",
             # N jugadores
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("users"), style = "font-size:1.32em; color:#7F00FF; margin-bottom:2px;"),
-              tags$span(n_players, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
-              tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+              style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
+              tags$span(icon("users"), style = "font-size: 1.18em; color: #7F00FF; margin-bottom: 0px;"),
+              tags$span(n_players, style = "font-size: 0.98em; color: #ffffff; font-weight: 600;"),
+              tags$span("Players", style = "font-size: 0.84em; color: #c8c8c8;")
             ),
             # Tarea con valor máximo
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("arrow-up"), style = "font-size:1.32em; color:#00e676; margin-bottom:2px;"),
-              tags$span(task_max, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
-              tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
+              style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 70px; overflow: hidden;",
+              tags$span(icon("arrow-up"), style = "font-size: 1.18em; color: #00e676; margin-bottom: 0px;"),
+              tags$span(
+                title = task_max,
+                style = "display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; font-size: 0.98em; color: #ffffff; font-weight: 600;",
+                task_max
+              ),
+              tags$span("Max", style = "font-size: 0.84em; color: #c8c8c8;")
             ),
             # Tarea con valor mínimo
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("arrow-down"), style = "font-size:1.32em; color:#fd002b; margin-bottom:2px;"),
-              tags$span(task_min, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
-              tags$span("Min", style = "font-size:0.92em; color:#c8c8c8;")
+              style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 70px; overflow: hidden;",
+              tags$span(icon("arrow-down"), style = "font-size: 1.18em; color: #fd002b; margin-bottom: 0px;"),
+              tags$span(
+                title = task_min,
+                style = "display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; width: 100%; font-size: 0.98em; color: #ffffff; font-weight: 600;",
+                task_min
+              ),
+              tags$span("Min", style = "font-size: 0.84em; color: #c8c8c8;")
             ),
             # IQR
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center;",
-              tags$span(icon("sliders-h"), style = "font-size:1.32em; color:#00FFFF; margin-bottom:2px;"),
-              tags$span(iqr_val, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
-              tags$span("IQR", style = "font-size:0.92em; color:#c8c8c8;")
+              style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
+              tags$span(icon("sliders-h"), style = "font-size: 1.18em; color: #00FFFF; margin-bottom: 0px;"),
+              tags$span(iqr_val, style = "font-size: 0.98em; color: #ffffff; font-weight: 600;"),
+              tags$span("IQR", style = "font-size: 0.84em; color: #c8c8c8;")
             )
           )
         )
@@ -2693,81 +2730,93 @@ server <- function(input, output, session) {
   output$kpi_row_zscore_time <- renderUI({
     req(input$metric_z, length(input$metric_z) > 0, read_data())
     met_list <- input$metric_z
-    # Agrupa de a 3 métricas para filas visualmente prolijas
-    groups <- split(met_list, ceiling(seq_along(met_list) / 3))
     
     tagList(
-      lapply(groups, function(group) {
-        fluidRow(
-          style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
-          lapply(group, function(metrica) {
-            filtro_id <- paste0("filtro_metrica_valor_z_", make.names(metrica))
-            val_range <- input[[filtro_id]]
-            if (is.null(val_range) || length(val_range) != 2) return(NULL)
-            data <- filtro_data_z(metrica, val_range)
-            if (is.null(data) || nrow(data) == 0) return(NULL)
-            player_col <- input$player_col
-            tabla_z <- data %>%
-              group_by(Jugador = .data[[player_col]]) %>%
-              summarise(
-                ultima_fecha = max(.data[[input$date_col]], na.rm = TRUE),
-                z_ultimo = {
-                  vals <- suppressWarnings(as.numeric(.data[[metrica]]))
-                  (tail(vals, 1) - mean(vals, na.rm = TRUE)) / sd(vals, na.rm = TRUE)
-                },
-                .groups = "drop"
-              ) %>%
-              filter(is.finite(z_ultimo)) %>%
-              arrange(desc(z_ultimo))
-            high_z <- tabla_z %>% filter(z_ultimo > 1.5)
-            low_z  <- tabla_z %>% filter(z_ultimo < -1.5)
-            metrica_id <- make.names(metrica)
-            # Chips: llevan como valor la métrica
-            column(
-              width = 4,
-              style = "padding: 0 7px;",
-              tags$div(
-                style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; min-height:110px; padding: 14px 18px 10px 16px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
-                tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
+      lapply(met_list, function(metrica) {
+        filtro_id <- paste0("filtro_metrica_valor_z_", make.names(metrica))
+        val_range <- input[[filtro_id]]
+        if (is.null(val_range) || length(val_range) != 2) return(NULL)
+        data <- filtro_data_z(metrica, val_range)
+        if (is.null(data) || nrow(data) == 0) return(NULL)
+        player_col <- input$player_col
+        tabla_z <- data %>%
+          group_by(Jugador = .data[[player_col]]) %>%
+          summarise(
+            ultima_fecha = max(.data[[input$date_col]], na.rm = TRUE),
+            z_ultimo = {
+              vals <- suppressWarnings(as.numeric(.data[[metrica]]))
+              (tail(vals, 1) - mean(vals, na.rm = TRUE)) / sd(vals, na.rm = TRUE)
+            },
+            .groups = "drop"
+          ) %>%
+          filter(is.finite(z_ultimo)) %>%
+          arrange(desc(z_ultimo))
+        high_z <- tabla_z %>% filter(z_ultimo > 1.5)
+        low_z  <- tabla_z %>% filter(z_ultimo < -1.5)
+        metrica_id <- make.names(metrica)
+        tags$div(
+          style = "
+          min-width: 260px; max-width: 290px; flex: 0 0 260px;
+          background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040;
+          display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom:7px; margin-right: 0.7em;
+        ",
+          tags$div(
+            style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px; text-align:center; width:100%;",
+            metrica
+          ),
+          tags$div(
+            style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
+            # CHIP ROJO o GRIS
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
+              if (nrow(high_z) > 0) {
                 tags$div(
-                  style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
-                  # CHIP ROJO
-                  tags$div(
-                    style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
-                    if (nrow(high_z) > 0) tags$div(
-                      id = paste0("chip_high_z_", metrica_id),
-                      `data-metric` = metrica,
-                      onclick = sprintf("Shiny.setInputValue('show_players_gt15', '%s', {priority: 'event'})", metrica),
-                      style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
-                      tags$span(nrow(high_z), style = "font-size:1.25em; font-weight:600;"),
-                      tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
-                    )
-                  ),
-                  # CHIP VERDE
-                  tags$div(
-                    style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
-                    if (nrow(low_z) > 0) tags$div(
-                      id = paste0("chip_low_z_", metrica_id),
-                      `data-metric` = metrica,
-                      onclick = sprintf("Shiny.setInputValue('show_players_lt15', '%s', {priority: 'event'})", metrica),
-                      style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
-                      tags$span(nrow(low_z), style = "font-size:1.25em; font-weight:600;"),
-                      tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
-                    )
-                  ),
-                  # Total Players
-                  tags$span(
-                    icon("users"),
-                    style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
-                  ),
-                  tags$span(nrow(tabla_z), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
-                  tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+                  id = paste0("chip_high_z_", metrica_id),
+                  `data-metric` = metrica,
+                  onclick = sprintf("Shiny.setInputValue('show_players_gt15', '%s', {priority: 'event'})", metrica),
+                  style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                  tags$span(nrow(high_z), style = "font-size:1.25em; font-weight:600;"),
+                  tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
                 )
-              )
-            )
-          })
+              } else {
+                tags$div(
+                  style = "background:#6b6b6b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; display:flex; flex-direction:column; align-items:center; min-width:37px; opacity:0.85;",
+                  tags$span(0, style = "font-size:1.25em; font-weight:600;"),
+                  tags$i(class = "bi bi-dash-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                )
+              }
+            ),
+            # CHIP VERDE o GRIS
+            tags$div(
+              style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
+              if (nrow(low_z) > 0) {
+                tags$div(
+                  id = paste0("chip_low_z_", metrica_id),
+                  `data-metric` = metrica,
+                  onclick = sprintf("Shiny.setInputValue('show_players_lt15', '%s', {priority: 'event'})", metrica),
+                  style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                  tags$span(nrow(low_z), style = "font-size:1.25em; font-weight:600;"),
+                  tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                )
+              } else {
+                tags$div(
+                  style = "background:#6b6b6b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; display:flex; flex-direction:column; align-items:center; min-width:37px; opacity:0.85;",
+                  tags$span(0, style = "font-size:1.25em; font-weight:600;"),
+                  tags$i(class = "bi bi-dash-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                )
+              }
+            ),
+            # Total Players
+            tags$span(
+              icon("users"),
+              style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
+            ),
+            tags$span(nrow(tabla_z), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
+            tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+          )
         )
-      }))
+      })
+    )
   })
   
   # =======================
