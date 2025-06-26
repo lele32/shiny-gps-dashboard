@@ -760,7 +760,7 @@ ui <- fluidPage(
                 style = "border-radius: 24px; padding: 22px 16px 14px 16px;",
                 tags$div(
                   style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
-                  tags$p("Ajustá el rango de valores para cada métrica seleccionada:", 
+                  tags$p("Adjust the value range for each selected metric.:", 
                          style = "color: #ffffff; font-size: 1.12em; text-align: center; margin-bottom: 0.2em; letter-spacing: 0.5px;"),
                   uiOutput("sliders_metricas_cuad")  # Los sliders dinámicos por métrica
                 ),
@@ -2214,7 +2214,7 @@ server <- function(input, output, session) {
       
       tagList(
         tags$hr(),
-        tags$h4(paste("Z-score competitivo:", metrica)),
+        tags$h4(paste("Z-score:", metrica)),
         sliderInput(
           inputId = paste0("filtro_metrica_valor_z_comp_", metrica_clean),
           label = paste("Filter Values For", metrica),
@@ -2918,9 +2918,8 @@ server <- function(input, output, session) {
     req(input$metricas_sesion_plot, length(input$metricas_sesion_plot) > 0, filtro_data_sesion())
     met_list <- input$metricas_sesion_plot
     selected_dates <- sort(as.Date(input$filtro_sesion_selector))
-    groups <- split(met_list, ceiling(seq_along(met_list) / 3))
     
-    # Filtros igual que antes...
+    # --- Filtros igual que antes... (NO CAMBIAR)
     data_all <- read_data()
     if (!is.null(input$player_col) && input$player_col %in% names(data_all) && !is.null(input$filtro_jugador_sesion)) {
       data_all <- data_all[data_all[[input$player_col]] %in% input$filtro_jugador_sesion, ]
@@ -2951,141 +2950,156 @@ server <- function(input, output, session) {
       }
     }
     
-    tagList(
-      lapply(groups, function(group) {
-        fluidRow(
-          style = "display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-bottom: 8px; margin-top: 0px;",
-          lapply(group, function(metrica) {
-            player_col <- input$player_col
-            date_col <- input$date_col
-            data_all[[date_col]] <- as.Date(parse_date_time(data_all[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
-            
-            data_selected <- filtro_data_sesion()
-            data_selected[[date_col]] <- as.Date(parse_date_time(data_selected[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
-            resumen_actual <- data_selected %>%
+    # --- VALUE BOXES EN SCROLL ---
+    tags$div(
+      class = "scroll-fade-container",
+      tags$div(class = "fade-left"),
+      tags$div(
+        class = "scroll-fade-content",
+        lapply(met_list, function(metrica) {
+          player_col <- input$player_col
+          date_col <- input$date_col
+          data_all[[date_col]] <- as.Date(parse_date_time(data_all[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+          
+          data_selected <- filtro_data_sesion()
+          data_selected[[date_col]] <- as.Date(parse_date_time(data_selected[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+          resumen_actual <- data_selected %>%
+            group_by(Jugador = .data[[player_col]]) %>%
+            summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop") %>%
+            arrange(desc(Valor))
+          prom_actual <- mean(resumen_actual$Valor, na.rm = TRUE)
+          best_row <- resumen_actual[which.max(resumen_actual$Valor), ]
+          worst_row <- resumen_actual[which.min(resumen_actual$Valor), ]
+          n_players <- nrow(resumen_actual)
+          
+          fechas_unicas <- sort(unique(data_all[[date_col]]))
+          fecha_ref <- if (length(selected_dates) > 0) min(selected_dates) else NA
+          posibles_previas <- fechas_unicas[fechas_unicas < fecha_ref]
+          fecha_previa <- if (length(posibles_previas) > 0) max(posibles_previas) else NA
+          
+          pct_change <- NA
+          fecha_prev_label <- NULL
+          if (!is.na(fecha_previa)) {
+            data_prev <- data_all[data_all[[date_col]] == fecha_previa, ]
+            values_prev <- suppressWarnings(as.numeric(data_prev[[metrica]]))
+            data_prev <- data_prev[!is.na(values_prev) & is.finite(values_prev), ]
+            resumen_prev <- data_prev %>%
               group_by(Jugador = .data[[player_col]]) %>%
-              summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop") %>%
-              arrange(desc(Valor))
-            prom_actual <- mean(resumen_actual$Valor, na.rm = TRUE)
-            best_row <- resumen_actual[which.max(resumen_actual$Valor), ]
-            worst_row <- resumen_actual[which.min(resumen_actual$Valor), ]
-            n_players <- nrow(resumen_actual)
-            
-            fechas_unicas <- sort(unique(data_all[[date_col]]))
-            fecha_ref <- if (length(selected_dates) > 0) min(selected_dates) else NA
-            posibles_previas <- fechas_unicas[fechas_unicas < fecha_ref]
-            fecha_previa <- if (length(posibles_previas) > 0) max(posibles_previas) else NA
-            
-            pct_change <- NA
-            fecha_prev_label <- NULL
-            if (!is.na(fecha_previa)) {
-              data_prev <- data_all[data_all[[date_col]] == fecha_previa, ]
-              values_prev <- suppressWarnings(as.numeric(data_prev[[metrica]]))
-              data_prev <- data_prev[!is.na(values_prev) & is.finite(values_prev), ]
-              resumen_prev <- data_prev %>%
-                group_by(Jugador = .data[[player_col]]) %>%
-                summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
-              prom_prev <- mean(resumen_prev$Valor, na.rm = TRUE)
-              if (!is.na(prom_prev) && nrow(resumen_prev) > 0 && prom_prev != 0) {
-                pct_change <- round(100 * (prom_actual - prom_prev) / abs(prom_prev), 1)
-                fecha_prev_label <- format(fecha_previa, "%d/%m/%Y")
-              }
+              summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+            prom_prev <- mean(resumen_prev$Valor, na.rm = TRUE)
+            if (!is.na(prom_prev) && nrow(resumen_prev) > 0 && prom_prev != 0) {
+              pct_change <- round(100 * (prom_actual - prom_prev) / abs(prom_prev), 1)
+              fecha_prev_label <- format(fecha_previa, "%d/%m/%Y")
             }
-            
-            if (is.na(pct_change)) {
-              pct_icon <- icon("minus", style = "font-size:1.15em; margin-bottom:2px; color:#c8c8c8;")
-              pct_color <- "#c8c8c8"
-              pct_label <- "--"
-            } else if (pct_change > 0) {
-              pct_icon <- icon("arrow-up", style = "font-size:1.15em; margin-bottom:2px; color:#00e676;")
-              pct_color <- "#00e676"
-              pct_label <- paste0("+", pct_change, "%")
-            } else if (pct_change < 0) {
-              pct_icon <- icon("arrow-down", style = "font-size:1.15em; margin-bottom:2px; color:#fd002b;")
-              pct_color <- "#fd002b"
-              pct_label <- paste0(pct_change, "%")
-            } else {
-              pct_icon <- icon("minus", style = "font-size:1.15em; margin-bottom:2px; color:#c8c8c8;")
-              pct_color <- "#c8c8c8"
-              pct_label <- "0%"
-            }
-            
-            vs_block <- if (!is.null(fecha_prev_label)) {
+          }
+          
+          if (is.na(pct_change)) {
+            pct_icon <- icon("minus", style = "font-size:1.15em; margin-bottom:2px; color:#c8c8c8;")
+            pct_color <- "#c8c8c8"
+            pct_label <- "--"
+          } else if (pct_change > 0) {
+            pct_icon <- icon("arrow-up", style = "font-size:1.15em; margin-bottom:2px; color:#00e676;")
+            pct_color <- "#00e676"
+            pct_label <- paste0("+", pct_change, "%")
+          } else if (pct_change < 0) {
+            pct_icon <- icon("arrow-down", style = "font-size:1.15em; margin-bottom:2px; color:#fd002b;")
+            pct_color <- "#fd002b"
+            pct_label <- paste0(pct_change, "%")
+          } else {
+            pct_icon <- icon("minus", style = "font-size:1.15em; margin-bottom:2px; color:#c8c8c8;")
+            pct_color <- "#c8c8c8"
+            pct_label <- "0%"
+          }
+          
+          vs_block <- if (!is.null(fecha_prev_label)) {
+            tags$span(
+              paste0("VS: ", fecha_prev_label),
+              style = "display:block; text-align:center; font-size:0.99em; color:#c8c8c8; font-weight:700; letter-spacing:0.3px; min-height:1.6em;"
+            )
+          } else {
+            tags$span("", style="display:block; min-height:1.6em;")
+          }
+          
+          # -------------------------------
+          #  VALUE BOX INDIVIDUAL EN SCROLL
+          # -------------------------------
+          tags$div(
+            style = "background: rgba(30,30,30,0.96); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:270px; max-width:370px; min-height:120px; padding: 12px 12px 11px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px; margin-right: 0.7em; overflow: hidden;",
+            tags$div(
+              style = "color:#00FFFF; font-size:1.16em; font-weight:600; margin-bottom:7px; letter-spacing:0.5px; text-align:center; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;",
+              metrica
+            ),
+            tags$div(
+              style = "display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: 28px 28px 22px; gap:1px 6px; align-items:center; width: 100%;",
+              
+              # FILA 1: ICONOS
+              tags$span(icon("users", style="color:#00FFFF; font-size:1.20em;"), style="grid-column:1; grid-row:1; text-align:center;"),
+              tags$span(icon("trophy", style="color:#7F00FF; font-size:1.20em;"), style="grid-column:2; grid-row:1; text-align:center;"),
+              tags$span(icon("user-minus", style="color:#fd002b; font-size:1.20em;"), style="grid-column:3; grid-row:1; text-align:center;"),
               tags$span(
-                paste0("VS: ", fecha_prev_label),
-                style = "display:block; text-align:center; font-size:0.99em; color:#c8c8c8; font-weight:700; letter-spacing:0.3px; min-height:1.6em;"
-              )
-            } else {
-              tags$span("", style="display:block; min-height:1.6em;")
-            }
-            
-            # BLOQUE CON GRID DE 4 COLUMNAS, 2 FILAS: iconos arriba, labels/valores abajo
-            column(
-              width = 4,
-              style = "padding: 0 10px; min-width:270px; max-width:370px;",
-              tags$div(
-                style = "background: rgba(30,30,30,0.96); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:270px; min-height:120px; padding: 12px 12px 11px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px;",
-                tags$div(
-                  style = "color:#00FFFF; font-size:1.16em; font-weight:600; margin-bottom:7px; letter-spacing:0.5px; text-align:center;",
-                  metrica
+                pct_icon,
+                style="grid-column:4; grid-row:1; text-align:center;"
+              ),
+              
+              # FILA 2: LABELS/NOMBRES/PORCENTAJE
+              tags$span("Players", style="font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center; grid-column:1; grid-row:2;"),
+              
+              # Mejor jugador con ellipsis y tooltip
+              tags$span(
+                title = ifelse(!is.na(best_row$Jugador), best_row$Jugador, "--"),
+                style = paste(
+                  "font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center;",
+                  "grid-column:2; grid-row:2;",
+                  "min-width:3.7em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; max-width:85px;"
                 ),
-                tags$div(
-                  style = "display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: 28px 28px 22px; gap:1px 6px; align-items:center; width: 100%;",
-                  
-                  # FILA 1: ICONOS
-                  tags$span(icon("users", style="color:#00FFFF; font-size:1.20em;"), style="grid-column:1; grid-row:1; text-align:center;"),
-                  tags$span(icon("trophy", style="color:#7F00FF; font-size:1.20em;"), style="grid-column:2; grid-row:1; text-align:center;"),
-                  tags$span(icon("user-minus", style="color:#fd002b; font-size:1.20em;"), style="grid-column:3; grid-row:1; text-align:center;"),
-                  tags$span(
-                    pct_icon,
-                    style="grid-column:4; grid-row:1; text-align:center;"
-                  ),
-                  
-                  # FILA 2: LABELS/NOMBRES/PORCENTAJE
-                  tags$span("Players", style="font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center; grid-column:1; grid-row:2;"),
-                  tags$span(
-                    paste0(ifelse(!is.na(best_row$Jugador), best_row$Jugador, "--")),
-                    style="font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center; grid-column:2; grid-row:2; min-width:3.7em; white-space:nowrap;"
-                  ),
-                  tags$span(
-                    paste0(ifelse(!is.na(worst_row$Jugador), worst_row$Jugador, "--")),
-                    style="font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center; grid-column:3; grid-row:2; min-width:3.7em; white-space:nowrap;"
-                  ),
-                  tags$span(
-                    pct_label,
-                    style = paste0(
-                      "font-weight:800; font-size:0.99em; color:", pct_color, 
-                      "; text-align:center; grid-column:4; grid-row:2; line-height:1.2; letter-spacing:0.5px;"
-                    )
-                  ),
-                  
-                  # FILA 3: VALORES y FECHA
-                  tags$span(n_players, style = "font-weight:700; color:#ffffff; font-size:1.06em; text-align:center; grid-column:1; grid-row:3;"),
-                  tags$span(
-                    if (!is.na(best_row$Valor)) round(best_row$Valor, 2) else "--",
-                    style = "color:#ffffff; font-size:1.06em; font-weight:700; text-align:center; grid-column:2; grid-row:3;"
-                  ),
-                  tags$span(
-                    if (!is.na(worst_row$Valor)) round(worst_row$Valor, 2) else "--",
-                    style = "color:#ffffff; font-size:1.06em; font-weight:700; text-align:center; grid-column:3; grid-row:3;"
-                  ),
-                  tags$span(
-                    if (!is.null(fecha_prev_label)) {
-                      tags$span(
-                        paste0("VS:", fecha_prev_label),
-                        style="font-size:0.65em; color:#ffffff; font-weight:700; text-align:center; display:block; margin-top:-2px;"
-                      )
-                    } else {
-                      tags$span("", style="font-size:0.65em;")
-                    },
-                    style="grid-column:4; grid-row:3; text-align:center;"
-                  ) 
+                ifelse(!is.na(best_row$Jugador), best_row$Jugador, "--")
+              ),
+              
+              # Peor jugador con ellipsis y tooltip
+              tags$span(
+                title = ifelse(!is.na(worst_row$Jugador), worst_row$Jugador, "--"),
+                style = paste(
+                  "font-weight:700; color:#c8c8c8; font-size:0.99em; text-align:center;",
+                  "grid-column:3; grid-row:2;",
+                  "min-width:3.7em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block; max-width:85px;"
+                ),
+                ifelse(!is.na(worst_row$Jugador), worst_row$Jugador, "--")
+              ),
+              
+              tags$span(
+                pct_label,
+                style = paste0(
+                  "font-weight:800; font-size:0.99em; color:", pct_color, 
+                  "; text-align:center; grid-column:4; grid-row:2; line-height:1.2; letter-spacing:0.5px;"
                 )
+              ),
+              
+              # FILA 3: VALORES y FECHA
+              tags$span(n_players, style = "font-weight:700; color:#ffffff; font-size:1.06em; text-align:center; grid-column:1; grid-row:3;"),
+              tags$span(
+                if (!is.na(best_row$Valor)) round(best_row$Valor, 2) else "--",
+                style = "color:#ffffff; font-size:1.06em; font-weight:700; text-align:center; grid-column:2; grid-row:3;"
+              ),
+              tags$span(
+                if (!is.na(worst_row$Valor)) round(worst_row$Valor, 2) else "--",
+                style = "color:#ffffff; font-size:1.06em; font-weight:700; text-align:center; grid-column:3; grid-row:3;"
+              ),
+              tags$span(
+                if (!is.null(fecha_prev_label)) {
+                  tags$span(
+                    paste0("VS:", fecha_prev_label),
+                    style="font-size:0.65em; color:#ffffff; font-weight:700; text-align:center; display:block; margin-top:-2px;"
+                  )
+                } else {
+                  tags$span("", style="font-size:0.65em;")
+                },
+                style="grid-column:4; grid-row:3; text-align:center;"
               )
             )
-          })
-        )
-      })
+          )
+        })
+      ),
+      tags$div(class = "fade-right")
     )
   })
   
@@ -3667,9 +3681,9 @@ server <- function(input, output, session) {
             mutate(
               Fecha = factor(Fecha, levels = sort(unique(Fecha))),
               tooltip = paste0(
-                "<b>Jugador:</b> ", Jugador,
-                "<br><b>Fecha:</b> ", Fecha,
-                "<br><b>Promedio:</b> ", round(Promedio, 2)
+                "<b>Player:</b> ", Jugador,
+                "<br><b>Date:</b> ", Fecha,
+                "<br><b>Mean:</b> ", round(Promedio, 2)
               )
             )
           
@@ -3679,8 +3693,8 @@ server <- function(input, output, session) {
             scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 5)]) +
             scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$Jugador)))) +
             labs(
-              title = paste("Promedio de", metrica_local, "por Fecha y Jugador"),
-              x = "Fecha", y = metrica_local
+              title = paste("Mean Of", metrica_local, "By Date & Player"),
+              x = "Date", y = metrica_local
             ) +
             theme_minimal(base_size = 14) +
             theme(
@@ -3740,7 +3754,7 @@ server <- function(input, output, session) {
               Jugador = .data[[input$player_col]],
               Valor = .data[[metrica_local]],
               tooltip = paste0(
-                "<b>Jugador:</b> ", Jugador,
+                "<b>Player:</b> ", Jugador,
                 "<br><b>Match Day:</b> ", MatchDay,
                 "<br><b>", metrica_local, ":</b> ", round(Valor, 2)
               )
@@ -3758,7 +3772,7 @@ server <- function(input, output, session) {
             ) +
             scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$MatchDay)))) +
             labs(
-              title = paste("Distribución de", metrica_local, "por Match Day"),
+              title = paste("Distribution of", metrica_local, "By Match Day"),
               x = "Match Day", y = metrica_local
             ) +
             theme_minimal(base_size = 14) +
@@ -3820,8 +3834,8 @@ server <- function(input, output, session) {
               Jugador = .data[[input$player_col]],
               Valor = .data[[metrica_local]],
               tooltip = paste0(
-                "<b>Jugador:</b> ", Jugador,
-                "<br><b>Tarea:</b> ", Tarea,
+                "<b>Player:</b> ", Jugador,
+                "<br><b>Task:</b> ", Tarea,
                 "<br><b>", metrica_local, ":</b> ", round(Valor, 2)
               )
             )
@@ -3839,8 +3853,8 @@ server <- function(input, output, session) {
             scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$Tarea)))) +
             theme_minimal(base_size = 14) +
             labs(
-              title = paste("Distribución de", metrica_local, "por Tarea"),
-              x = "Tarea", y = metrica_local
+              title = paste("Distribution of", metrica_local, "By Task"),
+              x = "Task", y = metrica_local
             ) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
@@ -3906,13 +3920,13 @@ server <- function(input, output, session) {
               z = (Valor - media_jugador) / sd_jugador,
               Fecha = as.Date(.data[[input$date_col]]),
               z_color = case_when(
-                z >= 1.5 ~ "Alto",
-                z <= -1.5 ~ "Bajo",
+                z >= 1.5 ~ "High",
+                z <= -1.5 ~ "Low",
                 TRUE ~ "Neutral"
               ),
               tooltip = paste0(
-                "<b>Jugador:</b> ", Jugador,
-                "<br><b>Fecha:</b> ", Fecha,
+                "<b>Player:</b> ", Jugador,
+                "<br><b>Date:</b> ", Fecha,
                 "<br><b>Z-score:</b> ", round(z, 2)
               )
             ) %>%
@@ -3928,7 +3942,7 @@ server <- function(input, output, session) {
           
           if (nrow(z_data) == 0) return(NULL)
           
-          colores_base <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
+          colores_base <- c("High" = "#e74c3c", "Low" = "#2ecc71", "Neutral" = "#f1c40f")
           fondo_rojo  <- "#fdecea"
           fondo_verde <- "#eafaf1"
           fecha_min <- min(z_data$Fecha, na.rm = TRUE)
@@ -3948,8 +3962,8 @@ server <- function(input, output, session) {
             facet_wrap(~Jugador, scales = "free_y", ncol = ncol_facetas) +
             theme_minimal(base_size = 14) +
             labs(
-              title = paste("Z-score de", metrica_local, "por jugador"),
-              x = "Fecha", y = "Z-score"
+              title = paste("Z-score of", metrica_local, "By Player"),
+              x = "Date", y = "Z-score"
             ) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
@@ -3995,12 +4009,12 @@ server <- function(input, output, session) {
       
       tagList(
         tags$hr(),
-        tags$h4(paste("Sesión –", metrica)),
+        tags$h4(paste("Sessión –", metrica)),
         
         # Filtro individual para la métrica
         sliderInput(
           inputId = paste0("filtro_metrica_valor_sesion_", metrica_clean),
-          label = paste("Filtrar valores de", metrica),
+          label = paste("Filter values of", metrica),
           min = floor(min(values)),
           max = ceiling(max(values)),
           value = c(floor(min(values)), ceiling(max(values)))
@@ -4049,7 +4063,7 @@ server <- function(input, output, session) {
             x = Jugador,
             y = Valor,
             fill = Valor,
-            text = paste0("<b>Jugador:</b> ", Jugador, "<br><b>Valor:</b> ", round(Valor, 2))
+            text = paste0("<b>Player:</b> ", Jugador, "<br><b>Value:</b> ", round(Valor, 2))
           )) +
             annotate("rect", xmin = -Inf, xmax = Inf,
                      ymin = media - sd_val, ymax = media + sd_val,
@@ -4063,8 +4077,8 @@ server <- function(input, output, session) {
             scale_fill_gradient(low = "#3498db", high = "#e74c3c") +
             theme_minimal(base_size = 14) +
             labs(
-              title = paste("Valores de", metrica_local, "por jugador – Sesión"),
-              x = "Jugador", y = metrica_local
+              title = paste("Values of", metrica_local, "By Player – Session"),
+              x = "Player", y = metrica_local
             ) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
@@ -4180,21 +4194,21 @@ server <- function(input, output, session) {
             mutate(
               z = (Valor - media_movil) / sd_movil,
               z_color = case_when(
-                z >= 1.5 ~ "Alto",
-                z <= -1.5 ~ "Bajo",
+                z >= 1.5 ~ "High",
+                z <= -1.5 ~ "Low",
                 TRUE ~ "Neutral"
               ),
-              tooltip = paste0("Jugador: ", Jugador, "<br>Z-score: ", round(z, 2))
+              tooltip = paste0("Player: ", Jugador, "<br>Z-score: ", round(z, 2))
             ) %>%
             filter(!is.na(z) & is.finite(z)) %>%
             arrange(z) %>%
             mutate(Jugador = factor(Jugador, levels = unique(Jugador)))
           
           if (nrow(data_final) == 0) {
-            return(plotly_empty(type = "bar") %>% layout(title = "No hay datos suficientes para mostrar el gráfico."))
+            return(plotly_empty(type = "bar") %>% layout(title = "Not Enough data to show a visualization."))
           }
           
-          colores <- c("Alto" = "#e74c3c", "Bajo" = "#2ecc71", "Neutral" = "#f1c40f")
+          colores <- c("High" = "#e74c3c", "Low" = "#2ecc71", "Neutral" = "#f1c40f")
           
           p <- ggplot(data_final, aes(x = Jugador, y = z, fill = z_color, text = tooltip)) +
             geom_col(width = 0.6) +
@@ -4204,8 +4218,8 @@ server <- function(input, output, session) {
             scale_fill_manual(values = colores, name = "Z-score") +
             theme_minimal(base_size = 14) +
             labs(
-              title = paste("Z-score – Partido del", input$filtro_sesion_selector_comp),
-              x = "Jugador", y = "Z-score"
+              title = paste("Z-score – Match Day", input$filtro_sesion_selector_comp),
+              x = "Player", y = "Z-score"
             ) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
@@ -4338,7 +4352,7 @@ server <- function(input, output, session) {
     
     if (nrow(resumen_final) == 0 || all(is.na(resumen_final$Z_score))) {
       return(DT::datatable(data.frame(
-        Métrica = "Sin datos",
+        Métrica = "No Data",
         Jugador = NA,
         Fecha = as.character(input$filtro_sesion_selector_comp),
         Valor = NA,
@@ -4469,7 +4483,7 @@ server <- function(input, output, session) {
             filter(!is.na(ACWR), is.finite(ACWR)) %>%
             mutate(
               Fecha = as.Date(.data[[input$date_col]]),
-              tooltip = paste0("Jugador: ", Jugador, "<br>Fecha: ", Fecha, "<br>ACWR: ", round(ACWR, 2)),
+              tooltip = paste0("Player: ", Jugador, "<br>Date: ", Fecha, "<br>ACWR: ", round(ACWR, 2)),
               color = case_when(
                 ACWR > 1.5 ~ "#fd002b",
                 ACWR >= 0.8 & ACWR <= 1.5 ~ "#eafaf1",
@@ -4509,8 +4523,8 @@ server <- function(input, output, session) {
             expand_limits(y = 0) +
             theme_minimal(base_size = 14) +
             labs(
-              title = paste("ACWR Exponencial –", metrica_local),
-              x = "Fecha", y = "ACWR"
+              title = paste("ACWR Exp –", metrica_local),
+              x = "Date", y = "ACWR"
             ) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
@@ -4645,7 +4659,7 @@ server <- function(input, output, session) {
             
             if (nrow(conteo_partidos) > 0) {
               showNotification(
-                paste0("⚠️ Jugadores con menos de ", input$ventana_movil_micro, " partidos: ",
+                paste0("⚠️ Players with less than ", input$ventana_movil_micro, " games: ",
                        paste(conteo_partidos$Jugador, collapse = ", ")),
                 type = "warning",
                 duration = 3
@@ -4658,15 +4672,15 @@ server <- function(input, output, session) {
                 metrica = metrica,
                 ratio = entreno / partido,
                 color_label = case_when(
-                  ratio > umbral_alto ~ "Alto",
-                  ratio < umbral_bajo ~ "Bajo",
+                  ratio > umbral_alto ~ "High",
+                  ratio < umbral_bajo ~ "Low",
                   TRUE ~ "Normal"
                 ),
                 # 🔴 Tooltip detallado
                 tooltip = paste0(
-                  "Jugador: ", Jugador,
-                  "<br>Acumulado: ", round(entreno, 1),
-                  "<br>Partido: ", round(partido, 1),
+                  "Player: ", Jugador,
+                  "<br>Session Cumulative: ", round(entreno, 1),
+                  "<br>Md Rolling AVG: ", round(partido, 1),
                   "<br>Ratio: ", round(ratio, 2)
                 )
               )
@@ -4675,12 +4689,12 @@ server <- function(input, output, session) {
           
           df <- bind_rows(resultados)
           if (nrow(df) == 0) {
-            showNotification("❌ No hay datos para graficar. Ajustá los filtros o seleccioná otras fechas o métricas.", type = "error", duration = 8)
+            showNotification("❌  There is no data to display. Adjust the filters or select different dates or metrics.", type = "error", duration = 8)
             return(NULL)
           }
           
           # Colores SIEMPRE los 3 labels, en el orden correcto
-          scale_colors <- c("Alto" = "#fd002b", "Bajo" = "#00e676", "Normal" = "#c8c8c8")
+          scale_colors <- c("High" = "#fd002b", "Low" = "#00e676", "Normal" = "#c8c8c8")
           
           # 📊 GRAFICO
           p <- ggplot(df, aes(
@@ -4693,7 +4707,7 @@ server <- function(input, output, session) {
             facet_wrap(~metrica, scales = "free_y") +
             geom_hline(yintercept = 1, linetype = "dashed", color = "#ffffff") +
             scale_fill_manual(values = scale_colors, name = "Ratio") +
-            labs(title = "⚖️ Ratio Partido vs Semana", x = "Jugador", y = "Ratio (Partido / Entreno)") +
+            labs(title = "⚖️ Ratio MD Rolling AVG vs Session Cumulative", x = "Player", y = "Ratio (Match / Training)") +
             theme_minimal(base_size = 14) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
@@ -4758,7 +4772,7 @@ server <- function(input, output, session) {
   output$cuadrante_plot_ui <- renderUI({
     req(input$metricas_cuad)
     if (length(input$metricas_cuad) != 2) {
-      return(tags$p("Seleccioná exactamente 2 métricas para visualizar el cuadrante.", style = "color:#fd002b; font-size:1.1em; font-weight:600; text-align:center; margin-top:2em;"))
+      return(tags$p("Select exactly 2 metrics to display the quadrant.", style = "color:#fd002b; font-size:1.1em; font-weight:600; text-align:center; margin-top:2em;"))
     }
     plotlyOutput("plot_cuadrante", height = "600px")
   })
@@ -4819,19 +4833,19 @@ server <- function(input, output, session) {
     
     # 3. Crear variable de cuadrante para colores y labels
     data$cuadrante <- dplyr::case_when(
-      data[[met_x]] >= x_med & data[[met_y]] >= y_med ~ "Alto-Alto",
-      data[[met_x]] <  x_med & data[[met_y]] >= y_med ~ "Bajo-Alto",
-      data[[met_x]] <  x_med & data[[met_y]] <  y_med ~ "Bajo-Bajo",
-      data[[met_x]] >= x_med & data[[met_y]] <  y_med ~ "Alto-Bajo"
+      data[[met_x]] >= x_med & data[[met_y]] >= y_med ~ "High-High",
+      data[[met_x]] <  x_med & data[[met_y]] >= y_med ~ "Low-High",
+      data[[met_x]] <  x_med & data[[met_y]] <  y_med ~ "Low-Low",
+      data[[met_x]] >= x_med & data[[met_y]] <  y_med ~ "High-Low"
     )
-    data$cuadrante <- factor(data$cuadrante, levels = c("Alto-Alto", "Bajo-Alto", "Bajo-Bajo", "Alto-Bajo"))
+    data$cuadrante <- factor(data$cuadrante, levels = c("High-High", "Low-High", "Low-Low", "High-Low"))
     
     # 4. Paleta de colores cuadrantes (LIFT)
     colores_cuadrante <- c(
-      "Alto-Alto" = "#fd002b",  # Rojo
-      "Bajo-Alto" = "#7F00FF",  # Violeta
-      "Bajo-Bajo" = "#00e676",  # Verde
-      "Alto-Bajo" = "#00FFFF"   # Cyan
+      "High-High" = "#fd002b",  # Rojo
+      "Low-High" = "#7F00FF",  # Violeta
+      "Low-Low" = "#00e676",  # Verde
+      "High-Low" = "#00FFFF"   # Cyan
     )
     
     # 5. Armar plot
@@ -4841,18 +4855,18 @@ server <- function(input, output, session) {
       color = cuadrante,
       label = .data[[input$player_col]],
       text = paste0(
-        "Jugador: ", .data[[input$player_col]], "<br>",
+        "Player: ", .data[[input$player_col]], "<br>",
         met_x, ": ", round(.data[[met_x]], 2), "<br>",
         met_y, ": ", round(.data[[met_y]], 2), "<br>",
-        "Cuadrante: ", cuadrante
+        "Quadrant: ", cuadrante
       )
     )) +
       geom_point(size = 5, alpha = 0.95) +
-      scale_color_manual(values = colores_cuadrante, name = "Cuadrante") +
+      scale_color_manual(values = colores_cuadrante, name = "Quadrant") +
       geom_vline(xintercept = x_med, linetype = "dashed", color = "#c8c8c8") +
       geom_hline(yintercept = y_med, linetype = "dashed", color = "#c8c8c8") +
       labs(
-        title = paste0("Gráfico de Cuadrante: ", met_x, " vs ", met_y),
+        title = paste0("Quadrant: ", met_x, " vs ", met_y),
         x = met_x, y = met_y
       ) +
       theme_minimal(base_size = 15) +
