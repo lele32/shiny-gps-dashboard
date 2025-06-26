@@ -82,6 +82,33 @@ The uploaded file should contain at least some of the following columns:
 
 ---
 
+ **🟦 Value Boxes and KPI Chips **
+
+Each major visualization tab features a row of value boxes (“KPIs”) above the plot, showing quick stats per selected metric.
+All value boxes include horizontal scroll when more than three metrics are selected, for clean presentation.
+	•	What you see in a value box:
+	•	Metric Name (centered, prominent color).
+	•	Mini-KPI grid: Number of players, best/worst player and value, change vs previous session, or stat summary (mean, IQR, etc).
+	•	Chips (“badges”) indicating status, such as:
+	•	🔴 Red: High risk or abnormal value (e.g. Z-score > 1.5, ACWR > 1.5).
+	•	🟢 Green: Low or safe value (e.g. Z-score < -1.5, ACWR < 0.8).
+	•	⚪️ Grey chip: Shown when no player meets the high/low criterion (shows 0 and a dash icon).
+
+Chips are always visible (grey with 0 if there are no cases), ensuring a consistent interface and fast at-a-glance review.
+
+Example value box logic:
+	•	ACWR:
+	•	Red chip: ACWR > 1.5
+	•	Green chip: ACWR < 0.8
+	•	Grey chip: No players in that category
+	•	Z-score (Competitive & Over Time):
+	•	Red chip: Z ≥ 1.5
+	•	Green chip: Z ≤ -1.5
+	•	Grey chip: No players in that category
+
+All chips are interactive: Click to see a modal listing affected players.
+
+
 ## 📊 Available visualizations
 
 1. **📅 Metric over Time**
@@ -146,12 +173,6 @@ The uploaded file should contain at least some of the following columns:
 
 - 🧾 **PDF Report Export**
 	•	By player, session, or period
-
-- 💡 **KPIs Panels**
-  	•	Key indicators by session or player (Player Load, HSR, etc.) using Principal Component Analysis
-
-- 🎯 **nfo cards per tab**
-  - Use  `valueBox` to display key indicators on each visualization tab
 
 - 🧩 **Exploration of new widgets**
   - Alternatives like `echarts4r`, `highcharter`, `shinyWidgets`, etc.
