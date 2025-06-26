@@ -276,7 +276,7 @@ ui <- fluidPage(
       style = "margin-bottom: 15px; filter: drop-shadow(0 0 8px rgba(0,255,255,0.3));"
     ),
     
-    tags$h2( tags$img(src = "GPSLIFT.png", height = "32px", style = "vertical-align:middle; margin-right: 8px;"),
+    tags$h2( tags$img(src = "GPSLIFT.png", height = "60px", style = "vertical-align:middle; margin-right: 8px;"),
              "GPS Data Dashboard"
     )),
   
