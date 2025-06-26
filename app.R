@@ -182,37 +182,50 @@ ui <- fluidPage(
       }
 
       /* ========== SCROLL HORIZONTAL VALUE BOXES ========== */
-      .scroll-fade-container {
-        position: relative;
-        width: 350px;    /* O el valor que definas, ajustá si querés más/menos ancho */
-        margin: 0 auto;
-        padding-top: 0;
-        padding-bottom: 0;
-      }
-      .scroll-fade-content {
-        overflow-x: auto;
-        overflow-y: hidden;
-        white-space: nowrap;
-        padding-bottom: 10px;
-        scrollbar-color: #00FFFF #232323;
-        scrollbar-width: thin;
-        -webkit-overflow-scrolling: touch;
-        display: block;
-      }
+     .scroll-fade-container {
+  position: relative;
+  width: 100%;           /* Mejor usar 100% y ajustar el max-width inline si hace falta */
+  max-width: 350px;      /* O el que te funcione mejor para tu dashboard */
+  min-width: 260px;
+  margin: 0 auto;
+  ppadding: 0;
+  flex: 1 1 320px;
+  box-sizing: border-box;
+}
+
+.scroll-fade-content {
+  display: flex;
+  flex-direction: row;
+  gap: 0.7em;            /* Espacio entre value boxes */
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  min-height: 110px;
+  background: rgba(36,40,52,0.81);
+  border-radius: 18px;
+  box-shadow: 0 2px 14px #22222240;
+  padding: 0 28px;
+  padding-bottom: 10px;
+  scrollbar-color: #00FFFF #232323;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
       .fade-left, .fade-right {
         position: absolute;
         top: 0; bottom: 0;
-        width: 36px;
+        width: 28px;
         pointer-events: none;
         z-index: 2;
+        transition: opacity 0.25s;
+        height: 100%;
       }
       .fade-left {
         left: 0;
-        background: linear-gradient(to right, rgba(30,30,30,0.92) 85%, rgba(30,30,30,0.01) 100%);
+        background: linear-gradient(to right, rgba(30,30,30,0.92) 60%, rgba(30,30,30,0.01) 100%);
       }
       .fade-right {
         right: 0;
-        background: linear-gradient(to left, rgba(30,30,30,0.92) 85%, rgba(30,30,30,0.01) 100%);
+        background: linear-gradient(to left, rgba(30,30,30,0.92) 60%, rgba(30,30,30,0.01) 100%);
       }
     "))
   ),
@@ -329,10 +342,17 @@ ui <- fluidPage(
               column(
                 width = 8,
                 class = "glass-box",
-                # 🔹 KPIs arriba del gráfico
-                fluidRow(
-                  style = "margin-bottom: 8px; margin-top: 0px; justify-content:center;",
-                  uiOutput("kpi_row_time")
+                # 🔹 KPIs arriba del gráfico con SCROLL responsivo
+                tags$div(
+                  class = "scroll-fade-container",
+                  style = "width: 100%; min-width: 260px; position: relative; padding: 0;",
+                  tags$div(class = "fade-left"),
+                  tags$div(
+                    class = "scroll-fade-content",
+                    style = "padding-bottom: 0; min-height: 120px;",
+                    uiOutput("kpi_row_time")
+                  ),
+                  tags$div(class = "fade-right")
                 ),
                 uiOutput("barras_fecha_ui")
               )
@@ -2464,46 +2484,51 @@ server <- function(input, output, session) {
   output$kpi_row_time <- renderUI({
     req(filtro_data(), input$metric, length(input$metric) > 0)
     met_list <- input$metric
-    div(
-      style = "display: flex; flex-wrap: wrap; justify-content: center; gap: 18px; margin-bottom: 8px; margin-top: 0px;",
-      lapply(met_list, function(metrica) {
-        datos <- filtro_data()[[metrica]]
-        n_sessions <- length(unique(filtro_data()[[input$date_col]]))
-        mean_val <- round(mean(suppressWarnings(as.numeric(datos)), na.rm = TRUE), 2)
-        max_val <- round(max(suppressWarnings(as.numeric(datos)), na.rm = TRUE), 2)
-        div(
-          style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width: 240px; max-width: 340px; min-height: 110px; padding: 13px 16px 11px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 7px;",
+    # Cada value box se acomoda horizontalmente por el scroll CSS
+    lapply(met_list, function(metrica) {
+      datos <- filtro_data()[[metrica]]
+      n_sessions <- length(unique(filtro_data()[[input$date_col]]))
+      mean_val <- round(mean(suppressWarnings(as.numeric(datos)), na.rm = TRUE), 2)
+      max_val <- round(max(suppressWarnings(as.numeric(datos)), na.rm = TRUE), 2)
+      tags$div(
+        style = "
+        min-width: 240px; max-width: 340px; flex: 0 0 260px;
+        background: rgba(30,30,30,0.92);
+        border-radius: 18px;
+        box-shadow: 0 2px 8px #10101040;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        margin-bottom: 7px; margin-right: 0.7em;
+      ",
+        tags$div(
+          style = "color:#00FFFF; font-size:1.17em; font-weight:600; margin-bottom:4px; letter-spacing:0.5px; text-align:center; width:100%;",
+          metrica
+        ),
+        tags$div(
+          style = "display:flex; flex-direction:row; gap:18px; justify-content:center; align-items:center;",
+          # n sesiones
           tags$div(
-            style = "color:#00FFFF; font-size:1.17em; font-weight:600; margin-bottom:4px; letter-spacing:0.5px;",
-            metrica
+            style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+            tags$span(icon("calendar-check"), style = "font-size:1.38em; color:#fd002b; margin-bottom:2px;"),
+            tags$span(n_sessions, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
+            tags$span("Sessions", style = "font-size:0.92em; color:#c8c8c8;")
           ),
+          # Media
           tags$div(
-            style = "display:flex; flex-direction:row; gap:18px; justify-content:center; align-items:center;",
-            # n sesiones
-            tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("calendar-check"), style = "font-size:1.38em; color:#fd002b; margin-bottom:2px;"),
-              tags$span(n_sessions, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
-              tags$span("Sessions", style = "font-size:0.92em; color:#c8c8c8;")
-            ),
-            # Media
-            tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("chart-line"), style = "font-size:1.38em; color:#00e676; margin-bottom:2px;"),
-              tags$span(mean_val, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
-              tags$span("Mean", style = "font-size:0.92em; color:#c8c8c8;")
-            ),
-            # Máximo
-            tags$div(
-              style = "display:flex; flex-direction:column; align-items:center;",
-              tags$span(icon("trophy"), style = "font-size:1.38em; color:#7F00FF; margin-bottom:2px;"),
-              tags$span(max_val, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
-              tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
-            )
+            style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+            tags$span(icon("chart-line"), style = "font-size:1.38em; color:#00e676; margin-bottom:2px;"),
+            tags$span(mean_val, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
+            tags$span("Mean", style = "font-size:0.92em; color:#c8c8c8;")
+          ),
+          # Máximo
+          tags$div(
+            style = "display:flex; flex-direction:column; align-items:center;",
+            tags$span(icon("trophy"), style = "font-size:1.38em; color:#7F00FF; margin-bottom:2px;"),
+            tags$span(max_val, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
+            tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
           )
         )
-      })
-    )
+      )
+    })
   })
   
   # 🔷 KPIs arriba del boxplot Match Day
@@ -4812,5 +4837,4 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-
 
