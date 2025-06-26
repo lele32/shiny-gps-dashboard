@@ -217,8 +217,6 @@ ui <- fluidPage(
     "))
   ),
   
-  # ...El resto de tu UI...
-  
   # Encabezado principal estilo Hero minimalista
   tags$div(
     style = "
@@ -534,7 +532,6 @@ ui <- fluidPage(
                   # --- KPIs/CHIPS ---
                   tags$div(
                     style = "
-    background: rgba(36,40,52,0.81);
     border-radius: 18px;
     box-shadow: 0 2px 14px #22222240;
     min-width: 240px;
@@ -555,7 +552,7 @@ ui <- fluidPage(
                   # --- Acute Box ---
                   tags$div(
                     style = "
-            background: rgba(36,40,52,0.81);
+            background: rgba(30,30,30,0.92);
             border-radius: 18px;
             box-shadow: 0 2px 14px #22222240;
             min-width: 220px;
@@ -580,7 +577,7 @@ ui <- fluidPage(
                   # --- Chronic Box ---
                   tags$div(
                     style = "
-            background: rgba(36,40,52,0.81);
+            background: rgba(30,30,30,0.92);
             border-radius: 18px;
             box-shadow: 0 2px 14px #22222240;
             min-width: 220px;
@@ -643,7 +640,7 @@ ui <- fluidPage(
                 class = "glass-box",
                 # 👇 Bloque glass para umbrales + subtítulo
                 tags$div(
-                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; background: rgba(30,30,30,0.85); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
+                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
                   tags$p("Ajustá los umbrales de ratio por métrica:", style = "color: #ffffff; font-size: 1.12em; text-align: center; margin-bottom: 0.2em; letter-spacing: 0.5px;"),
                   uiOutput("umbral_ratio_microciclo_ui")  # Acá van los sliders por métrica
                 ),
@@ -692,7 +689,7 @@ ui <- fluidPage(
                 class = "glass-box",
                 style = "border-radius: 24px; padding: 22px 16px 14px 16px;",
                 tags$div(
-                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; background: rgba(30,30,30,0.85); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
+                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
                   tags$p("Ajustá el rango de valores para cada métrica seleccionada:", 
                          style = "color: #ffffff; font-size: 1.12em; text-align: center; margin-bottom: 0.2em; letter-spacing: 0.5px;"),
                   uiOutput("sliders_metricas_cuad")  # Los sliders dinámicos por métrica
@@ -3422,32 +3419,51 @@ server <- function(input, output, session) {
             padding: 14px 18px 10px 16px;
             overflow: hidden;
           ",
-            tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
+            tags$div(
+              style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;text-align:center;", 
+              metrica
+            ),
             tags$div(
               style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
-              # CHIP ROJO
+              # CHIP ROJO o GRIS
               tags$div(
                 style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
-                if (nrow(high_acwr) > 0) tags$div(
-                  id = paste0("chip_high_acwr_", metrica_id),
-                  `data-metric` = metrica,
-                  onclick = sprintf("Shiny.setInputValue('show_players_gt15_acwr', '%s', {priority: 'event'})", metrica),
-                  style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
-                  tags$span(nrow(high_acwr), style = "font-size:1.25em; font-weight:600;"),
-                  tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
-                )
+                if (nrow(high_acwr) > 0) {
+                  tags$div(
+                    id = paste0("chip_high_acwr_", metrica_id),
+                    `data-metric` = metrica,
+                    onclick = sprintf("Shiny.setInputValue('show_players_gt15_acwr', '%s', {priority: 'event'})", metrica),
+                    style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                    tags$span(nrow(high_acwr), style = "font-size:1.25em; font-weight:600;"),
+                    tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                  )
+                } else {
+                  tags$div(
+                    style = "background:#6b6b6b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; display:flex; flex-direction:column; align-items:center; min-width:37px; opacity:0.85;",
+                    tags$span(0, style = "font-size:1.25em; font-weight:600;"),
+                    tags$i(class = "bi bi-dash-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                  )
+                }
               ),
-              # CHIP VERDE
+              # CHIP VERDE o GRIS
               tags$div(
                 style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
-                if (nrow(low_acwr) > 0) tags$div(
-                  id = paste0("chip_low_acwr_", metrica_id),
-                  `data-metric` = metrica,
-                  onclick = sprintf("Shiny.setInputValue('show_players_lt08_acwr', '%s', {priority: 'event'})", metrica),
-                  style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
-                  tags$span(nrow(low_acwr), style = "font-size:1.25em; font-weight:600;"),
-                  tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
-                )
+                if (nrow(low_acwr) > 0) {
+                  tags$div(
+                    id = paste0("chip_low_acwr_", metrica_id),
+                    `data-metric` = metrica,
+                    onclick = sprintf("Shiny.setInputValue('show_players_lt08_acwr', '%s', {priority: 'event'})", metrica),
+                    style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                    tags$span(nrow(low_acwr), style = "font-size:1.25em; font-weight:600;"),
+                    tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                  )
+                } else {
+                  tags$div(
+                    style = "background:#6b6b6b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; display:flex; flex-direction:column; align-items:center; min-width:37px; opacity:0.85;",
+                    tags$span(0, style = "font-size:1.25em; font-weight:600;"),
+                    tags$i(class = "bi bi-dash-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                  )
+                }
               ),
               # Total Players
               tags$span(

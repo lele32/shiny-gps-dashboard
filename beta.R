@@ -217,8 +217,6 @@ ui <- fluidPage(
     "))
   ),
   
-  # ...El resto de tu UI...
-  
   # Encabezado principal estilo Hero minimalista
   tags$div(
     style = "
@@ -460,7 +458,7 @@ ui <- fluidPage(
           # 🟦 TAB PANEL: Análisis Competitivo + KPIs
           #-------------------------------
           
-            tabPanel(
+          tabPanel(
             title = tagList(tags$i(class = "bi bi-trophy"), "Competitive Analysis"),
             fluidRow(
               # ==== Columna de filtros (izquierda) ====
@@ -534,7 +532,6 @@ ui <- fluidPage(
                   # --- KPIs/CHIPS ---
                   tags$div(
                     style = "
-    background: rgba(36,40,52,0.81);
     border-radius: 18px;
     box-shadow: 0 2px 14px #22222240;
     min-width: 240px;
@@ -555,7 +552,7 @@ ui <- fluidPage(
                   # --- Acute Box ---
                   tags$div(
                     style = "
-            background: rgba(36,40,52,0.81);
+            background: rgba(30,30,30,0.92);
             border-radius: 18px;
             box-shadow: 0 2px 14px #22222240;
             min-width: 220px;
@@ -580,7 +577,7 @@ ui <- fluidPage(
                   # --- Chronic Box ---
                   tags$div(
                     style = "
-            background: rgba(36,40,52,0.81);
+            background: rgba(30,30,30,0.92);
             border-radius: 18px;
             box-shadow: 0 2px 14px #22222240;
             min-width: 220px;
@@ -643,7 +640,7 @@ ui <- fluidPage(
                 class = "glass-box",
                 # 👇 Bloque glass para umbrales + subtítulo
                 tags$div(
-                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; background: rgba(30,30,30,0.85); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
+                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
                   tags$p("Ajustá los umbrales de ratio por métrica:", style = "color: #ffffff; font-size: 1.12em; text-align: center; margin-bottom: 0.2em; letter-spacing: 0.5px;"),
                   uiOutput("umbral_ratio_microciclo_ui")  # Acá van los sliders por métrica
                 ),
@@ -692,7 +689,7 @@ ui <- fluidPage(
                 class = "glass-box",
                 style = "border-radius: 24px; padding: 22px 16px 14px 16px;",
                 tags$div(
-                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; background: rgba(30,30,30,0.85); border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
+                  style = "display: flex; flex-direction: column; gap: 0.6em; align-items: center; border-radius: 20px; padding: 14px 0 10px 0; margin-bottom: 14px;",
                   tags$p("Ajustá el rango de valores para cada métrica seleccionada:", 
                          style = "color: #ffffff; font-size: 1.12em; text-align: center; margin-bottom: 0.2em; letter-spacing: 0.5px;"),
                   uiOutput("sliders_metricas_cuad")  # Los sliders dinámicos por métrica
@@ -3247,168 +3244,168 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   
   # Low Z-score (≤ -1.5)
-observeEvent(input$show_players_lt15_comp, {
-  req(input$show_players_lt15_comp, read_data(), input$filtro_sesion_selector_comp)
-  metrica <- input$show_players_lt15_comp
-  filtro_id <- paste0("filtro_metrica_valor_z_comp_", make.names(metrica))
-  val_range <- input[[filtro_id]]
-  if (is.null(val_range) || length(val_range) != 2) return(NULL)
-  window_size <- input$ventana_movil_z_comp
-  player_col <- input$player_col
-  date_col <- input$date_col
-  data_full <- read_data()
-  data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-  data_full <- data_full[!is.na(data_full[[date_col]]), ]
-  
-  # Aplicar los mismos filtros que el gráfico y value box
-  if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
-    data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
-    data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
-  }
-  data_full <- data_full %>%
-    filter(
-      is.finite(.data[[metrica]]),
-      if (!is.null(input$filtro_jugador_z_comp)) .data[[player_col]] %in% input$filtro_jugador_z_comp else TRUE,
-      if (!is.null(input$filtro_puesto_z_comp) && input$position_col %in% names(.)) .data[[input$position_col]] %in% input$filtro_puesto_z_comp else TRUE,
-      if (!is.null(input$filtro_tarea_z_comp) && input$task_col %in% names(.)) .data[[input$task_col]] %in% input$filtro_tarea_z_comp else TRUE
-    )
-  # Filtro duración
-  if (!is.null(input$filtro_duracion_input_z_comp)) {
-    dur <- NULL
-    if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
-      dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
-    } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
-               input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
-      hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
-      hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
-      dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+  observeEvent(input$show_players_lt15_comp, {
+    req(input$show_players_lt15_comp, read_data(), input$filtro_sesion_selector_comp)
+    metrica <- input$show_players_lt15_comp
+    filtro_id <- paste0("filtro_metrica_valor_z_comp_", make.names(metrica))
+    val_range <- input[[filtro_id]]
+    if (is.null(val_range) || length(val_range) != 2) return(NULL)
+    window_size <- input$ventana_movil_z_comp
+    player_col <- input$player_col
+    date_col <- input$date_col
+    data_full <- read_data()
+    data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data_full <- data_full[!is.na(data_full[[date_col]]), ]
+    
+    # Aplicar los mismos filtros que el gráfico y value box
+    if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
+      data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
+      data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
     }
-    if (!is.null(dur)) {
-      keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
-      data_full <- data_full[keep, ]
-    }
-  }
-  # Filtro valor de métrica
-  if (!is.null(val_range) && metrica %in% names(data_full)) {
-    vals <- suppressWarnings(as.numeric(data_full[[metrica]]))
-    keep <- !is.na(vals) & vals >= val_range[1] & vals <= val_range[2]
-    data_full <- data_full[keep, ]
-  }
-  
-  # Calcular rolling Z-score
-  fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-  stats_movil <- data_full %>%
-    filter(.data[[date_col]] < fecha_partido) %>%
-    arrange(.data[[player_col]], .data[[date_col]]) %>%
-    group_by(Jugador = .data[[player_col]]) %>%
-    summarise(
-      media_movil = if (n() >= window_size) mean(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
-      sd_movil = if (n() >= window_size) sd(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
-      .groups = "drop"
-    )
-  data_sesion <- data_full %>%
-    filter(as.character(.data[[date_col]]) == input$filtro_sesion_selector_comp) %>%
-    group_by(Jugador = .data[[player_col]]) %>%
-    summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
-  data_final <- left_join(data_sesion, stats_movil, by = "Jugador") %>%
-    mutate(z = (Valor - media_movil) / sd_movil) %>%
-    filter(!is.na(z) & is.finite(z) & z <= -1.5)
-  
-  showModal(
-    modalDialog(
-      title = paste("Players with Z ≤ -1.5 in", metrica),
-      if (nrow(data_final) == 0) tags$p("No players found.", style = "color:#25b659; font-weight:600;") else
-        tags$ul(
-          lapply(seq_len(nrow(data_final)), function(i) {
-            tags$li(
-              tags$span(data_final$Jugador[i], style = "font-weight:600; color:#25b659;"),
-              tags$span(sprintf(" (Z = %.2f)", data_final$z[i]),
-                        style = "color:#25b659; margin-left:3px; font-size:0.97em;")
-            )
-          })
-        ),
-      easyClose = TRUE,
-      size = "m"
-    )
-  )
-}, ignoreInit = TRUE)
-  
-# =======================================
-#  🔷 KPIs Glassmorphism para ACWR
-# =======================================  
-#' 🔷 Tabla auxiliar para KPIs ACWR: obtiene ACWR sólo de la última sesión de cada jugador tras todos los filtros aplicados
-tabla_acwr_ultima_sesion <- function(metrica, val_range) {
-  req(read_data(), input$player_col, input$date_col, input$acwr_agudo_dias, input$acwr_cronico_dias)
-  data <- filtro_data_acwr(metrica, val_range) # Aplica todos los filtros ya definidos
-  
-  # Parsear y ordenar fechas
-  data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-  data <- data[!is.na(data[[input$date_col]]), ]
-  data <- data[order(data[[input$player_col]], data[[input$date_col]]), ]
-  
-  # EWMA params
-  dias_agudo <- input$acwr_agudo_dias
-  dias_cronico <- input$acwr_cronico_dias
-  lambda_agudo <- log(2) / dias_agudo
-  lambda_cronico <- log(2) / dias_cronico
-  
-  # EWMA personalizada
-  ewma_custom <- function(x, lambda) {
-    if (length(x) == 0 || all(is.na(x))) return(rep(NA_real_, length(x)))
-    out <- numeric(length(x))
-    out[1] <- x[1]
-    if (length(x) > 1) {
-      for (i in 2:length(x)) {
-        out[i] <- lambda * x[i] + (1 - lambda) * out[i - 1]
+    data_full <- data_full %>%
+      filter(
+        is.finite(.data[[metrica]]),
+        if (!is.null(input$filtro_jugador_z_comp)) .data[[player_col]] %in% input$filtro_jugador_z_comp else TRUE,
+        if (!is.null(input$filtro_puesto_z_comp) && input$position_col %in% names(.)) .data[[input$position_col]] %in% input$filtro_puesto_z_comp else TRUE,
+        if (!is.null(input$filtro_tarea_z_comp) && input$task_col %in% names(.)) .data[[input$task_col]] %in% input$filtro_tarea_z_comp else TRUE
+      )
+    # Filtro duración
+    if (!is.null(input$filtro_duracion_input_z_comp)) {
+      dur <- NULL
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
+        dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
+      } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
+                 input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
+        hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
+        hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
+        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      }
+      if (!is.null(dur)) {
+        keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
+        data_full <- data_full[keep, ]
       }
     }
-    return(out)
+    # Filtro valor de métrica
+    if (!is.null(val_range) && metrica %in% names(data_full)) {
+      vals <- suppressWarnings(as.numeric(data_full[[metrica]]))
+      keep <- !is.na(vals) & vals >= val_range[1] & vals <= val_range[2]
+      data_full <- data_full[keep, ]
+    }
+    
+    # Calcular rolling Z-score
+    fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    stats_movil <- data_full %>%
+      filter(.data[[date_col]] < fecha_partido) %>%
+      arrange(.data[[player_col]], .data[[date_col]]) %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(
+        media_movil = if (n() >= window_size) mean(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
+        sd_movil = if (n() >= window_size) sd(tail(.data[[metrica]], window_size), na.rm = TRUE) else NA_real_,
+        .groups = "drop"
+      )
+    data_sesion <- data_full %>%
+      filter(as.character(.data[[date_col]]) == input$filtro_sesion_selector_comp) %>%
+      group_by(Jugador = .data[[player_col]]) %>%
+      summarise(Valor = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+    data_final <- left_join(data_sesion, stats_movil, by = "Jugador") %>%
+      mutate(z = (Valor - media_movil) / sd_movil) %>%
+      filter(!is.na(z) & is.finite(z) & z <= -1.5)
+    
+    showModal(
+      modalDialog(
+        title = paste("Players with Z ≤ -1.5 in", metrica),
+        if (nrow(data_final) == 0) tags$p("No players found.", style = "color:#25b659; font-weight:600;") else
+          tags$ul(
+            lapply(seq_len(nrow(data_final)), function(i) {
+              tags$li(
+                tags$span(data_final$Jugador[i], style = "font-weight:600; color:#25b659;"),
+                tags$span(sprintf(" (Z = %.2f)", data_final$z[i]),
+                          style = "color:#25b659; margin-left:3px; font-size:0.97em;")
+              )
+            })
+          ),
+        easyClose = TRUE,
+        size = "m"
+      )
+    )
+  }, ignoreInit = TRUE)
+  
+  # =======================================
+  #  🔷 KPIs Glassmorphism para ACWR
+  # =======================================  
+  #' 🔷 Tabla auxiliar para KPIs ACWR: obtiene ACWR sólo de la última sesión de cada jugador tras todos los filtros aplicados
+  tabla_acwr_ultima_sesion <- function(metrica, val_range) {
+    req(read_data(), input$player_col, input$date_col, input$acwr_agudo_dias, input$acwr_cronico_dias)
+    data <- filtro_data_acwr(metrica, val_range) # Aplica todos los filtros ya definidos
+    
+    # Parsear y ordenar fechas
+    data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data <- data[!is.na(data[[input$date_col]]), ]
+    data <- data[order(data[[input$player_col]], data[[input$date_col]]), ]
+    
+    # EWMA params
+    dias_agudo <- input$acwr_agudo_dias
+    dias_cronico <- input$acwr_cronico_dias
+    lambda_agudo <- log(2) / dias_agudo
+    lambda_cronico <- log(2) / dias_cronico
+    
+    # EWMA personalizada
+    ewma_custom <- function(x, lambda) {
+      if (length(x) == 0 || all(is.na(x))) return(rep(NA_real_, length(x)))
+      out <- numeric(length(x))
+      out[1] <- x[1]
+      if (length(x) > 1) {
+        for (i in 2:length(x)) {
+          out[i] <- lambda * x[i] + (1 - lambda) * out[i - 1]
+        }
+      }
+      return(out)
+    }
+    
+    # Calcular ACWR por jugador
+    tabla <- data %>%
+      arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
+      group_by(Jugador = .data[[input$player_col]]) %>%
+      mutate(
+        EWMA_agudo = ewma_custom(.data[[metrica]], lambda_agudo),
+        EWMA_cronico = ewma_custom(.data[[metrica]], lambda_cronico),
+        ACWR = EWMA_agudo / EWMA_cronico,
+        Fecha = as.Date(.data[[input$date_col]])
+      ) %>%
+      filter(!is.na(ACWR), is.finite(ACWR)) %>%
+      slice_max(Fecha, n = 1, with_ties = FALSE) %>%   # SOLO ÚLTIMA SESIÓN
+      ungroup()
+    
+    return(tabla)
   }
   
-  # Calcular ACWR por jugador
-  tabla <- data %>%
-    arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
-    group_by(Jugador = .data[[input$player_col]]) %>%
-    mutate(
-      EWMA_agudo = ewma_custom(.data[[metrica]], lambda_agudo),
-      EWMA_cronico = ewma_custom(.data[[metrica]], lambda_cronico),
-      ACWR = EWMA_agudo / EWMA_cronico,
-      Fecha = as.Date(.data[[input$date_col]])
-    ) %>%
-    filter(!is.na(ACWR), is.finite(ACWR)) %>%
-    slice_max(Fecha, n = 1, with_ties = FALSE) %>%   # SOLO ÚLTIMA SESIÓN
-    ungroup()
-  
-  return(tabla)
-}
-
-# ============================
-# Value Box de KPIs ACWR con Scroll Horizontal
-# ============================
-output$kpi_row_acwr <- renderUI({
-  req(input$metric_acwr, length(input$metric_acwr) > 0, read_data())
-  met_list <- input$metric_acwr
-  
-  tags$div(
-    class = "scroll-fade-container",
-    # Fade izquierdo
-    tags$div(class = "fade-left"),
-    # Fade derecho
-    tags$div(class = "fade-right"),
-    # Contenido scrolleable horizontalmente
+  # ============================
+  # Value Box de KPIs ACWR con Scroll Horizontal
+  # ============================
+  output$kpi_row_acwr <- renderUI({
+    req(input$metric_acwr, length(input$metric_acwr) > 0, read_data())
+    met_list <- input$metric_acwr
+    
     tags$div(
-      class = "scroll-fade-content",
-      lapply(met_list, function(metrica) {
-        filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
-        val_range <- input[[filtro_id]]
-        if (is.null(val_range) || length(val_range) != 2) return(NULL)
-        tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
-        if (is.null(tabla) || nrow(tabla) == 0) return(NULL)
-        high_acwr <- tabla %>% filter(ACWR > 1.5)
-        low_acwr  <- tabla %>% filter(ACWR < 0.8)
-        metrica_id <- make.names(metrica)
-        tags$div(
-          style = "
+      class = "scroll-fade-container",
+      # Fade izquierdo
+      tags$div(class = "fade-left"),
+      # Fade derecho
+      tags$div(class = "fade-right"),
+      # Contenido scrolleable horizontalmente
+      tags$div(
+        class = "scroll-fade-content",
+        lapply(met_list, function(metrica) {
+          filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
+          val_range <- input[[filtro_id]]
+          if (is.null(val_range) || length(val_range) != 2) return(NULL)
+          tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
+          if (is.null(tabla) || nrow(tabla) == 0) return(NULL)
+          high_acwr <- tabla %>% filter(ACWR > 1.5)
+          low_acwr  <- tabla %>% filter(ACWR < 0.8)
+          metrica_id <- make.names(metrica)
+          tags$div(
+            style = "
             display: inline-block;
             vertical-align: top;
             background: rgba(30,30,30,0.92);
@@ -3422,104 +3419,123 @@ output$kpi_row_acwr <- renderUI({
             padding: 14px 18px 10px 16px;
             overflow: hidden;
           ",
-          tags$div(style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;", metrica),
-          tags$div(
-            style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
-            # CHIP ROJO
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
-              if (nrow(high_acwr) > 0) tags$div(
-                id = paste0("chip_high_acwr_", metrica_id),
-                `data-metric` = metrica,
-                onclick = sprintf("Shiny.setInputValue('show_players_gt15_acwr', '%s', {priority: 'event'})", metrica),
-                style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
-                tags$span(nrow(high_acwr), style = "font-size:1.25em; font-weight:600;"),
-                tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
-              )
+              style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;text-align:center;", 
+              metrica
             ),
-            # CHIP VERDE
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
-              if (nrow(low_acwr) > 0) tags$div(
-                id = paste0("chip_low_acwr_", metrica_id),
-                `data-metric` = metrica,
-                onclick = sprintf("Shiny.setInputValue('show_players_lt08_acwr', '%s', {priority: 'event'})", metrica),
-                style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
-                tags$span(nrow(low_acwr), style = "font-size:1.25em; font-weight:600;"),
-                tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
-              )
-            ),
-            # Total Players
-            tags$span(
-              icon("users"),
-              style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
-            ),
-            tags$span(nrow(tabla), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
-            tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+              style = "display:flex; flex-direction:row; gap:14px; justify-content:center; align-items:center; margin-bottom:7px;",
+              # CHIP ROJO o GRIS
+              tags$div(
+                style = "display:flex; flex-direction:column; align-items:center; justify-content:center; margin-right:6px;",
+                if (nrow(high_acwr) > 0) {
+                  tags$div(
+                    id = paste0("chip_high_acwr_", metrica_id),
+                    `data-metric` = metrica,
+                    onclick = sprintf("Shiny.setInputValue('show_players_gt15_acwr', '%s', {priority: 'event'})", metrica),
+                    style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                    tags$span(nrow(high_acwr), style = "font-size:1.25em; font-weight:600;"),
+                    tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                  )
+                } else {
+                  tags$div(
+                    style = "background:#6b6b6b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; display:flex; flex-direction:column; align-items:center; min-width:37px; opacity:0.85;",
+                    tags$span(0, style = "font-size:1.25em; font-weight:600;"),
+                    tags$i(class = "bi bi-dash-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                  )
+                }
+              ),
+              # CHIP VERDE o GRIS
+              tags$div(
+                style = "display:flex; flex-direction:column; align-items:center; justify-content:center;",
+                if (nrow(low_acwr) > 0) {
+                  tags$div(
+                    id = paste0("chip_low_acwr_", metrica_id),
+                    `data-metric` = metrica,
+                    onclick = sprintf("Shiny.setInputValue('show_players_lt08_acwr', '%s', {priority: 'event'})", metrica),
+                    style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
+                    tags$span(nrow(low_acwr), style = "font-size:1.25em; font-weight:600;"),
+                    tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                  )
+                } else {
+                  tags$div(
+                    style = "background:#6b6b6b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; display:flex; flex-direction:column; align-items:center; min-width:37px; opacity:0.85;",
+                    tags$span(0, style = "font-size:1.25em; font-weight:600;"),
+                    tags$i(class = "bi bi-dash-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
+                  )
+                }
+              ),
+              # Total Players
+              tags$span(
+                icon("users"),
+                style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
+              ),
+              tags$span(nrow(tabla), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
+              tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
+            )
           )
-        )
-      })
+        })
+      )
     )
-  )
-})
-
-# High ACWR (> 1.5)
-observeEvent(input$show_players_gt15_acwr, {
-  req(input$show_players_gt15_acwr, read_data())
-  metrica <- input$show_players_gt15_acwr
-  filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
-  val_range <- input[[filtro_id]]
-  if (is.null(val_range) || length(val_range) != 2) return(NULL)
-  tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
-  high_acwr <- tabla %>% filter(ACWR > 1.5)
-  showModal(
-    modalDialog(
-      title = paste("Players with ACWR > 1.5 in", metrica),
-      if (nrow(high_acwr) == 0) tags$p("No players found.", style = "color:#fd002b; font-weight:600;") else
-        tags$ul(
-          lapply(seq_len(nrow(high_acwr)), function(i) {
-            tags$li(
-              tags$span(high_acwr$Jugador[i], style = "font-weight:600; color:#fd002b;"),
-              tags$span(sprintf(" (ACWR = %.2f)", high_acwr$ACWR[i]),
-                        style = "color:#fd002b; margin-left:3px; font-size:0.97em;")
-            )
-          })
-        ),
-      easyClose = TRUE,
-      size = "m"
+  })
+  
+  # High ACWR (> 1.5)
+  observeEvent(input$show_players_gt15_acwr, {
+    req(input$show_players_gt15_acwr, read_data())
+    metrica <- input$show_players_gt15_acwr
+    filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
+    val_range <- input[[filtro_id]]
+    if (is.null(val_range) || length(val_range) != 2) return(NULL)
+    tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
+    high_acwr <- tabla %>% filter(ACWR > 1.5)
+    showModal(
+      modalDialog(
+        title = paste("Players with ACWR > 1.5 in", metrica),
+        if (nrow(high_acwr) == 0) tags$p("No players found.", style = "color:#fd002b; font-weight:600;") else
+          tags$ul(
+            lapply(seq_len(nrow(high_acwr)), function(i) {
+              tags$li(
+                tags$span(high_acwr$Jugador[i], style = "font-weight:600; color:#fd002b;"),
+                tags$span(sprintf(" (ACWR = %.2f)", high_acwr$ACWR[i]),
+                          style = "color:#fd002b; margin-left:3px; font-size:0.97em;")
+              )
+            })
+          ),
+        easyClose = TRUE,
+        size = "m"
+      )
     )
-  )
-}, ignoreInit = TRUE)
-
-# Low ACWR (< 0.8)
-observeEvent(input$show_players_lt08_acwr, {
-  req(input$show_players_lt08_acwr, read_data())
-  metrica <- input$show_players_lt08_acwr
-  filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
-  val_range <- input[[filtro_id]]
-  if (is.null(val_range) || length(val_range) != 2) return(NULL)
-  tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
-  low_acwr <- tabla %>% filter(ACWR < 0.8)
-  showModal(
-    modalDialog(
-      title = paste("Players with ACWR < 0.8 in", metrica),
-      if (nrow(low_acwr) == 0) tags$p("No players found.", style = "color:#25b659; font-weight:600;") else
-        tags$ul(
-          lapply(seq_len(nrow(low_acwr)), function(i) {
-            tags$li(
-              tags$span(low_acwr$Jugador[i], style = "font-weight:600; color:#25b659;"),
-              tags$span(sprintf(" (ACWR = %.2f)", low_acwr$ACWR[i]),
-                        style = "color:#25b659; margin-left:3px; font-size:0.97em;")
-            )
-          })
-        ),
-      easyClose = TRUE,
-      size = "m"
+  }, ignoreInit = TRUE)
+  
+  # Low ACWR (< 0.8)
+  observeEvent(input$show_players_lt08_acwr, {
+    req(input$show_players_lt08_acwr, read_data())
+    metrica <- input$show_players_lt08_acwr
+    filtro_id <- paste0("filtro_metrica_valor_acwr_", make.names(metrica))
+    val_range <- input[[filtro_id]]
+    if (is.null(val_range) || length(val_range) != 2) return(NULL)
+    tabla <- tabla_acwr_ultima_sesion(metrica, val_range)
+    low_acwr <- tabla %>% filter(ACWR < 0.8)
+    showModal(
+      modalDialog(
+        title = paste("Players with ACWR < 0.8 in", metrica),
+        if (nrow(low_acwr) == 0) tags$p("No players found.", style = "color:#25b659; font-weight:600;") else
+          tags$ul(
+            lapply(seq_len(nrow(low_acwr)), function(i) {
+              tags$li(
+                tags$span(low_acwr$Jugador[i], style = "font-weight:600; color:#25b659;"),
+                tags$span(sprintf(" (ACWR = %.2f)", low_acwr$ACWR[i]),
+                          style = "color:#25b659; margin-left:3px; font-size:0.97em;")
+              )
+            })
+          ),
+        easyClose = TRUE,
+        size = "m"
+      )
     )
-  )
-}, ignoreInit = TRUE)
-
-
+  }, ignoreInit = TRUE)
+  
+  
   #' Output: Gráfico de barras por fecha (Promedios por jugador)
   #'
   #' Visualiza la evolución diaria del valor promedio de la métrica seleccionada
@@ -4796,4 +4812,5 @@ observeEvent(input$show_players_lt08_acwr, {
 
 
 shinyApp(ui, server)
+
 
