@@ -2113,7 +2113,7 @@ server <- function(input, output, session) {
       
       tagList(
         tags$hr(),
-        tags$h4(paste("Gráfico y Filtro:", metrica)),
+        tags$h4(paste("Filter:", metrica)),
         sliderInput(
           inputId = paste0("filtro_metrica_valor_", metrica_clean),
           label = paste("Filter Values For", metrica),
