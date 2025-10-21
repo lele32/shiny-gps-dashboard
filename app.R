@@ -2603,40 +2603,37 @@ server <- function(input, output, session) {
         }
         
         tags$div(
-          style = "
-          min-width: 240px; max-width: 340px; flex: 0 0 240px;
-          background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040;
-          display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom:7px; margin-right: 0.7em;",
+          style = "background: rgba(30,30,30,0.92); border-radius: 16px; box-shadow: 0 2px 8px #10101040; min-width: 0; max-width: 246px; min-height: 92px; padding: 9px 8px 8px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 7px; overflow: hidden;",
           tags$div(
-            style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px; text-align:center; width:100%;",
+            style = "color: #00FFFF; font-size: 1.07em; font-weight: 600; margin-bottom: 3px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
             metrica
           ),
           tags$div(
-            style = "display:flex; flex-direction:row; gap:16px; justify-content:center; align-items:center;",
+            style = "display: flex; flex-direction: row; gap: 5px; justify-content: center; align-items: center; min-width: 0; width: 100%;",
             # Número de jugadores
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
-              tags$span(icon("users"), style = "font-size:1.32em; color:#7F00FF; margin-bottom:2px;"),
+              style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
+              tags$span(icon("users"), style = "font-size: 1.18em; color: #7F00FF; margin-bottom: 0px;"),
               tags$span(n_players, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
             ),
             # Matchday con valor máximo
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
               tags$span(icon("arrow-up"), style = "font-size:1.32em; color:#00e676; margin-bottom:2px;"),
               tags$span(matchday_max, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
             ),
             # Matchday con valor mínimo
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center; margin-right:7px;",
+              style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
               tags$span(icon("arrow-down"), style = "font-size:1.32em;color:#fd002b; margin-bottom:2px;"),
               tags$span(matchday_min, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("Min", style = "font-size:0.92em; color:#c8c8c8;")
             ),
             # IQR de la métrica
             tags$div(
-              style = "display:flex; flex-direction:column; align-items:center;",
+              style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
               tags$span(icon("sliders-h"), style = "font-size:1.32em; color:#00FFFF; margin-bottom:2px;"),
               tags$span(iqr_val, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("IQR", style = "font-size:0.92em; color:#c8c8c8;")
