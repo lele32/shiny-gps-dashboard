@@ -35,11 +35,11 @@ options(shiny.maxRequestSize = 500 * 1024^2)  # Allow large file uploads
 # ──────────────────────────────────────────────
 tema_gps <- bslib::bs_theme(
   version = 5,
-  bootswatch = "flatly",
-  bg = "#0E1117",         # Fondo oscuro elegante
+  bootswatch = NULL,
+  bg = "#0B0F12",         # LIFT charcoal
   fg = "#ffffff",         # Texto blanco
-  primary = "#00FFFF",    # Acento: azul eléctrico (puede alternarse con verde menta o violeta)
-  secondary = "#7F00FF",  # Acento secundario: violeta
+  primary = "#C9FF35",    # LIFT acid green
+  secondary = "#87E8E3",  # LIFT aqua
   base_font = bslib::font_google("Inter"),
   heading_font = bslib::font_google("Space Grotesk")
 )
@@ -47,7 +47,7 @@ tema_gps <- bslib::bs_theme(
 # ──────────────────────────────────────────────
 # 🧩 Interfaz de usuario (UI)
 # ──────────────────────────────────────────────
-ui <- fluidPage(
+legacy_ui <- fluidPage(
   theme = tema_gps,
   
   # ===============================================================
@@ -101,11 +101,11 @@ ui <- fluidPage(
       }
       select:focus, input:focus, textarea:focus {
         outline: none;
-        border-color: #00FFFF;
+        border-color: #C9FF35;
         box-shadow: 0 0 6px rgba(0,255,255,0.5);
       }
       :focus-visible {
-        outline: 2px solid #00FFFF !important;
+        outline: 2px solid #C9FF35 !important;
         outline-offset: 3px;
       }
       /* SELECTIZE STYLE */
@@ -123,12 +123,12 @@ ui <- fluidPage(
       .selectize-dropdown .option:hover,
       .selectize-dropdown .option.active {
         background: #1f2937 !important;
-        color: #00FFFF !important;
+        color: #C9FF35 !important;
       }
       /* TABS estilo Baremetrics */
       .nav-tabs {
         background: rgba(255,255,255,0.02);
-        border-bottom: 1px solid #00FFFF;
+        border-bottom: 1px solid #C9FF35;
       }
       .nav-tabs > li > a {
         color: #ffffff;
@@ -139,8 +139,8 @@ ui <- fluidPage(
       }
       .nav-tabs > li.active > a,
       .nav-tabs > li > a:hover {
-        color: #00FFFF;
-        border-bottom: 3px solid #00FFFF;
+        color: #C9FF35;
+        border-bottom: 3px solid #C9FF35;
         background: transparent;
       }
       /* BOTONES GLASS + NEÓN */
@@ -155,8 +155,8 @@ ui <- fluidPage(
       }
       .btn:hover {
         background: rgba(0,255,255,0.1);
-        border-color: #00FFFF;
-        color: #00FFFF;
+        border-color: #C9FF35;
+        color: #C9FF35;
         box-shadow: 0 0 10px rgba(0,255,255,0.3);
       }
       .btn-danger {
@@ -170,7 +170,7 @@ ui <- fluidPage(
       }
       /* DATATABLES HEADERS */
       table.dataTable thead th {
-        background: #00FFFF !important;
+        background: #C9FF35 !important;
         color: #0E1117 !important;
         font-family: 'Inter', sans-serif;
         font-weight: bold;
@@ -212,7 +212,7 @@ ui <- fluidPage(
   box-shadow: 0 2px 14px #22222240;
   padding: 0 28px;
   padding-bottom: 10px;
-  scrollbar-color: #00FFFF #232323;
+  scrollbar-color: #C9FF35 #232323;
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
 }
@@ -626,7 +626,7 @@ ui <- fluidPage(
     min-height: 115px;
     gap: 0.7em;
     scrollbar-width: thin;
-    scrollbar-color: #00FFFF #232323;
+    scrollbar-color: #C9FF35 #232323;
   ",
                     uiOutput("kpi_row_acwr")
                   ),
@@ -645,7 +645,7 @@ ui <- fluidPage(
             justify-content: center;
           ",
                     tags$div(
-                      style = "color:#00FFFF; font-weight:600; font-size:1.08em; margin-bottom:6px;",
+                      style = "color:#C9FF35; font-weight:600; font-size:1.08em; margin-bottom:6px;",
                       tags$i(class = "bi bi-lightning-charge", style = "margin-right:6px; color:#fd002b; font-size:1.1em;"),
                       "Acute"
                     ),
@@ -670,7 +670,7 @@ ui <- fluidPage(
             justify-content: center;
           ",
                     tags$div(
-                      style = "color:#00FFFF; font-weight:600; font-size:1.08em; margin-bottom:6px;",
+                      style = "color:#C9FF35; font-weight:600; font-size:1.08em; margin-bottom:6px;",
                       tags$i(class = "bi bi-lightning", style = "margin-right:6px; color:#fd002b; font-size:1.1em;"),
                       "Chronic"
                     ),
@@ -789,6 +789,8 @@ ui <- fluidPage(
 # =======================================================
 # ⚙️ SERVER
 # =======================================================
+source("R/lift_ui.R", local = environment())
+
 server <- function(input, output, session) {
   
   # ================================================================
@@ -1041,6 +1043,26 @@ server <- function(input, output, session) {
         if (length(providers) > 0) tags$small(paste("Providers:", paste(providers, collapse = ", ")))
       )
     }
+  })
+
+  output$data_empty_state <- renderUI({
+    data <- base_datos_global()
+    if (!is.null(data) && nrow(data) > 0) return(NULL)
+
+    tags$section(
+      class = "lift-empty-state",
+      tags$div(class = "lift-empty-index", "WORKSPACE / READY"),
+      tags$div(
+        tags$h2("Cargá un export para abrir el dashboard"),
+        tags$p("La base todavía está vacía. Empezá por un CSV, XLSX, JSON o Google Sheet y después confirmá el mapeo de columnas."),
+        tags$div(
+          class = "lift-empty-steps",
+          tags$span("01 / importar"),
+          tags$span("02 / mapear"),
+          tags$span("03 / interpretar")
+        )
+      )
+    )
   })
   
   #' 🔄 Actualiza inputs de métricas individuales por pestaña
@@ -2308,7 +2330,7 @@ server <- function(input, output, session) {
               tags$div(
                 style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 10px 10px 8px 12px; box-shadow: 0 2px 8px #10101040; min-width:200px;",
                 tags$div(
-                  style = "color:#00FFFF; font-weight:600; font-size:1.1em; margin-bottom:6px;",
+                  style = "color:#C9FF35; font-weight:600; font-size:1.1em; margin-bottom:6px;",
                   metrica
                 ),
                 fluidRow(
@@ -2472,7 +2494,7 @@ server <- function(input, output, session) {
           tags$div(
             style = "background: rgba(14,17,23,0.92); border-radius: 16px; padding: 10px 10px 8px 12px; box-shadow: 0 2px 8px #10101040; min-width:210px;",
             tags$div(
-              style = "color:#00FFFF; font-weight:600; font-size:1.1em; margin-bottom:6px;",
+              style = "color:#C9FF35; font-weight:600; font-size:1.1em; margin-bottom:6px;",
               metrica
             ),
             sliderInput(
@@ -2517,7 +2539,7 @@ server <- function(input, output, session) {
         margin-bottom: 7px; margin-right: 0.7em;
       ",
         tags$div(
-          style = "color:#00FFFF; font-size:1.17em; font-weight:600; margin-bottom:4px; letter-spacing:0.5px; text-align:center; width:100%;",
+          style = "color:#C9FF35; font-size:1.17em; font-weight:600; margin-bottom:4px; letter-spacing:0.5px; text-align:center; width:100%;",
           metrica
         ),
         tags$div(
@@ -2539,7 +2561,7 @@ server <- function(input, output, session) {
           # Máximo
           tags$div(
             style = "display:flex; flex-direction:column; align-items:center;",
-            tags$span(icon("trophy"), style = "font-size:1.38em; color:#7F00FF; margin-bottom:2px;"),
+            tags$span(icon("trophy"), style = "font-size:1.38em; color:#87E8E3; margin-bottom:2px;"),
             tags$span(max_val, style = "font-size:1.07em; color:#ffffff; font-weight:600;"),
             tags$span("Max", style = "font-size:0.92em; color:#c8c8c8;")
           )
@@ -2574,7 +2596,7 @@ server <- function(input, output, session) {
         tags$div(
           style = "background: rgba(30,30,30,0.92); border-radius: 16px; box-shadow: 0 2px 8px #10101040; min-width: 0; max-width: 246px; min-height: 92px; padding: 9px 8px 8px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 7px; overflow: hidden;",
           tags$div(
-            style = "color: #00FFFF; font-size: 1.07em; font-weight: 600; margin-bottom: 3px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
+            style = "color: #C9FF35; font-size: 1.07em; font-weight: 600; margin-bottom: 3px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
             metrica
           ),
           tags$div(
@@ -2582,7 +2604,7 @@ server <- function(input, output, session) {
             # Número de jugadores
             tags$div(
               style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
-              tags$span(icon("users"), style = "font-size: 1.18em; color: #7F00FF; margin-bottom: 0px;"),
+              tags$span(icon("users"), style = "font-size: 1.18em; color: #87E8E3; margin-bottom: 0px;"),
               tags$span(n_players, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
             ),
@@ -2603,7 +2625,7 @@ server <- function(input, output, session) {
             # IQR de la métrica
             tags$div(
               style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
-              tags$span(icon("sliders-h"), style = "font-size:1.32em; color:#00FFFF; margin-bottom:2px;"),
+              tags$span(icon("sliders-h"), style = "font-size:1.32em; color:#C9FF35; margin-bottom:2px;"),
               tags$span(iqr_val, style = "font-size:1.05em; color:#ffffff; font-weight:600;"),
               tags$span("IQR", style = "font-size:0.92em; color:#c8c8c8;")
             )
@@ -2642,7 +2664,7 @@ server <- function(input, output, session) {
         tags$div(
           style = "background: rgba(30,30,30,0.92); border-radius: 16px; box-shadow: 0 2px 8px #10101040; min-width: 0; max-width: 246px; min-height: 92px; padding: 9px 8px 8px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 7px; overflow: hidden;",
           tags$div(
-            style = "color: #00FFFF; font-size: 1.07em; font-weight: 600; margin-bottom: 3px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
+            style = "color: #C9FF35; font-size: 1.07em; font-weight: 600; margin-bottom: 3px; width: 100%; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;",
             metrica
           ),
           tags$div(
@@ -2650,7 +2672,7 @@ server <- function(input, output, session) {
             # N jugadores
             tags$div(
               style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
-              tags$span(icon("users"), style = "font-size: 1.18em; color: #7F00FF; margin-bottom: 0px;"),
+              tags$span(icon("users"), style = "font-size: 1.18em; color: #87E8E3; margin-bottom: 0px;"),
               tags$span(n_players, style = "font-size: 0.98em; color: #ffffff; font-weight: 600;"),
               tags$span("Players", style = "font-size: 0.84em; color: #c8c8c8;")
             ),
@@ -2679,7 +2701,7 @@ server <- function(input, output, session) {
             # IQR
             tags$div(
               style = "display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 54px; overflow: hidden;",
-              tags$span(icon("sliders-h"), style = "font-size: 1.18em; color: #00FFFF; margin-bottom: 0px;"),
+              tags$span(icon("sliders-h"), style = "font-size: 1.18em; color: #C9FF35; margin-bottom: 0px;"),
               tags$span(iqr_val, style = "font-size: 0.98em; color: #ffffff; font-weight: 600;"),
               tags$span("IQR", style = "font-size: 0.84em; color: #c8c8c8;")
             )
@@ -2717,7 +2739,7 @@ server <- function(input, output, session) {
           display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom:7px; margin-right: 0.7em;
         ",
           tags$div(
-            style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px; text-align:center; width:100%;",
+            style = "color:#C9FF35; font-size:1.18em; font-weight:600; margin-bottom:3px; text-align:center; width:100%;",
             metrica
           ),
           tags$div(
@@ -2771,7 +2793,7 @@ server <- function(input, output, session) {
             # Total Players
             tags$span(
               icon("users"),
-              style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
+              style = "font-size:1.15em; color:#C9FF35; margin-left:9px; margin-right:2px;"
             ),
             tags$span(nrow(tabla_z), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
             tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
@@ -2969,15 +2991,15 @@ server <- function(input, output, session) {
           tags$div(
             style = "background: rgba(30,30,30,0.96); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:270px; max-width:370px; min-height:120px; padding: 12px 12px 11px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px; margin-right: 0.7em; overflow: hidden;",
             tags$div(
-              style = "color:#00FFFF; font-size:1.16em; font-weight:600; margin-bottom:7px; letter-spacing:0.5px; text-align:center; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;",
+              style = "color:#C9FF35; font-size:1.16em; font-weight:600; margin-bottom:7px; letter-spacing:0.5px; text-align:center; width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;",
               metrica
             ),
             tags$div(
               style = "display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: 28px 28px 22px; gap:1px 6px; align-items:center; width: 100%;",
               
               # FILA 1: ICONOS
-              tags$span(icon("users", style="color:#00FFFF; font-size:1.20em;"), style="grid-column:1; grid-row:1; text-align:center;"),
-              tags$span(icon("trophy", style="color:#7F00FF; font-size:1.20em;"), style="grid-column:2; grid-row:1; text-align:center;"),
+              tags$span(icon("users", style="color:#C9FF35; font-size:1.20em;"), style="grid-column:1; grid-row:1; text-align:center;"),
+              tags$span(icon("trophy", style="color:#87E8E3; font-size:1.20em;"), style="grid-column:2; grid-row:1; text-align:center;"),
               tags$span(icon("user-minus", style="color:#fd002b; font-size:1.20em;"), style="grid-column:3; grid-row:1; text-align:center;"),
               tags$span(
                 pct_icon,
@@ -3142,7 +3164,7 @@ server <- function(input, output, session) {
           metrica_id <- make.names(metrica)
           tags$div(
             style = "background: rgba(30,30,30,0.92); border-radius: 18px; box-shadow: 0 2px 8px #10101040; min-width:240px; max-width:320px; min-height:110px; padding: 12px 11px 8px 11px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:7px; overflow:hidden;width:100%;",
-            tags$div(style = "color:#00FFFF; font-size:1.09em; font-weight:600; margin-bottom:3px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;",
+            tags$div(style = "color:#C9FF35; font-size:1.09em; font-weight:600; margin-bottom:3px; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%;",
                      metrica),
             tags$div(
               style = "display:flex; flex-direction:row; flex-wrap:nowrap; gap:7px; justify-content:center; align-items:center; margin-bottom:7px; width:100%;",
@@ -3189,7 +3211,7 @@ server <- function(input, output, session) {
               # Total Players + label
               tags$span(
                 icon("users"),
-                style = "font-size:1.10em; color:#00FFFF; margin-left:7px; margin-right:2px; min-width:18px;"
+                style = "font-size:1.10em; color:#C9FF35; margin-left:7px; margin-right:2px; min-width:18px;"
               ),
               tags$span(
                 nrow(tabla),
@@ -3462,7 +3484,7 @@ server <- function(input, output, session) {
             overflow: hidden;
           ",
             tags$div(
-              style = "color:#00FFFF; font-size:1.18em; font-weight:600; margin-bottom:3px;text-align:center;", 
+              style = "color:#C9FF35; font-size:1.18em; font-weight:600; margin-bottom:3px;text-align:center;",
               metrica
             ),
             tags$div(
@@ -3510,7 +3532,7 @@ server <- function(input, output, session) {
               # Total Players
               tags$span(
                 icon("users"),
-                style = "font-size:1.15em; color:#00FFFF; margin-left:9px; margin-right:2px;"
+                style = "font-size:1.15em; color:#C9FF35; margin-left:9px; margin-right:2px;"
               ),
               tags$span(nrow(tabla), style = "font-size:1.01em; color:#ffffff; font-weight:600;"),
               tags$span("Players", style = "font-size:0.92em; color:#c8c8c8;")
@@ -3644,7 +3666,7 @@ server <- function(input, output, session) {
           p <- ggplot(plot_data, aes(x = Fecha, y = Promedio, fill = Jugador, text = tooltip)) +
             geom_col(position = position_dodge2(preserve = "single"), width = 0.7) +
             scale_x_discrete(breaks = function(x) x[seq(1, length(x), by = 5)]) +
-            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$Jugador)))) +
+            scale_fill_manual(values = rep("#C9FF35", length(unique(plot_data$Jugador)))) +
             labs(
               title = paste("Mean Of", metrica_local, "By Date & Player"),
               x = "Date", y = metrica_local
@@ -3659,7 +3681,7 @@ server <- function(input, output, session) {
               axis.text.y = element_text(color = "#ffffff"),
               axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF"
+                hjust = 0.5, face = "bold", size = 20, color = "#C9FF35"
               ),
               legend.position = "none"
             )
@@ -3723,7 +3745,7 @@ server <- function(input, output, session) {
               outlier.color = "#fd002b",
               alpha = 0.7
             ) +
-            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$MatchDay)))) +
+            scale_fill_manual(values = rep("#C9FF35", length(unique(plot_data$MatchDay)))) +
             labs(
               title = paste("Distribution of", metrica_local, "By Match Day"),
               x = "Match Day", y = metrica_local
@@ -3739,7 +3761,7 @@ server <- function(input, output, session) {
               axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20,
-                color = "#00FFFF", family = "Space Grotesk"
+                color = "#C9FF35", family = "Space Grotesk"
               ),
               legend.position = "none"
             )
@@ -3803,7 +3825,7 @@ server <- function(input, output, session) {
               outlier.color = "#fd002b",
               alpha = 0.7
             ) +
-            scale_fill_manual(values = rep("#00FFFF", length(unique(plot_data$Tarea)))) +
+            scale_fill_manual(values = rep("#C9FF35", length(unique(plot_data$Tarea)))) +
             theme_minimal(base_size = 14) +
             labs(
               title = paste("Distribution of", metrica_local, "By Task"),
@@ -3819,7 +3841,7 @@ server <- function(input, output, session) {
               axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20,
-                color = "#00FFFF", family = "Space Grotesk"
+                color = "#C9FF35", family = "Space Grotesk"
               ),
               legend.position = "none"
             )
@@ -3925,7 +3947,7 @@ server <- function(input, output, session) {
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 20, color = "#00FFFF", family = "Space Grotesk"),
+              plot.title = element_text(hjust = 0.5, face = "bold", size = 20, color = "#C9FF35", family = "Space Grotesk"),
               strip.text = element_text(face = "bold", size = 13, color = "#ffffff"),
               legend.position = "bottom",
               legend.text = element_text(color = "#ffffff"),
@@ -4042,7 +4064,7 @@ server <- function(input, output, session) {
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20,
-                color = "#00FFFF", family = "Inter"
+                color = "#C9FF35", family = "Inter"
               )
             )
           
@@ -4180,7 +4202,7 @@ server <- function(input, output, session) {
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
+                hjust = 0.5, face = "bold", size = 20, color = "#C9FF35",
                 family = "Inter"
               ),
               legend.position = "right",
@@ -4343,7 +4365,7 @@ server <- function(input, output, session) {
               axis.text.y = element_text(size = 11, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
               plot.title = element_text(
-                hjust = 0.5, face = "bold", size = 20, color = "#00FFFF",
+                hjust = 0.5, face = "bold", size = 20, color = "#C9FF35",
                 family = "Inter"
               ),
               strip.text = element_text(size = 12, face = "bold", color = "#ffffff"),
@@ -4526,7 +4548,7 @@ server <- function(input, output, session) {
               axis.text = element_text(color = "#ffffff"),
               axis.title = element_text(color = "#ffffff", face = "bold"),
               strip.text = element_text(color = "#ffffff", face = "bold"),
-              plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5),
+              plot.title = element_text(color = "#C9FF35", face = "bold", hjust = 0.5),
               legend.title = element_text(color = "#ffffff", family = "Space Grotesk", size = 16),
               legend.text = element_text(color = "#ffffff", family = "Inter", size = 14)
             )
@@ -4663,9 +4685,9 @@ server <- function(input, output, session) {
     # 4. Paleta de colores cuadrantes (LIFT)
     colores_cuadrante <- c(
       "High-High" = "#fd002b",  # Rojo
-      "Low-High" = "#7F00FF",  # Violeta
+      "Low-High" = "#87E8E3",  # Violeta
       "Low-Low" = "#00e676",  # Verde
-      "High-Low" = "#00FFFF"   # Cyan
+      "High-Low" = "#C9FF35"   # Cyan
     )
     
     # 5. Armar plot
@@ -4697,7 +4719,7 @@ server <- function(input, output, session) {
         panel.grid.minor = element_line(color = "#2c2c2c"),
         axis.text = element_text(color = "#ffffff"),
         axis.title = element_text(color = "#ffffff", face = "bold"),
-        plot.title = element_text(color = "#00FFFF", face = "bold", hjust = 0.5),
+        plot.title = element_text(color = "#C9FF35", face = "bold", hjust = 0.5),
         legend.title = element_text(color = "#ffffff",  size = 15),
         legend.text = element_text(color = "#ffffff",  size = 13)
       )
