@@ -42,3 +42,4 @@ source(file.path(gps_app_root, "R", "lift_server.R"), local = environment())
 
 server <- gps_server
 shinyApp(ui, server)
+
