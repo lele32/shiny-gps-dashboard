@@ -45,6 +45,17 @@ test_that("mapped session type takes precedence over match-day labels", {
   expect_equal(result$.gps_session_type, c("match", "training"))
 })
 
+test_that("multi-select session filters keep every selected session", {
+  data <- gps_derive_context(gps_fixture(), list(
+    player = "Player", date = "Date", matchday = "Session Type", task = "Task"
+  ))
+
+  result <- gps_apply_filters(data, session_type = c("match", "training"))
+
+  expect_equal(nrow(result), nrow(data))
+  expect_setequal(unique(result$.gps_session_type), c("match", "training"))
+})
+
 test_that("daily metric aggregation respects units", {
   data <- gps_derive_context(gps_fixture(), list(
     player = "Player", date = "Date", matchday = "Session Type", task = "Task"

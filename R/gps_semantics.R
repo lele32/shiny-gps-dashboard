@@ -101,8 +101,10 @@ gps_apply_filters <- function(data, player = NULL, position = NULL, matchday = N
   if (!is.data.frame(data) || nrow(data) == 0) return(data)
   keep <- rep(TRUE, nrow(data))
   keep_selection <- function(values, selected) {
-    is.null(selected) || length(selected) == 0 || all(is.na(selected)) ||
-      as.character(values) %in% as.character(selected)
+    if (is.null(selected) || length(selected) == 0 || all(is.na(selected))) {
+      return(rep(TRUE, length(values)))
+    }
+    as.character(values) %in% as.character(selected[!is.na(selected)])
   }
   keep <- keep & keep_selection(data$.gps_player, player)
   keep <- keep & keep_selection(data$.gps_position, position)

@@ -194,7 +194,19 @@ gps_server <- function(input, output, session) {
     update_mapping_inputs(base_data(), guessed)
     applied_mapping(guessed$mapping)
     applied_metrics(guessed$metrics)
-    showNotification(paste0(nrow(data_new), " filas agregadas desde ", source_name, "."), type = "message", duration = 5)
+    required_mapping <- c(guessed$mapping$player, guessed$mapping$date)
+    mapping_ready <- all(!is.na(required_mapping) & nzchar(required_mapping) & required_mapping != "None")
+    notification_type <- if (mapping_ready) "message" else "warning"
+    mapping_note <- if (mapping_ready) {
+      paste0(" Mapeo sugerido: ", guessed$mapping$player, " + ", guessed$mapping$date, ".")
+    } else {
+      " Falta identificar jugador y/o fecha en el mapeo."
+    }
+    showNotification(
+      paste0(nrow(data_new), " filas y ", ncol(data_new), " columnas agregadas desde ", source_name, ".", mapping_note),
+      type = notification_type,
+      duration = 8
+    )
     invisible(TRUE)
   }
 
@@ -289,7 +301,8 @@ gps_server <- function(input, output, session) {
   output$data_status <- renderUI({
     data <- base_data()
     if (is.null(data) || nrow(data) == 0) return(tags$span("Sin datos"))
-    tags$span(paste0(formatC(nrow(data), format = "d", big.mark = ".", decimal.mark = ","), " filas"))
+    source_columns <- sum(!grepl("^\\.gps_", names(data)))
+    tags$span(paste0(formatC(nrow(data), format = "d", big.mark = ".", decimal.mark = ","), " filas · ", source_columns, " cols"))
   })
 
   output$sidebar_state <- renderUI({
@@ -315,9 +328,29 @@ gps_server <- function(input, output, session) {
     } else {
       0L
     }
+    dates <- context$.gps_date[!is.na(context$.gps_date)]
+    date_note <- if (length(dates) > 0) {
+      paste0(format(min(dates), "%d/%m/%Y"), " → ", format(max(dates), "%d/%m/%Y"))
+    } else {
+      "Fecha no reconocida"
+    }
+    required_mapping <- c(mapping()$player, mapping()$date)
+    mapping_note <- if (all(!is.na(required_mapping) & nzchar(required_mapping) & required_mapping != "None")) {
+      paste0("Mapeo listo: ", mapping()$player, " + ", mapping()$date)
+    } else {
+      "Mapeo pendiente: jugador + fecha"
+    }
     providers <- unique(data$.gps_provider %||% "unknown")
     sources <- unique(data$.gps_source_name %||% "source")
-    tags$div(class = "lift-manifest", tags$strong(paste0(formatC(nrow(data), format = "d", big.mark = ".", decimal.mark = ","), " filas")), tags$span(paste(players, "jugadores")), tags$span(paste(length(sources), "fuente(s)")), tags$small(paste(providers, collapse = " · ")))
+    source_columns <- sum(!grepl("^\\.gps_", names(data)))
+    tags$div(
+      class = "lift-manifest",
+      tags$strong(paste0(formatC(nrow(data), format = "d", big.mark = ".", decimal.mark = ","), " filas")),
+      tags$span(paste(players, "jugadores ·", source_columns, "columnas")),
+      tags$span(paste(length(sources), "fuente(s) ·", date_note)),
+      tags$small(paste(providers, collapse = " · ")),
+      tags$small(class = if (grepl("pendiente", mapping_note, fixed = TRUE)) "is-warning" else "", mapping_note)
+    )
   })
 
   output$data_empty_state <- renderUI({

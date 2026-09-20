@@ -612,6 +612,33 @@ textarea:focus-visible,
   background: var(--lift-ink-soft);
 }
 
+.lift-manifest,
+.lift-manifest-empty {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 22px;
+}
+
+.lift-manifest strong,
+.lift-manifest-empty strong {
+  color: var(--lift-text);
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 2rem;
+  line-height: 0.95;
+}
+
+.lift-manifest span,
+.lift-manifest small,
+.lift-manifest-empty span {
+  color: var(--lift-text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.lift-manifest small.is-warning {
+  color: var(--lift-red-soft);
+}
+
 .lift-card-kicker {
   display: flex;
   align-items: center;

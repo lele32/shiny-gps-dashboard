@@ -1,7 +1,11 @@
 # Comunidad LIFT / GPS workspace UI ---------------------------------------
 
 lift_asset_path <- function(filename) {
-  candidates <- unique(c(file.path("www", filename), file.path(getwd(), "www", filename)))
+  roots <- c(
+    if (exists("gps_app_root", inherits = TRUE)) get("gps_app_root", inherits = TRUE) else character(0),
+    getwd()
+  )
+  candidates <- unique(file.path(roots[nzchar(roots)], "www", filename))
   existing <- candidates[file.exists(candidates)]
   if (length(existing) > 0) existing[[1]] else filename
 }

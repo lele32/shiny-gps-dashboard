@@ -173,6 +173,7 @@ gps_read_source_file <- function(path, extension) {
         progress = FALSE
       )
     },
+    xls = readxl::read_excel(path),
     xlsx = readxl::read_excel(path),
     json = jsonlite::fromJSON(path, flatten = TRUE),
     stop("Unsupported file type: ", extension, call. = FALSE)
