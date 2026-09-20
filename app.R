@@ -23,6 +23,8 @@ library(fontawesome)     # íconos modernos
 library(TTR)             # Para usar TTR::EMA
 library(shinyalert)      # Para alertas tipo toast
 
+source("R/gps_helpers.R", local = TRUE)
+
 # =======================================================
 # ⚙️ OPTIONS
 # =======================================================
@@ -59,10 +61,10 @@ ui <- fluidPage(
     tags$style(HTML("
       /* Tipografía base */
       body {
-        font-family: 'Satoshi', sans-serif;
+        font-family: 'Inter', sans-serif;
       }
       h1, h2, h3, h4, h5 {
-        font-family: 'Geist', sans-serif;
+        font-family: 'Space Grotesk', sans-serif;
       }
       /* Fondo blur estilo glassmorphism */
       .glass-box {
@@ -85,7 +87,7 @@ ui <- fluidPage(
       }
       /* CONTAINERS / INPUTS */
       .shiny-input-container {
-        font-family: 'Satoshi', sans-serif;
+        font-family: 'Inter', sans-serif;
         color: #ffffff;
       }
       select, input, textarea {
@@ -94,13 +96,17 @@ ui <- fluidPage(
         color: #ffffff;
         border-radius: 12px;
         backdrop-filter: blur(10px);
-        font-family: 'Satoshi', sans-serif;
-        transition: all 0.3s ease;
+        font-family: 'Inter', sans-serif;
+        transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
       }
       select:focus, input:focus, textarea:focus {
         outline: none;
         border-color: #00FFFF;
         box-shadow: 0 0 6px rgba(0,255,255,0.5);
+      }
+      :focus-visible {
+        outline: 2px solid #00FFFF !important;
+        outline-offset: 3px;
       }
       /* SELECTIZE STYLE */
       .selectize-control .selectize-input {
@@ -127,9 +133,9 @@ ui <- fluidPage(
       .nav-tabs > li > a {
         color: #ffffff;
         font-weight: bold;
-        font-family: 'Satoshi', sans-serif;
+        font-family: 'Inter', sans-serif;
         border: none;
-        transition: all 0.3s ease;
+        transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
       }
       .nav-tabs > li.active > a,
       .nav-tabs > li > a:hover {
@@ -144,8 +150,8 @@ ui <- fluidPage(
         color: #ffffff;
         border-radius: 12px;
         padding: 10px 20px;
-        font-family: 'Satoshi', sans-serif;
-        transition: all 0.3s ease;
+        font-family: 'Inter', sans-serif;
+        transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
       }
       .btn:hover {
         background: rgba(0,255,255,0.1);
@@ -166,7 +172,7 @@ ui <- fluidPage(
       table.dataTable thead th {
         background: #00FFFF !important;
         color: #0E1117 !important;
-        font-family: 'Satoshi', sans-serif;
+        font-family: 'Inter', sans-serif;
         font-weight: bold;
         font-size: 14px;
       }
@@ -174,7 +180,7 @@ ui <- fluidPage(
       table.dataTable tbody td {
         background: #0E1117 !important;
         color: #ffffff !important;
-        font-family: 'Satoshi', sans-serif;
+        font-family: 'Inter', sans-serif;
       }
       /* FILAS hover */
       table.dataTable tbody tr:hover {
@@ -185,10 +191,10 @@ ui <- fluidPage(
      .scroll-fade-container {
   position: relative;
   width: 100%;           /* Mejor usar 100% y ajustar el max-width inline si hace falta */
-  max-width: 1100;      /* O el que te funcione mejor para tu dashboard */
+  max-width: 1100px;      /* O el que te funcione mejor para tu dashboard */
   min-width: 260px;
   margin: 0 auto;
-  ppadding: 0;
+  padding: 0;
   flex: 1 1 320px;
   box-sizing: border-box;
 }
@@ -273,10 +279,11 @@ ui <- fluidPage(
     tags$img(
       src = "logo.png",
       height = "90px",
+      alt = "LIFT logo",
       style = "margin-bottom: 15px; filter: drop-shadow(0 0 8px rgba(0,255,255,0.3));"
     ),
     
-    tags$h2( tags$img(src = "GPSLIFT.png", height = "60px", style = "vertical-align:middle; margin-right: 8px;"),
+    tags$h2( tags$img(src = "GPSLIFT.png", height = "60px", alt = "GPS LIFT", style = "vertical-align:middle; margin-right: 8px;"),
              "GPS Data Dashboard"
     )),
   
@@ -302,6 +309,11 @@ ui <- fluidPage(
           "google_sheet_url", 
           label = tags$span(style = "color:#ffffff;", "Google Sheet URL or ID (optional):"), 
           value = ""
+        ),
+        actionButton(
+          "load_google_sheet", "Load Google Sheet",
+          class = "btn btn-primary",
+          style = "width:100%; margin-bottom:10px;"
         ),
         
         # File Upload
@@ -477,7 +489,8 @@ ui <- fluidPage(
                   tags$div(class = "filter-column", uiOutput(paste0("filtro_", id)))
                 }),
                 tags$div(class = "filter-column", 
-                         selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE)
+                         selectInput("metric_z", "Select Metric:", choices = NULL, multiple = TRUE),
+                         sliderInput("ventana_movil_z", "Rolling Window (sessions):", min = 3, max = 10, value = 5, step = 1)
                 )
               ),
               column(
@@ -789,151 +802,122 @@ server <- function(input, output, session) {
     base_datos_global()
   })
   
-  observeEvent({
-    input$file
-    input$google_sheet_url
-  }, {
-    
-    google_sheet_url <- input$google_sheet_url
-    file_input <- input$file
-    
-    data_new <- NULL
-    
-    if (nzchar(google_sheet_url)) {
-      # 🔹 Leer de Google Sheets
-      tryCatch({
-        if (!grepl("^https?://", google_sheet_url)) {
-          google_sheet_url <- paste0("https://docs.google.com/spreadsheets/d/", google_sheet_url, "/export?format=csv")
-        } else {
-          google_sheet_url <- sub("/edit.*", "/export?format=csv", google_sheet_url)
-        }
-        
-        data_new <- readr::read_csv(google_sheet_url, show_col_types = FALSE)
-        
-        # 🔹 Toast SOLO si cargó bien
-        shinyalert(
-          title = "✅ Google Sheet Loaded",
-          text = "Google Sheets data loaded successfully.",
-          type = "success",
-          timer = 2500,
-          showConfirmButton = FALSE
-        )
-        
-      }, error = function(e) {
-        showModal(modalDialog(
-          title = "Error reading Google Sheets",
-          paste("An error occurred:", e$message),
-          easyClose = TRUE,
-          footer = NULL
-        ))
-        return(NULL)
-      })
-      
-    } else if (!is.null(file_input)) {
-      # 🔹 Leer múltiples archivos locales
-      tryCatch({
-        data_list <- lapply(seq_len(nrow(file_input)), function(i) {
-          file_path <- file_input$datapath[i]
-          ext <- tools::file_ext(file_input$name[i])
-          
-          switch(ext,
-                 "csv" = {
-                   first_line <- readLines(file_path, n = 1)
-                   delim <- if (grepl(";", first_line)) ";" else ","
-                   
-                   raw_lines <- readLines(file_path, warn = FALSE)
-                   header_line <- which(grepl('^(\"?Player Name\"?|\"?Username\"?)\\s*[,;]', raw_lines))[1]
-                   
-                   if (!is.na(header_line) && header_line > 1) {
-                     readr::read_delim(file_path, delim = delim, skip = header_line - 1, locale = locale(encoding = "UTF-8"), show_col_types = FALSE)
-                   } else {
-                     readr::read_delim(file_path, delim = delim, locale = locale(encoding = "UTF-8"), show_col_types = FALSE)
-                   }
-                 },
-                 "xlsx" = readxl::read_excel(file_path),
-                 "json" = jsonlite::fromJSON(file_path, flatten = TRUE),
-                 stop("Unsupported file type.")
-          )
-        })
-        
-        data_new <- bind_rows(data_list)
-        
-        # 🔹 Toast de carga exitosa de archivos (después de bind_rows)
-        shinyalert(
-          title = "✅ File(s) Uploaded",
-          text = paste0(nrow(file_input), " file(s) uploaded successfully."),
-          type = "success",
-          timer = 2500,
-          showConfirmButton = FALSE
-        )
-        
-      }, error = function(e) {
+  update_mapped_columns <- function(cols) {
+    data <- base_datos_global()
+    if (is.null(data) || !is.data.frame(data)) return(invisible(NULL))
+    updateSelectInput(session, "player_col", choices = cols, selected = gps_guess_column(cols, "player"))
+    updateSelectInput(session, "position_col", choices = cols, selected = gps_guess_column(cols, "position"))
+    updateSelectInput(session, "matchday_col", choices = cols, selected = gps_guess_column(cols, "matchday"))
+    updateSelectInput(session, "task_col", choices = cols, selected = gps_guess_column(cols, "task"))
+    updateSelectInput(session, "date_col", choices = cols, selected = gps_guess_column(cols, "date"))
+    updateSelectInput(session, "duration_col", choices = c("None", cols), selected = gps_guess_column(cols, "duration"))
+    updateSelectInput(session, "start_col", choices = c("None", cols), selected = gps_guess_column(cols, "start"))
+    updateSelectInput(session, "end_col", choices = c("None", cols), selected = gps_guess_column(cols, "end"))
+    updateSelectInput(session, "metric_col", choices = gps_metric_candidates(data), selected = character(0))
+    invisible(NULL)
+  }
+
+  append_import <- function(data_new, source_type, source_name) {
+    if (!is.data.frame(data_new) || nrow(data_new) == 0) {
+      showModal(modalDialog(
+        title = "No usable data",
+        "The source did not contain a non-empty table.",
+        easyClose = TRUE,
+        footer = NULL
+      ))
+      return(FALSE)
+    }
+    names(data_new) <- make.unique(trimws(names(data_new)))
+    data_new <- gps_deduplicate_rows(data_new)
+    if (!".gps_source_type" %in% names(data_new)) data_new$.gps_source_type <- source_type
+    if (!".gps_source_name" %in% names(data_new)) data_new$.gps_source_name <- source_name
+    if (!".gps_provider" %in% names(data_new)) data_new$.gps_provider <- gps_detect_provider(source_name, data_new)
+    if (!".gps_source_row" %in% names(data_new)) data_new$.gps_source_row <- seq_len(nrow(data_new))
+    combined <- if (is.null(base_datos_global())) data_new else bind_rows(base_datos_global(), data_new)
+    base_datos_global(gps_deduplicate_rows(combined))
+    update_mapped_columns(names(base_datos_global()))
+    shinyalert(
+      title = "✅ Data loaded",
+      text = paste0(nrow(data_new), " rows added from ", source_name, "."),
+      type = "success",
+      timer = 2500,
+      showConfirmButton = FALSE
+    )
+    TRUE
+  }
+
+  read_local_files <- function(file_input) {
+    if (is.null(file_input) || nrow(file_input) == 0) return(NULL)
+    if (any(file_input$size > 100 * 1024^2, na.rm = TRUE)) {
+      stop("Each uploaded file must be smaller than 100 MB.")
+    }
+    data_list <- lapply(seq_len(nrow(file_input)), function(i) {
+      data_i <- gps_read_source_file(file_input$datapath[i], tools::file_ext(file_input$name[i]))
+      data_i$.gps_source_type <- "file"
+      data_i$.gps_source_name <- file_input$name[i]
+      data_i$.gps_source_row <- seq_len(nrow(data_i))
+      data_i
+    })
+    bind_rows(data_list)
+  }
+
+  observeEvent(input$file, {
+    data_new <- tryCatch(
+      read_local_files(input$file),
+      error = function(e) {
         showModal(modalDialog(
           title = "Error reading file(s)",
           paste("An error occurred:", e$message),
           easyClose = TRUE,
           footer = NULL
         ))
-        return(NULL)
-      })
-    }
-    
-    req(data_new)
-    
-    if (!is.data.frame(data_new)) {
-      stop("The file does not contain a valid table format.")
-    }
-    
-    colnames(data_new) <- make.names(colnames(data_new))
-    
-    # ========================================
-    # 🔥 Agregar datos nuevos a la base global
-    # ========================================
-    
-    if (is.null(base_datos_global())) {
-      base_datos_global(data_new)
-    } else if (is.data.frame(base_datos_global()) && is.data.frame(data_new)) {
-      base_combinada <- bind_rows(base_datos_global(), data_new)
-      
-      # Evitar duplicados por Jugador + Fecha
-      if (all(c("Jugador", "Fecha") %in% colnames(base_combinada))) {
-        base_combinada <- base_combinada %>% distinct(Jugador, Fecha, .keep_all = TRUE)
+        NULL
       }
-      
-      base_datos_global(base_combinada)
-    } else {
+    )
+    if (!is.null(data_new)) append_import(data_new, "file", paste(input$file$name, collapse = ", "))
+  })
+
+  observeEvent(input$load_google_sheet, {
+    raw_url <- trimws(if (is.null(input$google_sheet_url)) "" else input$google_sheet_url)
+    if (!nzchar(raw_url)) {
+      showNotification("Paste a Google Sheet URL or ID first.", type = "warning")
+      return()
+    }
+    is_id <- grepl("^[A-Za-z0-9_-]{10,}$", raw_url)
+    is_url <- grepl("^https?://docs\\.google\\.com/spreadsheets/d/[A-Za-z0-9_-]+", raw_url)
+    if (!is_id && !is_url) {
       showModal(modalDialog(
-        title = "Error",
-        "The file does not contain a valid table format.",
+        title = "Invalid Google Sheet source",
+        "Only a Google Sheets URL or spreadsheet ID is accepted.",
         easyClose = TRUE,
         footer = NULL
       ))
+      return()
     }
-    
-    # ========================================
-    # 🔥 Actualizar mapeo de columnas
-    # ========================================
-    
-    update_mapped_columns <- function(cols) {
-      guess_column <- function(possible_names) {
-        match <- tolower(cols) %in% tolower(possible_names)
-        if (any(match)) return(cols[which(match)[1]]) else return(NULL)
+    export_url <- if (is_id) {
+      paste0("https://docs.google.com/spreadsheets/d/", raw_url, "/export?format=csv")
+    } else {
+      sub("^https?://docs\\.google\\.com/spreadsheets/d/([^/]+).*$",
+          "https://docs.google.com/spreadsheets/d/\\1/export?format=csv", raw_url)
+    }
+    data_new <- tryCatch(
+      readr::read_csv(
+        export_url,
+        col_types = readr::cols(.default = readr::col_character()),
+        show_col_types = FALSE,
+        progress = FALSE
+      ),
+      error = function(e) {
+        showModal(modalDialog(
+          title = "Error reading Google Sheets",
+          paste("An error occurred:", e$message),
+          easyClose = TRUE,
+          footer = NULL
+        ))
+        NULL
       }
-      
-      updateSelectInput(session, "player_col", selected = guess_column(c("player", "player name", "username", "jugador")))
-      updateSelectInput(session, "position_col", selected = guess_column(c("position", "pos", "rol", "puesto")))
-      updateSelectInput(session, "matchday_col", selected = guess_column(c("match day", "matchday", "match.day", "md", "dia", "día")))
-      updateSelectInput(session, "task_col", selected = guess_column(c("task", "activity", "drill", "selection", "tarea")))
-      updateSelectInput(session, "date_col", selected = guess_column(c("date", "fecha", "session date", "day")))
-      updateSelectInput(session, "duration_col", selected = guess_column(c("duration", "duración", "duration_min")))
-      updateSelectInput(session, "start_col", selected = guess_column(c("start", "inicio", "hora inicio", "start.hour")))
-      updateSelectInput(session, "end_col", selected = guess_column(c("end", "fin", "hora fin", "end_time", "final.hour")))
-      
-      numeric_metrics <- cols[sapply(base_datos_global()[cols], is.numeric)]
-      updateSelectInput(session, "metric_col", choices = numeric_metrics, selected = character(0))
-    }
-    
-    update_mapped_columns(colnames(base_datos_global()))
+    )
+    if (!is.null(data_new)) append_import(data_new, "google_sheet", raw_url)
   })
   
   # ================================================================
@@ -941,18 +925,14 @@ server <- function(input, output, session) {
   # ================================================================
   
   output$file_info <- renderUI({
-    req(input$file, input$google_sheet_url)
-    
-    # Si hay URL de Google Sheet pegada
-    if (nzchar(input$google_sheet_url)) {
+    google_url <- trimws(if (is.null(input$google_sheet_url)) "" else input$google_sheet_url)
+    if (nzchar(google_url)) {
       tags$p(
-        tags$b("File uploaded:"), "Google Sheets",
+        tags$b("Google Sheet source:"), "ready to load",
         tags$br(),
-        tags$b("Link:"), a(input$google_sheet_url, href = input$google_sheet_url, target = "_blank")
+        tags$b("Link:"), a(google_url, href = google_url, target = "_blank")
       )
-      
     } else if (!is.null(input$file)) {
-      # Si se subieron múltiples archivos locales
       file_names <- input$file$name
       file_sizes <- input$file$size / 1024  # Convertir bytes a KB
       total_size <- sum(file_sizes, na.rm = TRUE)
@@ -968,7 +948,6 @@ server <- function(input, output, session) {
       )
       
     } else {
-      # No hay archivo cargado
       tags$p("No files uploaded.")
     }
   })
@@ -1055,8 +1034,12 @@ server <- function(input, output, session) {
     if (is.null(data) || nrow(data) == 0) {
       tags$p("🗑️ Empty database. No data loaded.", style = "color: #fd002b; font-weight: bold;")
     } else {
-      tags$p(paste0("✅ Database updated: ", nrow(data), " records"),
-             style = "color: #00e676; font-weight: bold;")
+      providers <- if (".gps_provider" %in% names(data)) unique(data$.gps_provider) else character(0)
+      tagList(
+        tags$p(paste0("✅ Database updated: ", nrow(data), " records"),
+               style = "color: #00e676; font-weight: bold;"),
+        if (length(providers) > 0) tags$small(paste("Providers:", paste(providers, collapse = ", ")))
+      )
     }
   })
   
@@ -1078,7 +1061,7 @@ server <- function(input, output, session) {
     data <- read_data()
     selected_metrics <- input$metric_col
     valid_metrics <- selected_metrics[selected_metrics %in% colnames(data)]
-    numeric_metrics <- valid_metrics[sapply(data[valid_metrics], is.numeric)]
+    numeric_metrics <- valid_metrics[vapply(data[valid_metrics], gps_numericish, logical(1))]
     
     update_inputs <- function(id) {
       updateSelectInput(session, id, choices = numeric_metrics, selected = numeric_metrics[1])
@@ -1106,7 +1089,7 @@ server <- function(input, output, session) {
     data <- read_data()
     selected_metrics <- input$metric_col
     valid_metrics <- selected_metrics[selected_metrics %in% colnames(data)]
-    numeric_metrics <- valid_metrics[sapply(data[valid_metrics], is.numeric)]
+    numeric_metrics <- valid_metrics[vapply(data[valid_metrics], gps_numericish, logical(1))]
     
     updateSelectInput(session, "metric_z_comp",
                       choices = numeric_metrics,
@@ -1132,7 +1115,7 @@ server <- function(input, output, session) {
     data <- read_data()
     selected_metrics <- input$metric_col
     valid_metrics <- selected_metrics[selected_metrics %in% colnames(data)]
-    numeric_metrics <- valid_metrics[sapply(data[valid_metrics], is.numeric)]
+    numeric_metrics <- valid_metrics[vapply(data[valid_metrics], gps_numericish, logical(1))]
     
     updateSelectInput(session, "metricas_microciclo",
                       choices = numeric_metrics,
@@ -1173,13 +1156,11 @@ server <- function(input, output, session) {
       data <- read_data()
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
-        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+        dur <- gps_duration_minutes(data[[input$duration_col]])
       } else if (!is.null(input$start_col) && input$start_col != "None" &&
                  !is.null(input$end_col) && input$end_col != "None" &&
                  input$start_col %in% colnames(data) && input$end_col %in% colnames(data)) {
-        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+        dur <- gps_duration_minutes(NULL, data[[input$start_col]], data[[input$end_col]])
       }
       dur <- dur[!is.na(dur) & is.finite(dur) & dur >= 0]
       if (length(dur) > 0) {
@@ -1353,7 +1334,7 @@ server <- function(input, output, session) {
     
     # Filtrar solo MD
     if (!is.null(input$matchday_col) && input$matchday_col %in% names(data)) {
-      data <- data[data[[input$matchday_col]] == "MD", ]
+      data <- data[gps_classify_session(data[[input$matchday_col]]) == "match", ]
     }
     
     # Filtrar por tarea
@@ -1362,7 +1343,7 @@ server <- function(input, output, session) {
       data <- data[data[[input$task_col]] %in% input$filtro_tarea_z_comp, ]
     }
     
-    fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+    fechas <- gps_parse_date(data[[input$date_col]])
     fechas <- fechas[!is.na(fechas)]
     if (length(fechas) == 0) return(NULL)
     
@@ -1380,7 +1361,7 @@ server <- function(input, output, session) {
     req(read_data(), input$metric_z_comp)
     if (!(input$metric_z_comp %in% colnames(read_data()))) return(NULL)
     
-    values <- suppressWarnings(as.numeric(read_data()[[input$metric_z_comp]]))
+    values <- gps_numeric(read_data()[[input$metric_z_comp]])
     values <- values[!is.na(values) & is.finite(values)]
     if (length(values) == 0) return(NULL)
     
@@ -1531,7 +1512,8 @@ server <- function(input, output, session) {
       options = list(
         pageLength = 15,
         scrollX = TRUE,
-        dom = 'tip',
+        dom = 'Bfrtip',
+        buttons = c('copy', 'csv', 'excel'),
         class = 'cell-border stripe hover compact',
         autoWidth = TRUE
       ),
@@ -1545,7 +1527,7 @@ server <- function(input, output, session) {
         fontFamily = 'Open Sans',
         fontSize = '14px'
       )
-  })
+  }, server = TRUE)
   
   # =======================================================
   # 🧠 FUNCIONES AUXILIARES SEGURAS
@@ -1811,31 +1793,22 @@ server <- function(input, output, session) {
       data <- data[data[[input$task_col]] %in% input$filtro_tarea_z, ]
     }
     if (!is.null(input$date_col) && input$date_col %in% colnames(data) && !is.null(input$filtro_fecha_z)) {
-      fechas <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y")))
+      fechas <- gps_parse_date(data[[input$date_col]])
       data <- data[!is.na(fechas) & fechas >= input$filtro_fecha_z[1] & fechas <= input$filtro_fecha_z[2], ]
     }
     if (!is.null(input$filtro_duracion_input_z)) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% colnames(data)) {
-        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+        dur <- gps_duration_minutes(data[[input$duration_col]])
       } else if (!is.null(input$start_col) && input$start_col != "None" &&
                  !is.null(input$end_col) && input$end_col != "None" &&
                  input$start_col %in% colnames(data) && input$end_col %in% colnames(data)) {
-        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+        dur <- gps_duration_minutes(NULL, data[[input$start_col]], data[[input$end_col]])
       }
       if (!is.null(dur)) {
         keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z[1] & dur <= input$filtro_duracion_input_z[2]
         data <- data[keep, ]
       }
-    }
-    
-    # Filtrar por valores de la métrica específica
-    if (!is.null(metrica) && metrica %in% colnames(data) && !is.null(rango)) {
-      vals <- suppressWarnings(as.numeric(data[[metrica]]))
-      keep <- !is.na(vals) & vals >= rango[1] & vals <= rango[2]
-      data <- data[keep, ]
     }
     
     return(data)
@@ -1872,7 +1845,7 @@ server <- function(input, output, session) {
     
     # Filtro por sesión específica
     if (!is.null(input$date_col) && input$date_col %in% names(data)) {
-      data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+      data[[input$date_col]] <- gps_parse_date(data[[input$date_col]])
       if (!is.null(input$filtro_sesion_selector)) {
         data <- data[as.character(data[[input$date_col]]) %in% input$filtro_sesion_selector, ]
       }
@@ -1882,13 +1855,11 @@ server <- function(input, output, session) {
     if (!is.null(input$filtro_duracion_input_sesion)) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
-        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+        dur <- gps_duration_minutes(data[[input$duration_col]])
       } else if (!is.null(input$start_col) && input$start_col != "None" &&
                  !is.null(input$end_col) && input$end_col != "None" &&
                  input$start_col %in% names(data) && input$end_col %in% names(data)) {
-        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+        dur <- gps_duration_minutes(NULL, data[[input$start_col]], data[[input$end_col]])
       }
       if (!is.null(dur)) {
         keep <- !is.na(dur) & dur >= input$filtro_duracion_input_sesion[1] & dur <= input$filtro_duracion_input_sesion[2]
@@ -1901,7 +1872,7 @@ server <- function(input, output, session) {
         input$metricas_sesion_plot[1] %in% names(data) &&
         !is.null(input$filtro_metrica_valor_sesion)) {
       metrica <- input$metricas_sesion_plot[1]
-      values <- suppressWarnings(as.numeric(data[[metrica]]))
+      values <- gps_numeric(data[[metrica]])
       data <- data[!is.na(values) & values >= input$filtro_metrica_valor_sesion[1] &
                      values <= input$filtro_metrica_valor_sesion[2], ]
     }
@@ -1920,8 +1891,7 @@ server <- function(input, output, session) {
     
     # ── Filtrar por Match Day = MD ──
     if (!is.null(input$matchday_col) && input$matchday_col %in% names(data)) {
-      data[[input$matchday_col]] <- toupper(as.character(data[[input$matchday_col]]))
-      data <- data[data[[input$matchday_col]] == "MD", ]
+      data <- data[gps_classify_session(data[[input$matchday_col]]) == "match", ]
     }
     
     # ── Filtros categóricos ──
@@ -1939,12 +1909,10 @@ server <- function(input, output, session) {
     if (!is.null(input$filtro_duracion_input_z_comp)) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
-        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
+        dur <- gps_duration_minutes(data[[input$duration_col]])
       } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
                  input$start_col %in% names(data) && input$end_col %in% names(data)) {
-        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+        dur <- gps_duration_minutes(NULL, data[[input$start_col]], data[[input$end_col]])
       }
       if (!is.null(dur)) {
         data <- data[!is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2], ]
@@ -1954,13 +1922,13 @@ server <- function(input, output, session) {
     # ── Filtro por sesión específica (fecha seleccionada) ──
     if (!is.null(input$filtro_sesion_selector_comp) &&
         !is.null(input$date_col) && input$date_col %in% names(data)) {
-      data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+      data[[input$date_col]] <- gps_parse_date(data[[input$date_col]])
       data <- data[as.character(data[[input$date_col]]) == input$filtro_sesion_selector_comp, ]
     }
     
     # ── Filtro por valor de la métrica ──
     if (!is.null(metrica) && metrica %in% names(data) && !is.null(rango)) {
-      vals <- suppressWarnings(as.numeric(data[[metrica]]))
+      vals <- gps_numeric(data[[metrica]])
       keep <- !is.na(vals) & is.finite(vals) & vals >= rango[1] & vals <= rango[2]
       data <- data[keep, ]
     }
@@ -2048,7 +2016,8 @@ server <- function(input, output, session) {
   #' - Fechas seleccionadas manualmente (`filtro_fechas_micro`)
   
   data_microciclo <- reactive({
-    req(read_data(), input$metric_col, input$ventana_movil_micro, input$filtro_fechas_micro)
+    req(read_data(), input$metric_col, input$matchday_col, input$date_col,
+        input$ventana_movil_micro, input$filtro_fechas_micro)
     
     data <- read_data()
     
@@ -2083,7 +2052,7 @@ server <- function(input, output, session) {
     
     # Rolling de últimos partidos (matchday = "MD")
     data_matchday <- data %>% 
-      filter(!is.null(input$matchday_col), .data[[input$matchday_col]] == "MD") %>%
+      filter(gps_classify_session(.data[[input$matchday_col]]) == "match") %>%
       arrange(.data[[input$player_col]], desc(.data[[input$date_col]])) %>%
       group_by(.data[[input$player_col]]) %>%
       slice_head(n = input$ventana_movil_micro) %>%
@@ -2494,7 +2463,7 @@ server <- function(input, output, session) {
     fluidRow(
       lapply(1:2, function(i) {
         metrica <- metricas[i]
-        valores <- suppressWarnings(as.numeric(data[[metrica]]))
+        valores <- gps_numeric(data[[metrica]])
         if (all(is.na(valores))) return(NULL)
         min_val <- floor(min(valores, na.rm = TRUE))
         max_val <- ceiling(max(valores, na.rm = TRUE))
@@ -2507,7 +2476,7 @@ server <- function(input, output, session) {
               metrica
             ),
             sliderInput(
-              inputId = paste0("filtro_valor_", metrica),
+              inputId = paste0("filtro_valor_", make.names(metrica)),
               label = tags$span(
                 paste0("Filter ", metrica, ":"),
                 style = "color:#ffffff; font-size:0.98em;"
@@ -2724,7 +2693,7 @@ server <- function(input, output, session) {
   # ============================
   
   output$kpi_row_zscore_time <- renderUI({
-    req(input$metric_z, length(input$metric_z) > 0, read_data())
+    req(input$metric_z, length(input$metric_z) > 0, read_data(), input$ventana_movil_z)
     met_list <- input$metric_z
     
     tagList(
@@ -2735,16 +2704,7 @@ server <- function(input, output, session) {
         data <- filtro_data_z(metrica, val_range)
         if (is.null(data) || nrow(data) == 0) return(NULL)
         player_col <- input$player_col
-        tabla_z <- data %>%
-          group_by(Jugador = .data[[player_col]]) %>%
-          summarise(
-            ultima_fecha = max(.data[[input$date_col]], na.rm = TRUE),
-            z_ultimo = {
-              vals <- suppressWarnings(as.numeric(.data[[metrica]]))
-              (tail(vals, 1) - mean(vals, na.rm = TRUE)) / sd(vals, na.rm = TRUE)
-            },
-            .groups = "drop"
-          ) %>%
+        tabla_z <- gps_latest_rolling_z(data, player_col, input$date_col, metrica, input$ventana_movil_z) %>%
           filter(is.finite(z_ultimo)) %>%
           arrange(desc(z_ultimo))
         high_z <- tabla_z %>% filter(z_ultimo > 1.5)
@@ -2769,7 +2729,10 @@ server <- function(input, output, session) {
                 tags$div(
                   id = paste0("chip_high_z_", metrica_id),
                   `data-metric` = metrica,
-                  onclick = sprintf("Shiny.setInputValue('show_players_gt15', '%s', {priority: 'event'})", metrica),
+                  role = "button",
+                  tabindex = "0",
+                  onclick = paste0("Shiny.setInputValue('show_players_gt15', ", jsonlite::toJSON(metrica, auto_unbox = TRUE), ", {priority: 'event'})"),
+                  onkeydown = paste0("if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); Shiny.setInputValue('show_players_gt15', ", jsonlite::toJSON(metrica, auto_unbox = TRUE), ", {priority: 'event'}); }"),
                   style = "background:#fd002b; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
                   tags$span(nrow(high_z), style = "font-size:1.25em; font-weight:600;"),
                   tags$i(class = "bi bi-arrow-up-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
@@ -2789,7 +2752,10 @@ server <- function(input, output, session) {
                 tags$div(
                   id = paste0("chip_low_z_", metrica_id),
                   `data-metric` = metrica,
-                  onclick = sprintf("Shiny.setInputValue('show_players_lt15', '%s', {priority: 'event'})", metrica),
+                  role = "button",
+                  tabindex = "0",
+                  onclick = paste0("Shiny.setInputValue('show_players_lt15', ", jsonlite::toJSON(metrica, auto_unbox = TRUE), ", {priority: 'event'})"),
+                  onkeydown = paste0("if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); Shiny.setInputValue('show_players_lt15', ", jsonlite::toJSON(metrica, auto_unbox = TRUE), ", {priority: 'event'}); }"),
                   style = "background:#00e676; color:white; border-radius:16px; padding:5px 12px 2px 12px; font-size:1.11em; font-weight:600; cursor:pointer; display:flex; flex-direction:column; align-items:center; min-width:37px;",
                   tags$span(nrow(low_z), style = "font-size:1.25em; font-weight:600;"),
                   tags$i(class = "bi bi-arrow-down-circle-fill", style = "color:white; font-size:1.17em; margin-top:2px;")
@@ -2821,7 +2787,7 @@ server <- function(input, output, session) {
   
   # High Z: Players with Z > 1.5
   observeEvent(input$show_players_gt15, {
-    req(input$show_players_gt15, read_data())
+    req(input$show_players_gt15, read_data(), input$ventana_movil_z)
     metrica <- input$show_players_gt15
     metrica_id <- make.names(metrica)
     filtro_id <- paste0("filtro_metrica_valor_z_", metrica_id)
@@ -2830,16 +2796,7 @@ server <- function(input, output, session) {
     data <- filtro_data_z(metrica, val_range)
     if (is.null(data) || nrow(data) == 0) return(NULL)
     player_col <- input$player_col
-    tabla_z <- data %>%
-      group_by(Jugador = .data[[player_col]]) %>%
-      summarise(
-        ultima_fecha = max(.data[[input$date_col]], na.rm = TRUE),
-        z_ultimo = {
-          vals <- suppressWarnings(as.numeric(.data[[metrica]]))
-          (tail(vals, 1) - mean(vals, na.rm = TRUE)) / sd(vals, na.rm = TRUE)
-        },
-        .groups = "drop"
-      ) %>%
+    tabla_z <- gps_latest_rolling_z(data, player_col, input$date_col, metrica, input$ventana_movil_z) %>%
       filter(is.finite(z_ultimo)) %>%
       arrange(desc(z_ultimo))
     high_z <- tabla_z %>% filter(z_ultimo > 1.5)
@@ -2864,7 +2821,7 @@ server <- function(input, output, session) {
   
   # Low Z: Players with Z < -1.5
   observeEvent(input$show_players_lt15, {
-    req(input$show_players_lt15, read_data())
+    req(input$show_players_lt15, read_data(), input$ventana_movil_z)
     metrica <- input$show_players_lt15
     metrica_id <- make.names(metrica)
     filtro_id <- paste0("filtro_metrica_valor_z_", metrica_id)
@@ -2873,16 +2830,7 @@ server <- function(input, output, session) {
     data <- filtro_data_z(metrica, val_range)
     if (is.null(data) || nrow(data) == 0) return(NULL)
     player_col <- input$player_col
-    tabla_z <- data %>%
-      group_by(Jugador = .data[[player_col]]) %>%
-      summarise(
-        ultima_fecha = max(.data[[input$date_col]], na.rm = TRUE),
-        z_ultimo = {
-          vals <- suppressWarnings(as.numeric(.data[[metrica]]))
-          (tail(vals, 1) - mean(vals, na.rm = TRUE)) / sd(vals, na.rm = TRUE)
-        },
-        .groups = "drop"
-      ) %>%
+    tabla_z <- gps_latest_rolling_z(data, player_col, input$date_col, metrica, input$ventana_movil_z) %>%
       filter(is.finite(z_ultimo)) %>%
       arrange(desc(z_ultimo))
     low_z <- tabla_z %>% filter(z_ultimo < -1.5)
@@ -3112,11 +3060,11 @@ server <- function(input, output, session) {
     window_size <- input$ventana_movil_z_comp
     
     # Parsear fechas
-    data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data_full[[date_col]] <- gps_parse_date(data_full[[date_col]])
+    data_full[[metrica]] <- gps_numeric(data_full[[metrica]])
     data_full <- data_full[!is.na(data_full[[date_col]]), ]
     if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
-      data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
-      data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
+      data_full <- data_full[gps_classify_session(data_full[[input$matchday_col]]) == "match", ]
     }
     # Filtros categóricos
     if (!is.null(input$filtro_jugador_z_comp) && input$player_col %in% names(data_full)) {
@@ -3132,12 +3080,10 @@ server <- function(input, output, session) {
     if (!is.null(input$filtro_duracion_input_z_comp)) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
-        dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
+        dur <- gps_duration_minutes(data_full[[input$duration_col]])
       } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
                  input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
-        hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+        dur <- gps_duration_minutes(NULL, data_full[[input$start_col]], data_full[[input$end_col]])
       }
       if (!is.null(dur)) {
         keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
@@ -3151,7 +3097,7 @@ server <- function(input, output, session) {
       data_full <- data_full[keep, ]
     }
     # --- Calcular rolling Z-score ---
-    fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    fecha_partido <- gps_parse_date(input$filtro_sesion_selector_comp)
     stats_movil <- data_full %>%
       filter(.data[[date_col]] < fecha_partido) %>%
       arrange(.data[[player_col]], .data[[date_col]]) %>%
@@ -3272,12 +3218,12 @@ server <- function(input, output, session) {
     player_col <- input$player_col
     date_col <- input$date_col
     data_full <- read_data()
-    data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data_full[[date_col]] <- gps_parse_date(data_full[[date_col]])
+    data_full[[metrica]] <- gps_numeric(data_full[[metrica]])
     data_full <- data_full[!is.na(data_full[[date_col]]), ]
     # Replicar exactamente el filtrado del gráfico y value box
     if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
-      data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
-      data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
+      data_full <- data_full[gps_classify_session(data_full[[input$matchday_col]]) == "match", ]
     }
     data_full <- data_full %>%
       filter(
@@ -3290,12 +3236,10 @@ server <- function(input, output, session) {
     if (!is.null(input$filtro_duracion_input_z_comp)) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
-        dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
+        dur <- gps_duration_minutes(data_full[[input$duration_col]])
       } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
                  input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
-        hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+        dur <- gps_duration_minutes(NULL, data_full[[input$start_col]], data_full[[input$end_col]])
       }
       if (!is.null(dur)) {
         keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
@@ -3307,7 +3251,7 @@ server <- function(input, output, session) {
       keep <- !is.na(vals) & vals >= val_range[1] & vals <= val_range[2]
       data_full <- data_full[keep, ]
     }
-    fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    fecha_partido <- gps_parse_date(input$filtro_sesion_selector_comp)
     stats_movil <- data_full %>%
       filter(.data[[date_col]] < fecha_partido) %>%
       arrange(.data[[player_col]], .data[[date_col]]) %>%
@@ -3354,13 +3298,13 @@ server <- function(input, output, session) {
     player_col <- input$player_col
     date_col <- input$date_col
     data_full <- read_data()
-    data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    data_full[[date_col]] <- gps_parse_date(data_full[[date_col]])
+    data_full[[metrica]] <- gps_numeric(data_full[[metrica]])
     data_full <- data_full[!is.na(data_full[[date_col]]), ]
     
     # Aplicar los mismos filtros que el gráfico y value box
     if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
-      data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
-      data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
+      data_full <- data_full[gps_classify_session(data_full[[input$matchday_col]]) == "match", ]
     }
     data_full <- data_full %>%
       filter(
@@ -3373,12 +3317,10 @@ server <- function(input, output, session) {
     if (!is.null(input$filtro_duracion_input_z_comp)) {
       dur <- NULL
       if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
-        dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
+        dur <- gps_duration_minutes(data_full[[input$duration_col]])
       } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
                  input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
-        hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+        dur <- gps_duration_minutes(NULL, data_full[[input$start_col]], data_full[[input$end_col]])
       }
       if (!is.null(dur)) {
         keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
@@ -3393,7 +3335,7 @@ server <- function(input, output, session) {
     }
     
     # Calcular rolling Z-score
-    fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+    fecha_partido <- gps_parse_date(input$filtro_sesion_selector_comp)
     stats_movil <- data_full %>%
       filter(.data[[date_col]] < fecha_partido) %>%
       arrange(.data[[player_col]], .data[[date_col]]) %>%
@@ -3797,7 +3739,7 @@ server <- function(input, output, session) {
               axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20,
-                color = "#00FFFF", family = "Geist"
+                color = "#00FFFF", family = "Space Grotesk"
               ),
               legend.position = "none"
             )
@@ -3877,7 +3819,7 @@ server <- function(input, output, session) {
               axis.title = element_text(color = "#ffffff", face = "bold"),
               plot.title = element_text(
                 hjust = 0.5, face = "bold", size = 20,
-                color = "#00FFFF", family = "Geist"
+                color = "#00FFFF", family = "Space Grotesk"
               ),
               legend.position = "none"
             )
@@ -3909,26 +3851,21 @@ server <- function(input, output, session) {
         filtro_id <- paste0("filtro_metrica_valor_z_", metrica_clean)
         
         output[[plot_id]] <- renderPlotly({
-          req(input[[filtro_id]], input$player_col, input$date_col)
+          req(input[[filtro_id]], input$player_col, input$date_col, input$ventana_movil_z)
           
           data <- filtro_data_z(metrica = metrica_local, rango = input[[filtro_id]])
           if (!(metrica_local %in% names(data))) return(NULL)
           
-          data[[input$date_col]] <- parse_date_time(data[[input$date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
-          data[[metrica_local]] <- suppressWarnings(as.numeric(data[[metrica_local]]))
+          data[[input$date_col]] <- gps_parse_date(data[[input$date_col]])
+          data[[metrica_local]] <- gps_numeric(data[[metrica_local]])
           data <- data[!is.na(data[[input$date_col]]) & !is.na(data[[metrica_local]]), ]
-          
-          val_range <- input[[filtro_id]]
-          data <- data[data[[metrica_local]] >= val_range[1] & data[[metrica_local]] <= val_range[2], ]
           
           z_data <- data %>%
             arrange(.data[[input$player_col]], .data[[input$date_col]]) %>%
             group_by(Jugador = .data[[input$player_col]]) %>%
             mutate(
               Valor = .data[[metrica_local]],
-              media_jugador = mean(Valor, na.rm = TRUE),
-              sd_jugador = sd(Valor, na.rm = TRUE),
-              z = (Valor - media_jugador) / sd_jugador,
+              z = gps_rolling_z(Valor, window = input$ventana_movil_z),
               Fecha = as.Date(.data[[input$date_col]]),
               z_color = case_when(
                 z >= 1.5 ~ "High",
@@ -3943,6 +3880,10 @@ server <- function(input, output, session) {
             ) %>%
             ungroup() %>%
             filter(!is.na(z), is.finite(z))
+
+          val_range <- input[[filtro_id]]
+          z_data <- z_data %>%
+            filter(Valor >= val_range[1], Valor <= val_range[2])
           
           if (!is.null(input$filtro_jugador_z) && length(input$filtro_jugador_z) > 0) {
             z_data <- z_data %>% filter(Jugador %in% input$filtro_jugador_z)
@@ -3984,7 +3925,7 @@ server <- function(input, output, session) {
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, color = "#ffffff"),
               axis.text.y = element_text(size = 12, color = "#ffffff"),
               axis.title = element_text(face = "bold", size = 14, color = "#ffffff"),
-              plot.title = element_text(hjust = 0.5, face = "bold", size = 20, color = "#00FFFF", family = "Geist"),
+              plot.title = element_text(hjust = 0.5, face = "bold", size = 20, color = "#00FFFF", family = "Space Grotesk"),
               strip.text = element_text(face = "bold", size = 13, color = "#ffffff"),
               legend.position = "bottom",
               legend.text = element_text(color = "#ffffff"),
@@ -4140,13 +4081,13 @@ server <- function(input, output, session) {
           window_size <- input$ventana_movil_z_comp
           
           # Parsear fechas
-          data_full[[date_col]] <- parse_date_time(data_full[[date_col]], orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+          data_full[[date_col]] <- gps_parse_date(data_full[[date_col]])
+          data_full[[metrica_local]] <- gps_numeric(data_full[[metrica_local]])
           data_full <- data_full[!is.na(data_full[[date_col]]), ]
           
           # Filtrar por Match Day si corresponde
           if (!is.null(input$matchday_col) && input$matchday_col %in% names(data_full)) {
-            data_full[[input$matchday_col]] <- toupper(as.character(data_full[[input$matchday_col]]))
-            data_full <- data_full[data_full[[input$matchday_col]] == "MD", ]
+            data_full <- data_full[gps_classify_session(data_full[[input$matchday_col]]) == "match", ]
           }
           
           # Filtros categóricos
@@ -4162,12 +4103,10 @@ server <- function(input, output, session) {
           if (!is.null(input$filtro_duracion_input_z_comp)) {
             dur <- NULL
             if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data_full)) {
-              dur <- suppressWarnings(as.numeric(data_full[[input$duration_col]]))
+              dur <- gps_duration_minutes(data_full[[input$duration_col]])
             } else if (!is.null(input$start_col) && !is.null(input$end_col) &&
                        input$start_col %in% names(data_full) && input$end_col %in% names(data_full)) {
-              hora_inicio <- suppressWarnings(parse_time(data_full[[input$start_col]]))
-              hora_fin <- suppressWarnings(parse_time(data_full[[input$end_col]]))
-              dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+              dur <- gps_duration_minutes(NULL, data_full[[input$start_col]], data_full[[input$end_col]])
             }
             if (!is.null(dur)) {
               keep <- !is.na(dur) & dur >= input$filtro_duracion_input_z_comp[1] & dur <= input$filtro_duracion_input_z_comp[2]
@@ -4183,7 +4122,7 @@ server <- function(input, output, session) {
           }
           
           # Calcular stats rolling (antes del partido)
-          fecha_partido <- parse_date_time(input$filtro_sesion_selector_comp, orders = c("Y-m-d", "d-m-Y", "m/d/Y"))
+          fecha_partido <- gps_parse_date(input$filtro_sesion_selector_comp)
           stats_movil <- data_full %>%
             filter(.data[[date_col]] < fecha_partido) %>%
             arrange(.data[[player_col]], .data[[date_col]]) %>%
@@ -4429,12 +4368,12 @@ server <- function(input, output, session) {
         #' - usa filtros de jugador, puesto, tarea, duración, fechas seleccionadas y ventana MD
         
         observe({
-          req(input$metricas)  # ← Solo necesita el mapeo del lateral
+          req(input$metric_col)
           updateSelectInput(
             session,
             inputId = "metricas_microciclo",
-            choices = input$metricas,
-            selected = input$metricas[1]
+            choices = input$metric_col,
+            selected = input$metric_col[1]
           )
         })
         
@@ -4451,22 +4390,21 @@ server <- function(input, output, session) {
           data <- read_data()
           
           # 📆 Parsear fechas y guardar como nueva columna
-          data$fecha_parsed <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
+          data$fecha_parsed <- gps_parse_date(data[[input$date_col]])
           data <- data[!is.na(data$fecha_parsed), ]
           
           # 🎯 Filtrar por duración (si existe)
-          if (!is.null(input$duration_col) && input$duration_col != "None") {
-            data <- data %>%
-              filter(
-                !is.na(.data[[input$duration_col]]),
-                .data[[input$duration_col]] >= input$filtro_duracion_micro[1],
-                .data[[input$duration_col]] <= input$filtro_duracion_micro[2]
-              )
-          } else if (!is.null(input$start_col) && !is.null(input$end_col)) {
-            hora_inicio <- parse_time(data[[input$start_col]])
-            hora_fin <- parse_time(data[[input$end_col]])
-            duracion <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
-            data <- data[!is.na(duracion) & duracion >= input$filtro_duracion_micro[1] & duracion <= input$filtro_duracion_micro[2], ]
+          duracion <- NULL
+          if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
+            duracion <- gps_duration_minutes(data[[input$duration_col]])
+          } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                     !is.null(input$end_col) && input$end_col != "None" &&
+                     input$start_col %in% names(data) && input$end_col %in% names(data)) {
+            duracion <- gps_duration_minutes(NULL, data[[input$start_col]], data[[input$end_col]])
+          }
+          if (!is.null(duracion) && !is.null(input$filtro_duracion_micro)) {
+            data <- data[is.finite(duracion) & duracion >= input$filtro_duracion_micro[1] &
+                           duracion <= input$filtro_duracion_micro[2], ]
           }
           
           # 👤 Filtros adicionales
@@ -4480,11 +4418,8 @@ server <- function(input, output, session) {
             data <- data[data[[input$position_col]] %in% input$filtro_puesto_micro, ]
           }
           
-          # ⚽ Clasificar tipo de sesión: múltiples variantes posibles de partido
-          valores_partido <- c("md", "match", "game", "partido", "juego")
-          
           data$tipo <- ifelse(
-            tolower(trimws(as.character(data[[input$matchday_col]]))) %in% valores_partido,
+            gps_classify_session(data[[input$matchday_col]]) == "match",
             "partido",
             "entreno"
           )
@@ -4512,13 +4447,17 @@ server <- function(input, output, session) {
               ungroup()
             
             partidos_resumen <- partidos_filtrados %>%
+              mutate(.metric_value = gps_numeric(.data[[metrica]])) %>%
+              filter(is.finite(.metric_value)) %>%
               group_by(Jugador) %>%
-              summarise(partido = mean(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+              summarise(partido = mean(.metric_value), .groups = "drop")
             
             # Acumulado de entrenamientos
             entreno_resumen <- entrenos %>%
+              mutate(.metric_value = gps_numeric(.data[[metrica]])) %>%
+              filter(is.finite(.metric_value)) %>%
               group_by(Jugador = .data[[input$player_col]]) %>%
-              summarise(entreno = sum(.data[[metrica]], na.rm = TRUE), .groups = "drop")
+              summarise(entreno = sum(.metric_value), .groups = "drop")
             
             # Verificación de jugadores con pocos partidos
             conteo_partidos <- partidos_filtrados %>%
@@ -4539,7 +4478,7 @@ server <- function(input, output, session) {
               filter(!is.na(partido), !is.na(entreno), entreno > 0) %>%
               mutate(
                 metrica = metrica,
-                ratio = entreno / partido,
+                ratio = gps_match_training_ratio(partido, entreno),
                 color_label = case_when(
                   ratio > umbral_alto ~ "High",
                   ratio < umbral_bajo ~ "Low",
@@ -4548,8 +4487,8 @@ server <- function(input, output, session) {
                 # 🔴 Tooltip detallado
                 tooltip = paste0(
                   "Player: ", Jugador,
-                  "<br>Session Cumulative: ", round(entreno, 1),
-                  "<br>Md Rolling AVG: ", round(partido, 1),
+                  "<br>Training Cumulative: ", round(entreno, 1),
+                  "<br>Match Rolling AVG: ", round(partido, 1),
                   "<br>Ratio: ", round(ratio, 2)
                 )
               )
@@ -4576,7 +4515,7 @@ server <- function(input, output, session) {
             facet_wrap(~metrica, scales = "free_y") +
             geom_hline(yintercept = 1, linetype = "dashed", color = "#ffffff") +
             scale_fill_manual(values = scale_colors, name = "Ratio") +
-            labs(title = "⚖️ Ratio MD Rolling AVG vs Session Cumulative", x = "Player", y = "Ratio (Match / Training)") +
+            labs(title = "⚖️ Ratio Match Rolling AVG / Training Cumulative", x = "Player", y = "Ratio (Match / Training)") +
             theme_minimal(base_size = 14) +
             theme(
               plot.background = element_rect(fill = "transparent", color = NA),
@@ -4652,7 +4591,7 @@ server <- function(input, output, session) {
     if (length(input$metricas_cuad) != 2) return(NULL)
     
     data <- read_data()
-    data$fecha_parsed <- suppressWarnings(parse_date_time(data[[input$date_col]], orders = c("ymd", "dmy", "mdy")))
+    data$fecha_parsed <- gps_parse_date(data[[input$date_col]])
     
     
     # Filtros por sesión
@@ -4671,12 +4610,12 @@ server <- function(input, output, session) {
     }
     if (!is.null(input$filtro_duracion_cuad)) {
       dur <- NULL
-      if (!is.null(input$duration_col) && input$duration_col != "None") {
-        dur <- suppressWarnings(as.numeric(data[[input$duration_col]]))
-      } else if (!is.null(input$start_col) && !is.null(input$end_col)) {
-        hora_inicio <- suppressWarnings(parse_time(data[[input$start_col]]))
-        hora_fin <- suppressWarnings(parse_time(data[[input$end_col]]))
-        dur <- as.numeric(difftime(hora_fin, hora_inicio, units = "mins"))
+      if (!is.null(input$duration_col) && input$duration_col != "None" && input$duration_col %in% names(data)) {
+        dur <- gps_duration_minutes(data[[input$duration_col]])
+      } else if (!is.null(input$start_col) && input$start_col != "None" &&
+                 !is.null(input$end_col) && input$end_col != "None" &&
+                 input$start_col %in% names(data) && input$end_col %in% names(data)) {
+        dur <- gps_duration_minutes(NULL, data[[input$start_col]], data[[input$end_col]])
       }
       if (!is.null(dur)) {
         data <- data[!is.na(dur) & dur >= input$filtro_duracion_cuad[1] & dur <= input$filtro_duracion_cuad[2], ]
@@ -4689,23 +4628,35 @@ server <- function(input, output, session) {
     req(met_x %in% names(data), met_y %in% names(data))
     
     for (metrica in input$metricas_cuad) {
-      slider_id <- paste0("filtro_valor_", metrica)
+      data[[metrica]] <- gps_numeric(data[[metrica]])
+      slider_id <- paste0("filtro_valor_", make.names(metrica))
       if (!is.null(input[[slider_id]])) {
         rango <- input[[slider_id]]
         data <- data[data[[metrica]] >= rango[1] & data[[metrica]] <= rango[2], ]
       }
     }
     
+    data <- data[is.finite(data[[met_x]]) & is.finite(data[[met_y]]), , drop = FALSE]
+    if (nrow(data) == 0) return(NULL)
+    data <- data %>%
+      transmute(
+        Player = as.character(.data[[input$player_col]]),
+        X = .data[[met_x]],
+        Y = .data[[met_y]]
+      ) %>%
+      group_by(Player) %>%
+      summarise(X = mean(X), Y = mean(Y), .groups = "drop")
+
     # 2. Calcular mediana de cada métrica
-    x_med <- median(data[[met_x]], na.rm = TRUE)
-    y_med <- median(data[[met_y]], na.rm = TRUE)
+    x_med <- median(data$X, na.rm = TRUE)
+    y_med <- median(data$Y, na.rm = TRUE)
     
     # 3. Crear variable de cuadrante para colores y labels
     data$cuadrante <- dplyr::case_when(
-      data[[met_x]] >= x_med & data[[met_y]] >= y_med ~ "High-High",
-      data[[met_x]] <  x_med & data[[met_y]] >= y_med ~ "Low-High",
-      data[[met_x]] <  x_med & data[[met_y]] <  y_med ~ "Low-Low",
-      data[[met_x]] >= x_med & data[[met_y]] <  y_med ~ "High-Low"
+      data$X >= x_med & data$Y >= y_med ~ "High-High",
+      data$X <  x_med & data$Y >= y_med ~ "Low-High",
+      data$X <  x_med & data$Y <  y_med ~ "Low-Low",
+      data$X >= x_med & data$Y <  y_med ~ "High-Low"
     )
     data$cuadrante <- factor(data$cuadrante, levels = c("High-High", "Low-High", "Low-Low", "High-Low"))
     
@@ -4719,14 +4670,14 @@ server <- function(input, output, session) {
     
     # 5. Armar plot
     p <- ggplot(data, aes(
-      x = .data[[met_x]],
-      y = .data[[met_y]],
+      x = X,
+      y = Y,
       color = cuadrante,
-      label = .data[[input$player_col]],
+      label = Player,
       text = paste0(
-        "Player: ", .data[[input$player_col]], "<br>",
-        met_x, ": ", round(.data[[met_x]], 2), "<br>",
-        met_y, ": ", round(.data[[met_y]], 2), "<br>",
+        "Player: ", Player, "<br>",
+        met_x, ": ", round(X, 2), "<br>",
+        met_y, ": ", round(Y, 2), "<br>",
         "Quadrant: ", cuadrante
       )
     )) +
@@ -4770,4 +4721,3 @@ server <- function(input, output, session) {
 
 
 shinyApp(ui, server)
-

@@ -8,12 +8,13 @@ This R Shiny dashboard allows for interactive visualization, filtering, and anal
 
 - **Cumulative data upload**:
   - Upload multiple`.csv`, `.xlsx`, `.json` files progressively.
-  - Support for pasting **Google Sheets** links as a direct data source.
-  - Automatic detection of delimiter and header..
+  - Support for pasting **Google Sheets** links or IDs, loaded explicitly with a button.
+  - Automatic detection of delimiter, metadata rows, and decimal comma in CSV exports.
+  - Provider/source metadata retained for Catapult, WIMU, Stats Sports, and unknown exports.
 
 - **Persistent in-memory database:**:
   -	Uploaded sessions are accumulated without overwriting previous data.
-  - Automatic duplicate prevention using  `Jugador + Fecha`.
+  - Only exact duplicate rows are removed; different tasks/sessions on the same day are preserved.
 
 - **Reset button**:
   - Clears the database and resets all data upload inputs.
@@ -26,6 +27,8 @@ This R Shiny dashboard allows for interactive visualization, filtering, and anal
 	•	Task
 	•	Duration (direct column or calculated from start and end time)
 	•	Metrics (multiple numeric metrics allowed)
+
+The importer also accepts numeric-looking text columns, including values with a decimal comma.
 
 - **Dynamic per-plot filters**:
   •	Player
@@ -124,7 +127,7 @@ All chips are interactive: Click to see a modal listing affected players.
 	 •	Boxplots by task or drill type
 
 4. **📈 Z-score by Date**
-   •	Z-score calculation with rolling window per player (excluding the current value)
+	•	Z-score calculation with configurable rolling window per player (excluding the current value)
 	 •	Smoothed lines, automatic scaling, internal comparisons
 
 5. **🧪  Single Session Analysis**
@@ -144,7 +147,8 @@ All chips are interactive: Click to see a modal listing affected players.
 	  •	🔴 ACWR < 0.8
      
 8. **⚖️ Microcycle Analysis: Match vs Week Ratio**  
-  •	Calculates the load ratio between matches and accumulated training for each player and selected metric.
+	•	Calculates the load ratio between matches and accumulated training for each player and selected metric.
+	•	Canonical ratio: **Match rolling average / Training cumulative load**.
 	•	Allows selection of metric, match rolling window, training days to compare, and all usual filters (player, position, task, duration, etc.).
 	•	Customizable ratio thresholds per metric: adjust threshold values directly on the plot to define if the ratio is low, normal, or high for each metric, independently.
 	•	Colors adapt in real time according to these thresholds:
@@ -206,6 +210,10 @@ git clone https://github.com/tu_usuario/gps-dashboard.gi
 3.	Run the app locally from app.R or from console: 
 
     shiny::runApp()
+
+5. Run the helper tests:
+
+    Rscript -e "testthat::test_dir('tests/testthat', reporter = 'progress')"
     
 4.	To deploy on shinyapps.io:
 
