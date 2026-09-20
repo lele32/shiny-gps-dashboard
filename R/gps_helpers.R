@@ -27,6 +27,7 @@ gps_role_aliases <- list(
   position = c("position", "pos", "role", "rol", "puesto"),
   matchday = c("match day", "matchday", "match.day", "md", "match type", "session type", "dia partido", "dia"),
   task = c("task", "activity", "activity name", "drill", "selection", "tarea", "ejercicio"),
+  session_type = c("session", "session type", "type session", "session category", "activity type", "tipo sesion", "tipo de sesion"),
   date = c("date", "fecha", "session date", "recorded date", "day", "dia sesion"),
   duration = c("duration", "duration min", "duration minutes", "duration_min", "duracion", "duracion min"),
   start = c("start", "start time", "inicio", "hora inicio", "start.hour"),
@@ -83,10 +84,47 @@ gps_metric_candidates <- function(data) {
                 "tarea", "matchday", "matchday", "md", "start", "end", "time", "hora",
                 "source", "provider", "row")
   normalized <- gps_normalize_label(names(data))
+  context_columns <- unique(stats::na.omit(vapply(
+    c("player", "position", "matchday", "task", "session_type", "date", "start", "end"),
+    function(role) {
+      value <- gps_guess_column(names(data), role)
+      if (is.null(value) || length(value) == 0L) NA_character_ else value[[1L]]
+    },
+    character(1)
+  )))
+  metadata_column <- grepl("^(week|num|repetition|signal)|^(a|b|r2)$", normalized)
   candidates <- vapply(seq_along(data), function(i) {
-    gps_numericish(data[[i]]) && !any(vapply(excluded, function(term) grepl(term, normalized[i], fixed = TRUE), logical(1)))
+    gps_numericish(data[[i]]) &&
+      !(names(data)[[i]] %in% context_columns) &&
+      !metadata_column[[i]] &&
+      !any(vapply(excluded, function(term) grepl(term, normalized[i], fixed = TRUE), logical(1)))
   }, logical(1))
-  names(data)[candidates]
+  result <- names(data)[candidates]
+  if (length(result) <= 1L) return(result)
+  priority <- vapply(result, function(label) {
+    normalized_label <- gps_normalize_label(label)
+    score <- if (grepl("^(total)?distance", normalized_label)) {
+      130
+    } else if (grepl("explosive.*(distance|dist)|((distance|dist).*explosive)", normalized_label)) {
+      127
+    } else if (grepl("hibd", normalized_label)) {
+      125
+    } else if (grepl("hmld", normalized_label)) {
+      118
+    } else if (grepl("playerload", normalized_label)) {
+      115
+    } else if (grepl("sprint|hsr", normalized_label)) {
+      100
+    } else if (grepl("speed|acceleration|deceleration|accel|decel", normalized_label)) {
+      90
+    } else if (grepl("heart|hr|power|energy|metabolic", normalized_label)) {
+      80
+    } else {
+      20
+    }
+    score + ifelse(grepl("duration|count|number", normalized_label), 5, 0)
+  }, numeric(1))
+  result[order(-priority, match(result, names(data)))]
 }
 
 gps_detect_delimiter <- function(lines) {
@@ -172,10 +210,11 @@ gps_parse_clock <- function(x) {
 }
 
 gps_duration_minutes <- function(duration = NULL, start = NULL, end = NULL) {
+  length_hint <- max(length(duration), length(start), length(end), 0L)
   if (!is.null(duration)) {
     direct <- gps_numeric(duration)
   } else {
-    direct <- rep(NA_real_, length(start))
+    direct <- rep(NA_real_, length_hint)
   }
   if (is.null(start) || is.null(end)) {
     return(direct)
@@ -191,8 +230,8 @@ gps_duration_minutes <- function(duration = NULL, start = NULL, end = NULL) {
 gps_classify_session <- function(x) {
   normalized <- gps_normalize_label(x)
   result <- rep("unknown", length(normalized))
-  result[grepl("^(md|md[+-]?[0-9]+|match|game|partido|juego|officialmatch|matchday)$", normalized)] <- "match"
-  result[grepl("^(training|practice|entreno|entrenamiento|session|sesion|gym|recovery)$", normalized)] <- "training"
+  result[grepl("^(md|md[0-9]+|[0-9]+md|match|game|partido|juego|officialmatch|officialgame|friendlygame|matchday)$", normalized)] <- "match"
+  result[grepl("^(training|practice|entreno|entrenamiento|session|sesion|gym|recovery|physical|optimizerdisplacement|nomd)$", normalized)] <- "training"
   result
 }
 

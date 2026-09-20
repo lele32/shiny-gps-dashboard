@@ -41,6 +41,21 @@ test_that("column guessing and metric discovery support numeric text metrics", {
   expect_setequal(gps_metric_candidates(data), "Total Distance (m)")
 })
 
+test_that("metric discovery removes time and export metadata columns", {
+  data <- data.frame(
+    Player = c("A", "B"),
+    Date = c("2026-01-01", "2026-01-01"),
+    `Start hour` = c("20:00:00", "20:00:00"),
+    `Final Hour` = c("21:00:00", "21:00:00"),
+    `Week Team` = c(1, 1),
+    `Distance(m)` = c(1000, 1200),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  expect_equal(gps_metric_candidates(data), "Distance(m)")
+})
+
 test_that("provider and unit metadata are detected from GPS exports", {
   data <- data.frame(`WIMU Player` = "A", check.names = FALSE)
 
